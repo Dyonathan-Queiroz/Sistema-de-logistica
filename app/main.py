@@ -16,12 +16,15 @@ from app.models import Entrega, Usuario, Veiculo, Cliente, Filial
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Paths absolutos — funcionam tanto local quanto no Railway
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 app.mount(
     "/static",
-    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")),
+    StaticFiles(directory=os.path.join(_BASE_DIR, "static")),
     name="static",
 )
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory=os.path.join(_BASE_DIR, "templates"))
 
 
 # ---------------------------------------------------------------------------
