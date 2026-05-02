@@ -19,11 +19,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Paths absolutos — funcionam tanto local quanto no Railway
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-app.mount(
-    "/static",
-    StaticFiles(directory=os.path.join(_BASE_DIR, "static")),
-    name="static",
-)
+_static_dir = os.path.join(_BASE_DIR, "static")
+if os.path.isdir(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 templates = Jinja2Templates(directory=os.path.join(_BASE_DIR, "templates"))
 
 
