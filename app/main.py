@@ -28,6 +28,11 @@ templates = Jinja2Templates(directory="app/templates")
 # AUTH
 # ---------------------------------------------------------------------------
 
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/login")
+
+
 @app.get("/login")
 async def login_page(request: Request):
     return templates.TemplateResponse(request=request, name="login.html", context={})
