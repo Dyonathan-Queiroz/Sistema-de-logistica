@@ -19,6 +19,10 @@ config = context.config
 # Sobrescreve a URL do banco com a variável de ambiente (nunca hardcoded)
 database_url = os.getenv("DATABASE_URL")
 if database_url:
+    # O segredo é o .replace("%", "%%")
+    # Isso faz com que o Alembic leia a porcentagem literalmente
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
+if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
