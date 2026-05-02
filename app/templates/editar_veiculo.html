@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body class="hold-transition login-page">
+    <div class="login-box" style="width: 450px;">
+        <div class="card card-warning card-outline">
+            <div class="card-header text-center"><h3>Editar: <strong>{{ veiculo.placa }}</strong></h3></div>
+            <form action="/processar-veiculo/{{ veiculo.id }}" method="POST">
+                <div class="card-body">
+                    <div class="form-group"><label>Placa:</label><input type="text" name="placa" class="form-control" value="{{ veiculo.placa }}" required></div>
+                    <div class="form-group"><label>Modelo:</label><input type="text" name="modelo" class="form-control" value="{{ veiculo.modelo }}" required></div>
+                    <div class="form-group"><label>Tipo:</label>
+                        <select name="tipo" class="form-control">
+                            <option value="Moto" {% if veiculo.tipo == 'Moto' %}selected{% endif %}>Moto</option>
+                            <option value="Carro" {% if veiculo.tipo == 'Carro' %}selected{% endif %}>Carro</option>
+                            <option value="Caminhão" {% if veiculo.tipo == 'Caminhão' %}selected{% endif %}>Caminhão</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Entregador:</label>
+                        <select name="entregador_id" class="form-control">
+                            <option value="">Sem motorista</option>
+                            {% for e in entregadores %}
+                                <option value="{{ e.id }}" {% if veiculo.entregador_id == e.id %}selected{% endif %}>{{ e.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Ação:</label>
+                        <select name="acao" class="form-control">
+                            <option value="editar">Salvar Alterações</option>
+                            <option value="excluir" class="text-danger">Excluir Veículo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-warning btn-block">Confirmar</button>
+                    <a href="/gestao-veiculo" class="btn btn-default btn-block">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

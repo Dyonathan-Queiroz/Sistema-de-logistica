@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="30">
+    <title>Sistema Logístico</title>
+    <link rel="stylesheet" href="/static/adminlte/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="/static/adminlte/plugins/fontawesome-free/css/all.min.css">
+    <style>
+        body { background-color: #121212 !important; color: #e0e0e0 !important; }
+        .card { background-color: #1e1e1e !important; border: 1px solid #333; }
+        .sidebar-dark-primary { background-color: #1a1a1a !important; }
+    </style>
+</head>
+<body class="hold-transition sidebar-mini layout-fixed dark-mode">
+    <div class="wrapper">
+        {% block content %}{% endblock %}
+    </div>
+    <script src="/static/adminlte/plugins/jquery/jquery.min.js"></script>
+    <script src="/static/adminlte/dist/js/adminlte.min.js"></script>
+</body>
+</html>

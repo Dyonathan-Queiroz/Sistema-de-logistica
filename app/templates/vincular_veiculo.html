@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Vincular Motorista</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+</head>
+<body class="hold-transition login-page">
+    <div class="login-box" style="width: 400px;">
+        <div class="card card-primary card-outline">
+            <div class="card-header text-center"><h3>Vincular: <strong>{{ veiculo.placa }}</strong></h3></div>
+            <form action="/processar-vinculo/{{ veiculo.id }}" method="POST">
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Motorista para este veículo:</label>
+                        <select name="entregador_id" class="form-control">
+                            <option value="">-- Ninguém (Desvincular) --</option>
+                            {% for e in entregadores %}
+                                <option value="{{ e.id }}" {% if veiculo.entregador_id == e.id %}selected{% endif %}>
+                                    {{ e.username }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary btn-block">Confirmar Alteração</button>
+                    <a href="/gestao-veiculo" class="btn btn-default btn-block">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Equipe | Gestão de Funcionários</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .table td { vertical-align: middle !important; }
+        .badge-gestor { background-color: #6f42c1; color: white; }
+        .badge-entregador { background-color: #28a745; color: white; }
+    </style>
+</head>
+<body class="hold-transition sidebar-mini">
+<div class="wrapper">
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" href="/gestor"><i class="fas fa-arrow-left"></i> Voltar</a></li></ul>
+    </nav>
+
+    <aside class="main-sidebar sidebar-dark-primary elevation-4" style="min-height: 100vh;">
+        <a href="/gestor" class="brand-link"><i class="fas fa-shipping-fast ml-2"></i> <span class="brand-text font-weight-light">Logística System</span></a>
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column">
+                    <li class="nav-item"><a href="/gestor" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
+                    <li class="nav-item"><a href="/gestao-funcionario" class="nav-link active"><i class="nav-icon fas fa-users"></i><p>Funcionários</p></a></li>
+                    <li class="nav-item"><a href="/gestao-veiculo" class="nav-link"><i class="nav-icon fas fa-truck"></i><p>Veículos</p></a></li>
+                    <li class="nav-item"><a href="/gestao-filial" class="nav-link"><i class="nav-icon fas fa-store"></i><p>Filiais</p></a></li>
+                    <li class="nav-item"><a href="/gestao-clientes" class="nav-link"><i class="nav-icon fas fa-address-book"></i><p>Clientes</p></a></li>
+                    <li class="nav-item"><a href="/logout" class="nav-link text-danger"><i class="nav-icon fas fa-sign-out-alt"></i><p>Sair</p></a></li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <div class="content-wrapper" style="padding: 20px;">
+        <section class="content-header"><h1><i class="fas fa-users text-secondary"></i> Gestão de Equipe</h1></section>
+
+        <section class="content">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header"><h3 class="card-title"><i class="fas fa-user-plus"></i> Novo Cadastro</h3></div>
+                        <form action="/salvar-funcionario" method="POST">
+                            <div class="card-body">
+                                <div class="form-group"><label>Usuário</label><input type="text" name="username" class="form-control" placeholder="Nome" required></div>
+                                <div class="form-group"><label>Senha</label><input type="password" name="senha" class="form-control" required></div>
+                                <div class="form-group"><label>Perfil</label>
+                                    <select name="perfil" class="form-control" id="perfil-select" onchange="toggleFilial(this.value)">
+                                        <option value="entregador">Entregador</option>
+                                        <option value="operador">Operador PDV</option>
+                                        <option value="gestor">Gestor</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="filial-group">
+                                    <label><i class="fas fa-store"></i> Filial</label>
+                                    <select name="filial_id" class="form-control">
+                                        <option value="">— Sem filial —</option>
+                                        {% for f in filiais %}
+                                        <option value="{{ f.id }}">{{ f.nome }} {% if f.cidade %}({{ f.cidade }}){% endif %}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="text-muted">Obrigatório para Operador PDV.</small>
+                                </div>
+                            </div>
+                            <div class="card-footer"><button type="submit" class="btn btn-primary btn-block">Salvar no Sistema</button></div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title"><i class="fas fa-list"></i> Equipe Cadastrada</h3></div>
+                        <div class="card-body p-0">
+                            <table class="table table-hover">
+                                <thead><tr><th>Usuário</th><th>Perfil</th><th>Filial</th><th>Ações</th></tr></thead>
+                                <tbody>
+                                    {% for f in funcionarios %}
+                                    <tr>
+                                        <td><strong>{{ f.username }}</strong></td>
+                                        <td>
+                                            {% if f.perfil == 'gestor' %}
+                                                <span class="badge badge-gestor"><i class="fas fa-user-shield"></i> Gestor</span>
+                                            {% elif f.perfil == 'operador' %}
+                                                <span class="badge" style="background:#17a2b8;color:white;"><i class="fas fa-desktop"></i> Operador PDV</span>
+                                            {% else %}
+                                                <span class="badge badge-entregador"><i class="fas fa-motorcycle"></i> Entregador</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-muted small">
+                                            {% if f.filial_id %}
+                                                <i class="fas fa-store"></i>
+                                                {% for fil in filiais %}{% if fil.id == f.filial_id %}{{ fil.nome }}{% endif %}{% endfor %}
+                                            {% else %}—{% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="/editar-funcionario/{{ f.id }}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i> Gerenciar
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script>
+function toggleFilial(perfil) {
+    document.getElementById('filial-group').style.display =
+        (perfil === 'operador') ? 'block' : 'none';
+}
+// estado inicial: oculta filial se não for operador
+toggleFilial(document.getElementById('perfil-select').value);
+</script>
+</body>
+</html>

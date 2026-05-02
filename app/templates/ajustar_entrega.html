@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ajustar Entrega #{{ entrega.id }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .info-badge { font-size: 13px; }
+        .motivo-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+        .section-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            color: #6c757d;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body class="hold-transition sidebar-mini">
+<div class="wrapper">
+
+    <!-- Sidebar igual ao gestor -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4" style="min-height:100vh;">
+        <a href="/gestor" class="brand-link">
+            <span class="brand-text font-weight-light">Logística System</span>
+        </a>
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+                    <li class="nav-item">
+                        <a href="/gestor" class="nav-link active">
+                            <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/gestao-funcionario" class="nav-link">
+                            <i class="nav-icon fas fa-users"></i><p>Funcionários</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/gestao-veiculo" class="nav-link">
+                            <i class="nav-icon fas fa-truck"></i><p>Veículos</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/gestao-filial" class="nav-link">
+                            <i class="nav-icon fas fa-store"></i><p>Filiais</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/gestao-clientes" class="nav-link">
+                            <i class="nav-icon fas fa-address-book"></i><p>Clientes</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/logout" class="nav-link text-danger">
+                            <i class="nav-icon fas fa-sign-out-alt"></i><p>Sair</p>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <div class="content-wrapper" style="padding:24px;">
+
+        <!-- Cabeçalho da página -->
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row align-items-center mb-2">
+                    <div class="col">
+                        <h1>
+                            <i class="fas fa-tools text-danger mr-2"></i>
+                            Ajustar Entrega
+                            <small class="text-muted">#{{ entrega.id }}</small>
+                        </h1>
+                    </div>
+                    <div class="col-auto">
+                        <a href="/gestor" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-arrow-left mr-1"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+
+                        <!-- Informações do contexto (somente leitura) -->
+                        <div class="card card-outline card-danger mb-4">
+                            <div class="card-header">
+                                <h3 class="card-title text-danger">
+                                    <i class="fas fa-exclamation-circle mr-1"></i> Detalhes do Problema
+                                </h3>
+                                <span class="badge badge-danger float-right info-badge">
+                                    Cupom: {{ entrega.cupom_fiscal }}
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-sm-6 mb-3">
+                                        <div class="section-label">Cliente</div>
+                                        <strong>{{ cliente.nome if cliente else '—' }}</strong>
+                                        {% if cliente and cliente.telefone %}
+                                        <br><small class="text-muted"><i class="fas fa-phone mr-1"></i>{{ cliente.telefone }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <div class="section-label">Endereço atual</div>
+                                        <span class="text-muted">
+                                            {{ entrega.rua }}, {{ entrega.numero }} — {{ entrega.bairro }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {% if entrega.motivo_erro %}
+                                <div class="section-label mt-2">Motivo relatado pelo entregador</div>
+                                <div class="motivo-box">
+                                    <i class="fas fa-comment-dots mr-1 text-warning"></i>
+                                    {{ entrega.motivo_erro }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Formulário de ajuste -->
+                        <div class="card card-outline card-primary">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <i class="fas fa-edit mr-1"></i> Corrigir e Reativar
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <form action="/gestor/ajustar-entrega/{{ entrega.id }}" method="POST">
+
+                                    <div class="section-label">Endereço de entrega</div>
+
+                                    <div class="form-group">
+                                        <label for="rua">Rua / Logradouro <span class="text-danger">*</span></label>
+                                        <input type="text" id="rua" name="rua" class="form-control"
+                                               value="{{ entrega.rua }}" required
+                                               placeholder="Nome da rua">
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group col-md-4">
+                                            <label for="numero">Número <span class="text-danger">*</span></label>
+                                            <input type="text" id="numero" name="numero" class="form-control"
+                                                   value="{{ entrega.numero }}" required
+                                                   placeholder="Ex: 245">
+                                        </div>
+                                        <div class="form-group col-md-8">
+                                            <label for="bairro">Bairro <span class="text-danger">*</span></label>
+                                            <input type="text" id="bairro" name="bairro" class="form-control"
+                                                   value="{{ entrega.bairro }}" required
+                                                   placeholder="Nome do bairro">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="observacao">Observação <small class="text-muted">(deixe em branco para manter a atual)</small></label>
+                                        <textarea id="observacao" name="observacao" class="form-control" rows="3"
+                                                  placeholder="Ponto de referência, complemento, etc.">{{ entrega.observacao or '' }}</textarea>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <a href="/gestor" class="btn btn-outline-secondary">
+                                            <i class="fas fa-times mr-1"></i> Cancelar
+                                        </a>
+                                        <button type="submit" class="btn btn-success btn-lg px-5">
+                                            <i class="fas fa-redo mr-2"></i>
+                                            Salvar e Disponibilizar para Entrega
+                                        </button>
+                                    </div>
+
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+</body>
+</html>
