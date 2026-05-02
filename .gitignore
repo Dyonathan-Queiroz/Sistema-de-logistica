@@ -1,17 +1,22 @@
 # =============================================================
-#  SEGREDOS — NUNCA subir para o repositório
+#  SEGREDOS (Credenciais e Variáveis de Ambiente)
 # =============================================================
 .env
 .env.local
 .env.*.local
+.envrc
+env.bak/
+venv.bak/
 
 # =============================================================
-#  Ambiente virtual Python
+#  Ambiente virtual Python (Venv)
 # =============================================================
 venv/
 env/
 .venv/
 ENV/
+.pixi/
+__pypackages__/
 
 # =============================================================
 #  Cache / bytecode Python
@@ -21,43 +26,41 @@ __pycache__/
 *.pyo
 *.pyd
 *.so
+*$py.class
 
 # =============================================================
-#  Build / distribuição
+#  Build / distribuição / PyInstaller
 # =============================================================
 build/
 dist/
 *.egg-info/
 *.egg
 MANIFEST
-
-# =============================================================
-#  Testes e cobertura
-# =============================================================
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
+*.manifest
+*.spec
+.Python
+lib/
+lib64/
+wheels/
 
 # =============================================================
 #  Logs
 # =============================================================
 *.log
 logs/
+pip-log.txt
 
 # =============================================================
-#  IDEs e editores
+#  IDEs e editores (Configurações Locais)
 # =============================================================
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
-
-# =============================================================
-#  Claude Code (configurações locais desta máquina)
-# =============================================================
-.claude/
+.spyderproject
+.spyproject
 
 # =============================================================
 #  Sistema operacional
@@ -65,4 +68,3 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
-ehthumbs.db
