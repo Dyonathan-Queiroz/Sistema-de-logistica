@@ -12,6 +12,12 @@ if not SQLALCHEMY_DATABASE_URL:
         "Copie .env.example para .env e preencha os valores."
     )
 
+# Railway entrega mysql:// sem driver — converte para mysql+pymysql://
+if SQLALCHEMY_DATABASE_URL.startswith("mysql://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(
+        "mysql://", "mysql+pymysql://", 1
+    )
+
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
