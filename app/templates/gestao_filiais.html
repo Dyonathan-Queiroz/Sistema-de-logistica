@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Filiais | Sistema Logístico</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>.table td { vertical-align: middle !important; }</style>
+</head>
+<body class="hold-transition sidebar-mini">
+<div class="wrapper">
+
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+            <li class="nav-item"><a class="nav-link" href="/gestor"><i class="fas fa-arrow-left"></i> Voltar</a></li>
+        </ul>
+    </nav>
+
+    <aside class="main-sidebar sidebar-dark-primary elevation-4" style="min-height: 100vh;">
+        <a href="/gestor" class="brand-link">
+            <i class="fas fa-shipping-fast ml-2"></i>
+            <span class="brand-text font-weight-light">Logística System</span>
+        </a>
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column">
+                    <li class="nav-item"><a href="/gestor" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
+                    <li class="nav-item"><a href="/gestao-funcionario" class="nav-link"><i class="nav-icon fas fa-users"></i><p>Funcionários</p></a></li>
+                    <li class="nav-item"><a href="/gestao-veiculo" class="nav-link"><i class="nav-icon fas fa-truck"></i><p>Veículos</p></a></li>
+                    <li class="nav-item"><a href="/gestao-filial" class="nav-link active"><i class="nav-icon fas fa-store"></i><p>Filiais</p></a></li>
+                    <li class="nav-item"><a href="/gestao-clientes" class="nav-link"><i class="nav-icon fas fa-address-book"></i><p>Clientes</p></a></li>
+                    <li class="nav-item"><a href="/logout" class="nav-link text-danger"><i class="nav-icon fas fa-sign-out-alt"></i><p>Sair</p></a></li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <div class="content-wrapper" style="padding: 20px;">
+        <section class="content-header">
+            <h1><i class="fas fa-store text-secondary"></i> Gestão de Filiais</h1>
+            <small class="text-muted">Cada filial pode ter um usuário <strong>operador</strong> compartilhado por todos os PDVs daquela unidade.</small>
+        </section>
+
+        <section class="content">
+            <div class="row">
+
+                <!-- Formulário: nova filial -->
+                <div class="col-md-4">
+                    <div class="card card-success card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-plus"></i> Nova Filial</h3>
+                        </div>
+                        <form action="/salvar-filial" method="POST">
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Nome da Filial</label>
+                                    <input type="text" name="nome" class="form-control" placeholder="Ex: Filial Centro" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cidade</label>
+                                    <input type="text" name="cidade" class="form-control" placeholder="Ex: São Paulo">
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-success btn-block">
+                                    <i class="fas fa-save"></i> Criar Filial
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Dica de uso -->
+                    <div class="callout callout-info">
+                        <h5><i class="fas fa-lightbulb"></i> Como funciona</h5>
+                        <ol class="pl-3 mb-0" style="font-size: 13px;">
+                            <li>Crie a filial aqui.</li>
+                            <li>Em <a href="/gestao-funcionario">Funcionários</a>, crie um usuário com perfil <strong>Operador</strong> vinculado à filial.</li>
+                            <li>Configure todos os PDVs daquela filial com esse mesmo usuário e senha.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Lista de filiais -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-list"></i> Filiais Cadastradas</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            {% for f in filiais %}
+                            <div class="card card-outline card-primary mx-3 my-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-store mr-1 text-primary"></i>
+                                        <strong>{{ f.nome }}</strong>
+                                        {% if f.cidade %}
+                                        <small class="text-muted ml-2">— {{ f.cidade }}</small>
+                                        {% endif %}
+                                    </h5>
+                                    <div>
+                                        <!-- Editar inline via modal-like form -->
+                                        <button class="btn btn-xs btn-outline-warning" onclick="toggleEdit({{ f.id }})">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </button>
+                                        <form action="/processar-filial/{{ f.id }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Excluir a filial {{ f.nome }}? Isso falhará se houver usuários ou entregas vinculados.')">
+                                            <input type="hidden" name="acao" value="excluir">
+                                            <button type="submit" class="btn btn-xs btn-outline-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Form de edição (oculto por padrão) -->
+                                <div id="edit-{{ f.id }}" style="display:none;" class="card-body border-top bg-light">
+                                    <form action="/processar-filial/{{ f.id }}" method="POST" class="form-inline">
+                                        <input type="hidden" name="acao" value="editar">
+                                        <input type="text" name="nome" value="{{ f.nome }}" class="form-control form-control-sm mr-2" placeholder="Nome" required>
+                                        <input type="text" name="cidade" value="{{ f.cidade or '' }}" class="form-control form-control-sm mr-2" placeholder="Cidade">
+                                        <button type="submit" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-save"></i> Salvar
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Usuários PDV (operadores) desta filial -->
+                                <div class="card-body pt-2 pb-2">
+                                    <small class="text-muted text-uppercase font-weight-bold">
+                                        <i class="fas fa-desktop"></i> Usuários PDV vinculados
+                                    </small>
+                                    {% set ops = operadores_por_filial[f.id] %}
+                                    {% if ops %}
+                                    <ul class="list-unstyled mt-1 mb-0">
+                                        {% for u in ops %}
+                                        <li class="ml-2">
+                                            <i class="fas fa-user-tie text-success"></i>
+                                            <strong>{{ u.username }}</strong>
+                                            <span class="badge badge-success badge-sm">operador</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <p class="text-muted small mt-1 mb-0">
+                                        Nenhum usuário operador vinculado.
+                                        <a href="/gestao-funcionario">Criar agora</a>
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% else %}
+                            <p class="text-center text-muted py-4">Nenhuma filial cadastrada ainda.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script>
+function toggleEdit(id) {
+    var el = document.getElementById('edit-' + id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+</body>
+</html>

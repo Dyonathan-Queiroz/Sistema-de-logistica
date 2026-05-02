@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sistema Logístico | Login</title>
+    <link rel="stylesheet" href="/static/adminlte/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="/static/adminlte/plugins/fontawesome-free/css/all.min.css">
+    <style>
+        body { background-color: #121212 !important; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .login-box { width: 360px; }
+        .card { background-color: #1e1e1e !important; color: #fff; border: 1px solid #333; }
+        .btn-danger { background-color: #d32f2f !important; border-color: #d32f2f !important; }
+        .btn-danger:hover { background-color: #b71c1c !important; }
+    </style>
+</head>
+<body class="hold-transition login-page dark-mode">
+<div class="login-box">
+    <div class="card card-outline card-danger">
+        <div class="card-header text-center">
+            <h1 class="h2"><b>LOGÍSTICA</b></h1>
+        </div>
+        <div class="card-body">
+            <p class="login-box-msg">Entre com suas credenciais</p>
+            {% if error %}
+            <div class="alert alert-danger alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                {{ error }}
+            </div>
+            {% endif %}
+            <form action="/login" method="post">
+                <div class="input-group mb-3">
+                    <input type="text" name="username" class="form-control" placeholder="Usuário" required>
+                    <div class="input-group-append">
+                        <div class="input-group-text"><span class="fas fa-user"></span></div>
+                    </div>
+                </div>
+                <div class="input-group mb-3">
+                    <input type="password" name="password" class="form-control" placeholder="Senha" required>
+                    <div class="input-group-append">
+                        <div class="input-group-text"><span class="fas fa-lock"></span></div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-danger btn-block">ENTRAR</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Entregador</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { background-color: #f4f6f9; }
+        .delivery-card { transition: transform 0.2s; border-left: 5px solid #17a2b8; }
+        .delivery-card:hover { transform: translateY(-5px); }
+        .card-header { background-color: #fff !important; border-bottom: none !important; }
+    </style>
+</head>
+<body class="p-3">
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2 class="text-dark"><i class="fas fa-motorcycle text-primary"></i> Painel do Entregador</h2>
+            <a href="/logout" class="btn btn-outline-danger btn-sm"><i class="fas fa-sign-out-alt"></i> Sair</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Disponíveis na loja -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title font-weight-bold">
+                        <i class="fas fa-box-open mr-2"></i> Disponíveis na Loja
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for e in disponiveis %}
+                    <div class="card delivery-card shadow-sm mb-3">
+                        <div class="card-body">
+                            <h6 class="font-weight-bold">Cupom: {{ e.cupom_fiscal }}</h6>
+                            <p class="text-muted small mb-1">
+                                <i class="fas fa-map-marker-alt"></i>
+                                {{ e.rua }}, {{ e.numero }} — {{ e.bairro }}
+                            </p>
+                            {% if e.observacao %}
+                            <p class="text-muted small mb-2"><i class="fas fa-comment-alt"></i> {{ e.observacao }}</p>
+                            {% endif %}
+                            <form action="/entregador/aceitar/{{ e.id }}" method="POST">
+                                <button type="submit" class="btn btn-block btn-primary btn-sm">
+                                    <i class="fas fa-check"></i> Aceitar Entrega
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">Nenhuma entrega disponível no momento.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Em rota -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title font-weight-bold text-success">
+                        <i class="fas fa-shipping-fast mr-2"></i> Em Rota
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for e in em_rota %}
+                    <div class="card shadow-sm mb-3 border-left-success">
+                        <div class="card-body">
+                            <h6 class="font-weight-bold">Cupom: {{ e.cupom_fiscal }}</h6>
+                            <p class="text-muted small mb-1">
+                                <i class="fas fa-map-marker-alt"></i>
+                                {{ e.rua }}, {{ e.numero }} — {{ e.bairro }}
+                            </p>
+                            {% if e.observacao %}
+                            <p class="text-muted small mb-2"><i class="fas fa-comment-alt"></i> {{ e.observacao }}</p>
+                            {% endif %}
+                            <span class="badge badge-success p-1 mb-2">Em Rota</span>
+                            <a href="/entregador/entrega/{{ e.id }}" class="btn btn-block btn-outline-primary btn-sm mb-2">
+                                <i class="fas fa-eye"></i> Ver Detalhes / Maps / WhatsApp
+                            </a>
+                            <form action="/entregador/finalizar/{{ e.id }}" method="POST">
+                                <button type="submit" class="btn btn-block btn-success btn-sm">
+                                    <i class="fas fa-flag-checkered"></i> Finalizar Entrega
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">Nenhuma entrega em rota no momento.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+</body>
+</html>
