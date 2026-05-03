@@ -35,7 +35,6 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-
 def run_migrations_online() -> None:
     # Cria o engine direto da URL em memória — bypassa o configparser
     # e elimina qualquer risco de interpolação de '%'.
