@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.database import Base
-from app.models import Entrega
+from app.models import Entrega, Usuario, Cliente, Filial, Veiculo
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -19,11 +19,11 @@ config = context.config
 # Sobrescreve a URL do banco com a variável de ambiente (nunca hardcoded)
 database_url = os.getenv("DATABASE_URL")
 if database_url:
-    # O segredo é o .replace("%", "%%")
-    # Isso faz com que o Alembic leia a porcentagem literalmente
+    # Railway fornece mysql:// — Alembic precisa de mysql+pymysql://
+    if database_url.startswith("mysql://"):
+        database_url = database_url.replace("mysql://", "mysql+pymysql://", 1)
+    # .replace("%", "%%") faz o Alembic tratar % literalmente (evita erro de interpolação)
     config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

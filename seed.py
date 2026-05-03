@@ -26,7 +26,9 @@ ADMIN_SENHA = os.getenv("ADMIN_SENHA", "admin123")
 
 
 def seed():
-    Base.metadata.create_all(bind=engine)
+    if engine is None:
+        print("[seed] DATABASE_URL não definida — pulando seed.")
+        return
     db: Session = SessionLocal()
 
     try:
