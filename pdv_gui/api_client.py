@@ -6,9 +6,10 @@ preservando os cookies de autenticação (user_role, user_id, user_filial_id)
 após o login.
 """
 
+import os
 import requests
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.getenv("API_BASE_URL", "https://sistema-de-logistica-production.up.railway.app")
 
 _session = requests.Session()
 _user_info: dict = {}  # populado em login()
