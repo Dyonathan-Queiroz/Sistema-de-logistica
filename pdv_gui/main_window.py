@@ -115,7 +115,8 @@ def impressora_padrao() -> str:
         return ""
 
 def imprimir_cupom_entrega(cliente: str, telefone: str, rua: str, numero: str,
-                           bairro: str, pedido_id: str, obs: str,
+                           bairro: str, municipio: str, estado: str,
+                           pedido_id: str, obs: str,
                            nome_impressora: str = "") -> None:
     if not nome_impressora:
         nome_impressora = impressora_padrao()
@@ -142,6 +143,7 @@ def imprimir_cupom_entrega(cliente: str, telefone: str, rua: str, numero: str,
         + _enc(f"Rua:    {rua}\n")
         + _enc(f"Num:    {numero}\n")
         + _enc(f"Bairro: {bairro}\n")
+        + (_enc(f"Cidade: {municipio}{' - ' + estado if estado else ''}\n") if municipio else b'')
         + _enc("--------------------\n")
         # Observação
         + _enc(f"OBS: {obs or '-'}\n")
@@ -230,7 +232,7 @@ class LoginDialog(QDialog):
 # ---------------------------------------------------------------------------
 
 class CadastroClienteDialog(QDialog):
-    CAMPOS = ["nome", "documento", "telefone", "rua", "numero", "bairro"]
+    CAMPOS = ["nome", "documento", "telefone", "rua", "numero", "bairro", "municipio", "estado"]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -281,9 +283,15 @@ class LancarEntregaDialog(QDialog):
         self.setStyleSheet(ESTILO)
 
         layout = QFormLayout()
+        cidade_linha = ""
+        if cliente.get("municipio"):
+            cidade_linha = f"\n{cliente['municipio']}"
+            if cliente.get("estado"):
+                cidade_linha += f" — {cliente['estado']}"
         info = QLabel(
             f"Cliente: {cliente['nome']}\n"
             f"{cliente['rua']}, {cliente['numero']} — {cliente['bairro']}"
+            f"{cidade_linha}"
         )
         info.setStyleSheet("font-size: 14px; color: #555; margin-bottom: 8px;")
         layout.addRow(info)
@@ -347,6 +355,8 @@ class LancarEntregaDialog(QDialog):
                     self.cliente.get("rua", ""),
                     self.cliente.get("numero", ""),
                     self.cliente.get("bairro", ""),
+                    self.cliente.get("municipio", ""),
+                    self.cliente.get("estado", ""),
                     cupom,
                     self.input_obs.toPlainText(),
                     self.nome_impressora,

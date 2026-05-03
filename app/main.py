@@ -235,7 +235,16 @@ async def detalhe_entrega(
     if telefone_wa and not telefone_wa.startswith("55"):
         telefone_wa = "55" + telefone_wa
 
-    endereco_maps = f"{entrega.rua}, {entrega.numero}, {entrega.bairro}"
+    municipio_cliente = (cliente.municipio or "") if cliente else ""
+    estado_cliente = (cliente.estado or "") if cliente else ""
+
+    partes_maps = [f"{entrega.rua}, {entrega.numero}", entrega.bairro]
+    if municipio_cliente:
+        partes_maps.append(municipio_cliente)
+    if estado_cliente:
+        partes_maps.append(estado_cliente)
+    partes_maps.append("Brasil")
+    endereco_maps = ", ".join(p for p in partes_maps if p)
 
     return templates.TemplateResponse(
         request=request,
@@ -246,6 +255,8 @@ async def detalhe_entrega(
             "telefone_wa": telefone_wa,
             "endereco_maps": endereco_maps,
             "nome_cliente": cliente.nome if cliente else "",
+            "municipio_cliente": municipio_cliente,
+            "estado_cliente": estado_cliente,
         },
     )
 
@@ -604,6 +615,8 @@ async def api_buscar_cliente(documento: str, db: Session = Depends(get_db)):
         "rua": cliente.rua,
         "numero": cliente.numero,
         "bairro": cliente.bairro,
+        "municipio": cliente.municipio or "",
+        "estado": cliente.estado or "",
     }
 
 
@@ -628,6 +641,8 @@ async def api_cadastrar_cliente(dados: dict, db: Session = Depends(get_db)):
         rua=dados.get("rua"),
         numero=dados.get("numero"),
         bairro=dados.get("bairro"),
+        municipio=dados.get("municipio") or None,
+        estado=(dados.get("estado") or "").upper() or None,
     )
     db.add(novo)
     try:
@@ -703,6 +718,8 @@ async def criar_cliente_web(
     rua: str = Form(default=""),
     numero: str = Form(default=""),
     bairro: str = Form(default=""),
+    municipio: str = Form(default=""),
+    estado: str = Form(default=""),
     ponto_referencia: str = Form(default=""),
     db: Session = Depends(get_db),
     user_role: str = Cookie(None),
@@ -717,6 +734,8 @@ async def criar_cliente_web(
         rua=rua.strip() or None,
         numero=numero.strip() or None,
         bairro=bairro.strip() or None,
+        municipio=municipio.strip() or None,
+        estado=estado.strip().upper() or None,
         ponto_referencia=ponto_referencia.strip() or None,
     )
     db.add(novo)
@@ -760,6 +779,8 @@ async def salvar_cliente_web(
     rua: str = Form(default=""),
     numero: str = Form(default=""),
     bairro: str = Form(default=""),
+    municipio: str = Form(default=""),
+    estado: str = Form(default=""),
     ponto_referencia: str = Form(default=""),
     db: Session = Depends(get_db),
     user_role: str = Cookie(None),
@@ -777,6 +798,8 @@ async def salvar_cliente_web(
     cliente.rua = rua.strip() or None
     cliente.numero = numero.strip() or None
     cliente.bairro = bairro.strip() or None
+    cliente.municipio = municipio.strip() or None
+    cliente.estado = estado.strip().upper() or None
     cliente.ponto_referencia = ponto_referencia.strip() or None
 
     try:

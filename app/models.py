@@ -26,6 +26,8 @@ class Cliente(Base):
     rua = Column(String(200))
     numero = Column(String(10))
     bairro = Column(String(100))
+    municipio = Column(String(100))
+    estado = Column(String(2))  # sigla UF, ex: "SP"
     ponto_referencia = Column(String(255))
 
 class Entrega(Base):
