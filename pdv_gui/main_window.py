@@ -234,11 +234,19 @@ class LoginDialog(QDialog):
 class CadastroClienteDialog(QDialog):
     CAMPOS = ["nome", "documento", "telefone", "rua", "numero", "bairro", "municipio", "estado"]
 
+    # Rótulos customizados exibidos no formulário
+    LABELS: dict[str, str] = {
+        "documento": "CPF/CNPJ",
+    }
+
     # Valores padrão aplicados ao abrir o formulário
     DEFAULTS: dict[str, str] = {
         "municipio": "Boa Vista",
         "estado":    "RR",
     }
+
+    # Campos que serão convertidos para MAIÚSCULAS automaticamente ao digitar
+    UPPERCASE_CAMPOS = {"nome", "rua", "numero", "bairro", "municipio", "estado"}
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -249,7 +257,10 @@ class CadastroClienteDialog(QDialog):
         for campo in self.CAMPOS:
             field = QLineEdit()
             field.setText(self.DEFAULTS.get(campo, ""))
-            layout.addRow(f"{campo.capitalize()}:", field)
+            if campo in self.UPPERCASE_CAMPOS:
+                field.textEdited.connect(self._forcar_maiusculo(field))
+            rotulo = self.LABELS.get(campo, campo.capitalize())
+            layout.addRow(f"{rotulo}:", field)
             self.campos[campo] = field
 
         btn = QPushButton("Salvar Cliente  [Enter]")
@@ -259,6 +270,17 @@ class CadastroClienteDialog(QDialog):
 
         # Enter no último campo ou no botão confirma
         list(self.campos.values())[-1].returnPressed.connect(self._salvar)
+
+    @staticmethod
+    def _forcar_maiusculo(field: QLineEdit):
+        """Retorna um slot que converte o texto do QLineEdit para maiúsculas sem mover o cursor."""
+        def _slot(texto: str):
+            upper = texto.upper()
+            if upper != texto:
+                pos = field.cursorPosition()
+                field.setText(upper)
+                field.setCursorPosition(pos)
+        return _slot
 
     def showEvent(self, event):
         super().showEvent(event)

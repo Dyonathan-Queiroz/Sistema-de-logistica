@@ -49,12 +49,17 @@ def buscar_cliente(documento: str) -> dict | None:
 
 def cadastrar_cliente(dados: dict) -> bool:
     """Cadastra novo cliente. Retorna True em caso de sucesso."""
-    # Sanitiza campos com limites no banco antes de enviar
     payload = dict(dados)
+
+    # Campos de texto → MAIÚSCULAS (consistência no banco)
+    for campo in ("nome", "rua", "numero", "bairro", "municipio"):
+        if payload.get(campo):
+            payload[campo] = payload[campo].strip().upper()
+
+    # Estado: maiúscula + máximo 2 chars (evita 'Data too long' no String(2))
     if payload.get("estado"):
         payload["estado"] = payload["estado"].strip().upper()[:2]
-    if payload.get("municipio"):
-        payload["municipio"] = payload["municipio"].strip()
+
     try:
         resp = _session.post(f"{BASE_URL}/clientes/", json=payload, timeout=5)
         return resp.status_code == 200
