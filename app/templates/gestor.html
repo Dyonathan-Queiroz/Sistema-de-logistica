@@ -2,6 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Painel do Gestor | Sistema Logístico</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -18,10 +19,39 @@
         .erro-header { background: #dc3545 !important; color: #fff !important; }
         .erro-header .card-title { color: #fff !important; }
         .collapse-address input { font-size: 13px; }
+        .table-responsive-sm { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        @media (max-width: 576px) {
+            .content-wrapper { padding: 12px !important; }
+            .small-box .inner h3 { font-size: 1.6rem; }
+            .filtro-form { flex-direction: column; align-items: stretch !important; gap: 8px; }
+            .filtro-form input, .filtro-form button { width: 100% !important; }
+        }
     </style>
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
+
+    <!-- Navbar com hambúrguer -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button">
+                    <i class="fas fa-bars"></i>
+                </a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
+                <span class="nav-link font-weight-bold">Painel do Gestor</span>
+            </li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+                <a href="/logout" class="nav-link text-danger">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="d-none d-sm-inline"> Sair</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
 
     <aside class="main-sidebar sidebar-dark-primary elevation-4" style="min-height: 100vh;">
         <a href="/gestor" class="brand-link">
@@ -73,10 +103,10 @@
                         <h1>Dashboard</h1>
                     </div>
                     <!-- Filtro de data -->
-                    <div class="col-sm-6 text-right">
-                        <form method="GET" action="/gestor" class="d-inline-flex align-items-center">
-                            <label class="mr-2 mb-0 font-weight-bold">Data:</label>
-                            <input type="date" name="data" value="{{ data_filtro }}" class="form-control form-control-sm mr-2" style="width:160px;">
+                    <div class="col-sm-6 text-sm-right mt-2 mt-sm-0">
+                        <form method="GET" action="/gestor" class="d-flex align-items-center filtro-form flex-wrap justify-content-sm-end" style="gap:6px;">
+                            <label class="mb-0 font-weight-bold">Data:</label>
+                            <input type="date" name="data" value="{{ data_filtro }}" class="form-control form-control-sm" style="width:160px; min-width:130px;">
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="fas fa-filter"></i> Filtrar
                             </button>
@@ -187,6 +217,7 @@
                                 <span class="badge badge-warning float-right">{{ loja }}</span>
                             </div>
                             <div class="card-body p-0">
+                                <div class="table-responsive-sm">
                                 <table class="table table-sm table-hover mb-0">
                                     <thead class="thead-light">
                                         <tr>
@@ -217,6 +248,7 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -231,6 +263,7 @@
                                 <span class="badge badge-primary float-right">{{ rota }}</span>
                             </div>
                             <div class="card-body p-0">
+                                <div class="table-responsive-sm">
                                 <table class="table table-sm table-hover mb-0">
                                     <thead class="thead-light">
                                         <tr>
@@ -259,6 +292,7 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -280,6 +314,7 @@
                                 </div>
                             </div>
                             <div class="card-body p-0">
+                                <div class="table-responsive-sm">
                                 <table class="table table-sm table-hover mb-0">
                                     <thead class="thead-light">
                                         <tr>
@@ -310,6 +345,7 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -321,6 +357,7 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 </body>
 </html>
