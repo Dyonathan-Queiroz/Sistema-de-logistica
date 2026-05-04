@@ -585,14 +585,14 @@ class PDVApp(QWidget):
 # Ponto de entrada
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
+def main() -> None:
+    """Inicializa e executa o PDV Entregas. Chamado por pdv_entrega.py."""
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)   # não encerra ao fechar a janela
 
     # Garante instância única — se já estiver rodando, avisa e sai
     _mutex = win32event.CreateMutex(None, False, "Global\\PDVEntregasGaviao")
     if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
-        from PyQt6.QtWidgets import QMessageBox
         QMessageBox.information(
             None, "PDV já iniciado",
             "O PDV Entregas já está rodando.\n\nPressione F10 para abrir a janela."
@@ -613,3 +613,7 @@ if __name__ == "__main__":
     _iniciar_listener_f10()
 
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
