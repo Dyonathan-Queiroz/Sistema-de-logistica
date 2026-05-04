@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Editar Veículo</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { padding: 16px; }
+        .login-box { margin: 0 auto; }
+    </style>
 </head>
 <body class="hold-transition login-page">
-    <div class="login-box" style="width: 450px;">
+    <div class="login-box" style="width: 100%; max-width: 450px;">
         <div class="card card-warning card-outline">
             <div class="card-header text-center"><h3>Editar: <strong>{{ veiculo.placa }}</strong></h3></div>
             <form action="/processar-veiculo/{{ veiculo.id }}" method="POST">
