@@ -234,6 +234,12 @@ class LoginDialog(QDialog):
 class CadastroClienteDialog(QDialog):
     CAMPOS = ["nome", "documento", "telefone", "rua", "numero", "bairro", "municipio", "estado"]
 
+    # Valores padrão aplicados ao abrir o formulário
+    DEFAULTS: dict[str, str] = {
+        "municipio": "Boa Vista",
+        "estado":    "RR",
+    }
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Cadastrar Novo Cliente  [ESC = cancelar]")
@@ -242,6 +248,7 @@ class CadastroClienteDialog(QDialog):
         self.campos: dict[str, QLineEdit] = {}
         for campo in self.CAMPOS:
             field = QLineEdit()
+            field.setText(self.DEFAULTS.get(campo, ""))
             layout.addRow(f"{campo.capitalize()}:", field)
             self.campos[campo] = field
 
@@ -255,6 +262,9 @@ class CadastroClienteDialog(QDialog):
 
     def showEvent(self, event):
         super().showEvent(event)
+        # Restaura defaults (garante que ao reabrir o form voltem os valores padrão)
+        for campo, valor in self.DEFAULTS.items():
+            self.campos[campo].setText(valor)
         list(self.campos.values())[0].setFocus()
 
     def _salvar(self):
