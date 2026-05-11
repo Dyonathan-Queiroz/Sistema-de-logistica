@@ -10,36 +10,41 @@ def gerar_link_rota(entregas, cidade: str = "") -> str:
     atual do entregador (GPS do celular), passando por todas as entregas
     na ordem da lista.
 
-    Usa o formato de CAMINHO (/maps/dir//stop1/stop2/…) em vez do formato
-    de query-string (?api=1&waypoints=A|B), porque no mobile os browsers
-    percent-encodam o separador '|' → '%7C', fazendo o Maps ignorar os
-    waypoints intermediários e mostrar apenas o destino final.
+    Formato usado: ?api=1 (query-string) com separador de waypoints
+    pré-codificado como %7C (pipe literal).
 
-    Formato gerado:
-        https://www.google.com/maps/dir//<stop1>/<stop2>/…/<stopN>/
+    Por que %7C e não '|' direto?
+        Se colocarmos '|' literal no href do HTML, alguns browsers mobile
+        o re-encodam para '%7C' gerando '%257C' que o Maps não reconhece.
+        Usando '%7C' já no href, o browser passa o valor intacto e o Maps
+        recebe '%7C' → decodifica para '|' → separa as paradas corretamente.
 
-    O duplo '//' logo após 'dir' é interpretado pelo Google Maps como
-    "usar localização atual (GPS)" como ponto de partida, sem precisar
-    definir um origin fixo.
+    Por que query-string e não formato de caminho (/dir//stop1/stop2/)?
+        No formato de caminho, '+' é tratado como caractere literal, não
+        como espaço. Além disso, o '//' inicial é normalizado por proxies
+        para '/' fazendo o Maps perder o segmento de origem. O formato
+        query-string (?api=1) interpreta '+' como espaço corretamente.
+
+    Omitir &origin= faz o Maps usar o GPS do celular automaticamente.
 
     Args:
         entregas: lista de objetos Entrega com atributos rua, numero e bairro.
         cidade:   sufixo adicionado a cada endereço (ex: "Boa Vista RR").
 
     Returns:
-        URL completa do Google Maps, pronta para abrir no celular.
+        URL completa do Google Maps, pronta para abrir no celular/desktop.
 
     Exemplo com 3 entregas em Boa Vista:
-        https://www.google.com/maps/dir/
-            /Rua+A+Centro+Boa+Vista+RR
-            /Rua+B+Mecejana+Boa+Vista+RR
-            /Rua+C+Asa+Branca+Boa+Vista+RR/
+        https://www.google.com/maps/dir/?api=1
+            &destination=Rua+C+30+Asa+Branca+Boa+Vista+RR
+            &waypoints=Rua+A+10+Centro+Boa+Vista+RR%7CRua+B+55+Mecejana+Boa+Vista+RR
+            &travelmode=driving
     """
     if not entregas:
         return ""
 
     def _encode(e) -> str:
-        """Monta o endereço e codifica para URL (espaços → '+')."""
+        """Monta o endereço e codifica para query-string (espaços → '+')."""
         partes = [
             str(e.rua    or "").strip(),
             str(e.numero or "").strip(),
@@ -49,8 +54,18 @@ def gerar_link_rota(entregas, cidade: str = "") -> str:
             partes.append(cidade.strip())
         return quote_plus(" ".join(p for p in partes if p))
 
-    # Cada entrega vira um segmento de caminho — sem '|', sem encoding indevido
-    stops = "/".join(_encode(e) for e in entregas)
+    encoded     = [_encode(e) for e in entregas]
+    destination = encoded[-1]
+    # %7C pré-codificado: browser não re-encoda, Maps recebe e decodifica para '|'
+    waypoints   = "%7C".join(encoded[:-1])
 
-    # Duplo '//' = GPS como origem; barra final = boa prática p/ o Maps app
-    return f"https://www.google.com/maps/dir//{stops}/"
+    # origin omitido → Maps usa GPS do entregador automaticamente
+    url = (
+        "https://www.google.com/maps/dir/?api=1"
+        f"&destination={destination}"
+    )
+    if waypoints:
+        url += f"&waypoints={waypoints}"
+    url += "&travelmode=driving"
+
+    return url
