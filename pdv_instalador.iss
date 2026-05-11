@@ -67,17 +67,14 @@ Source: "{#DistDir}\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversi
 
 [Icons]
 ; Atalho no Menu Iniciar
-Name: "{group}\{#AppName}";        Target: "{app}\{#AppExeName}"
-Name: "{group}\Desinstalar PDV";   Target: "{uninstallexe}"
+Name: "{group}\{#AppName}";        Filename: "{app}\{#AppExeName}"
+Name: "{group}\Desinstalar PDV";   Filename: "{uninstallexe}"
 ; Atalho na Área de Trabalho (opcional, criado se tarefa selecionada)
-Name: "{autodesktop}\{#AppName}";  Target: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppName}";  Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Registry]
 ; Entrada de inicialização automática no Windows (opcional, somente se tarefa selecionada)
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
-    ValueType: string; ValueName: "{#AppName}";
-    ValueData: """{app}\{#AppExeName}""";
-    Flags: uninsdeletevalue; Tasks: startup
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#AppName}"; ValueData: """{app}\{#AppExeName}"""; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
 ; Oferece iniciar o aplicativo ao final da instalação

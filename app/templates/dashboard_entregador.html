@@ -187,6 +187,36 @@
             border-top: 1px solid var(--border);
             margin: 10px 0 12px;
         }
+
+        /* ── Botão Iniciar Rota ── */
+        .btn-maps-rota {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px;
+            margin-bottom: 18px;
+            background: #1a7f37;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: .3px;
+            box-shadow: 0 2px 12px rgba(26,127,55,.35);
+            transition: filter .15s, transform .1s;
+        }
+        .btn-maps-rota:active { filter: brightness(.82); transform: scale(.98); }
+        .btn-maps-rota .badge-count {
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(255,255,255,.25);
+            border-radius: 20px;
+            padding: 2px 8px;
+        }
     </style>
 </head>
 <body>
@@ -257,6 +287,15 @@
 
 <!-- ── Painel: Em Rota ── -->
 <section class="tab-panel" id="panel-rota">
+
+    {% if em_rota and link_rota %}
+    <a href="{{ link_rota }}" target="_blank" rel="noopener noreferrer" class="btn-maps-rota">
+        <i class="fas fa-route"></i>
+        Iniciar Rota no Maps
+        <span class="badge-count">{{ em_rota | length }} entrega{% if em_rota | length > 1 %}s{% endif %}</span>
+    </a>
+    {% endif %}
+
     {% for e in em_rota %}
     <div class="card em-rota">
         <span class="status-pill">
