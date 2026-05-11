@@ -12,6 +12,7 @@ import os
 
 from app.database import get_db
 from app.models import Entrega, Usuario, Veiculo, Cliente, Filial
+from app.utils import gerar_link_rota
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -167,6 +168,7 @@ async def dashboard_entregador(
     db: Session = Depends(get_db),
     user_role: str = Cookie(None),
     user_id: str = Cookie(None),
+    user_filial_id: str = Cookie(None),
 ):
     if user_role != "entregador":
         return RedirectResponse(url="/login")
@@ -181,10 +183,21 @@ async def dashboard_entregador(
         else []
     )
 
+    # Cidade da filial usada como sufixo nos endereços do Maps
+    fid = int(user_filial_id) if user_filial_id and user_filial_id.isdigit() else None
+    filial = db.query(Filial).filter(Filial.id == fid).first() if fid else None
+    cidade_filial = filial.cidade.strip() if filial and filial.cidade else ""
+
+    link_rota = gerar_link_rota(em_rota, cidade=cidade_filial)
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard_entregador.html",
-        context={"disponiveis": disponiveis, "em_rota": em_rota},
+        context={
+            "disponiveis": disponiveis,
+            "em_rota": em_rota,
+            "link_rota": link_rota,
+        },
     )
 
 
