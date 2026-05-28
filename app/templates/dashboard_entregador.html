@@ -230,9 +230,15 @@
             <div class="header-sub">Painel do Entregador</div>
         </div>
     </div>
-    <a href="/logout" class="btn-logout">
-        <i class="fas fa-sign-out-alt"></i> Sair
-    </a>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:11px; color:rgba(255,255,255,.5);">
+            <i class="fas fa-sync-alt" id="refresh-icon"></i>
+            <span id="refresh-countdown">20s</span>
+        </span>
+        <a href="/logout" class="btn-logout">
+            <i class="fas fa-sign-out-alt"></i> Sair
+        </a>
+    </div>
 </header>
 
 <!-- ── Tab bar ── -->
@@ -334,16 +340,47 @@
 </section>
 
 <script>
+// ── Troca de aba + salva no localStorage ─────────────────────────
 function trocarAba(id, btn) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('panel-' + id).classList.add('active');
     btn.classList.add('active');
+    localStorage.setItem('abaAtiva', id);
 }
-// Se tem entregas em rota mas nenhuma disponível, abre aba Em Rota por padrão
-{% if em_rota and not disponiveis %}
-trocarAba('rota', document.getElementById('tab-btn-rota'));
-{% endif %}
+
+// Restaurar aba ativa após refresh
+(function () {
+    const aba = localStorage.getItem('abaAtiva');
+    if (aba) {
+        const btn = document.getElementById('tab-btn-' + aba);
+        if (btn) trocarAba(aba, btn);
+    } else {
+        // Se tem entregas em rota mas nenhuma disponível, abre aba Em Rota
+        {% if em_rota and not disponiveis %}
+        trocarAba('rota', document.getElementById('tab-btn-rota'));
+        {% endif %}
+    }
+})();
+
+// ── Auto-refresh a cada 20 segundos ──────────────────────────────
+(function () {
+    const INTERVALO = 20;
+    let restante = INTERVALO;
+    const badge = document.getElementById('refresh-countdown');
+    const icon  = document.getElementById('refresh-icon');
+
+    setInterval(function () {
+        restante--;
+        if (badge) badge.textContent = restante + 's';
+
+        if (restante <= 0) {
+            if (icon)  icon.style.animation = 'spin 0.5s linear infinite';
+            if (badge) badge.textContent = '…';
+            location.reload();
+        }
+    }, 1000);
+})();
 </script>
 </body>
 </html>
