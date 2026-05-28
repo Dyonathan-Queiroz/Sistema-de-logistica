@@ -1,374 +1,248 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Painel do Gestor | Sistema Logístico</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        @keyframes pulse-danger {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-            50%       { box-shadow: 0 0 0 12px rgba(220, 53, 69, 0); }
-        }
-        .card-erro-critico {
-            animation: pulse-danger 1.5s infinite;
-            border: 2px solid #dc3545 !important;
-        }
-        .badge-erro { background-color: #dc3545; color: #fff; }
-        .erro-header { background: #dc3545 !important; color: #fff !important; }
-        .erro-header .card-title { color: #fff !important; }
-        .collapse-address input { font-size: 13px; }
-        .table-responsive-sm { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        @media (max-width: 576px) {
-            .content-wrapper { padding: 12px !important; }
-            .small-box .inner h3 { font-size: 1.6rem; }
-            .filtro-form { flex-direction: column; align-items: stretch !important; gap: 8px; }
-            .filtro-form input, .filtro-form button { width: 100% !important; }
-        }
-    </style>
-</head>
-<body class="hold-transition sidebar-mini">
-<div class="wrapper">
+{% extends "base.html" %}
 
-    <!-- Navbar com hambúrguer -->
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button">
-                    <i class="fas fa-bars"></i>
-                </a>
-            </li>
-            <li class="nav-item d-none d-sm-inline-block">
-                <span class="nav-link font-weight-bold">Painel do Gestor</span>
-            </li>
-        </ul>
-        <ul class="navbar-nav ml-auto">
-            <li class="nav-item">
-                <span class="nav-link text-muted" title="Atualização automática">
-                    <i class="fas fa-sync-alt" id="refresh-icon"></i>
-                    <span class="badge badge-secondary ml-1" id="refresh-countdown">30s</span>
-                </span>
-            </li>
-            <li class="nav-item">
-                <a href="/logout" class="nav-link text-danger">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span class="d-none d-sm-inline"> Sair</span>
-                </a>
-            </li>
-        </ul>
-    </nav>
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
 
-    <aside class="main-sidebar sidebar-dark-primary elevation-4" style="min-height: 100vh;">
-        <a href="/gestor" class="brand-link">
-            <span class="brand-text font-weight-light">Logística System</span>
-        </a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                    <li class="nav-item">
-                        <a href="/gestor" class="nav-link active">
-                            <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/gestao-funcionario" class="nav-link">
-                            <i class="nav-icon fas fa-users"></i><p>Funcionários</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/gestao-veiculo" class="nav-link">
-                            <i class="nav-icon fas fa-truck"></i><p>Veículos</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/gestao-filial" class="nav-link">
-                            <i class="nav-icon fas fa-store"></i><p>Filiais</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/gestao-clientes" class="nav-link">
-                            <i class="nav-icon fas fa-address-book"></i><p>Clientes</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/logout" class="nav-link text-danger">
-                            <i class="nav-icon fas fa-sign-out-alt"></i><p>Sair</p>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+{# ── Topbar: date filter + refresh countdown ──────────────────────── #}
+{% block topbar_right %}
+<form method="GET" action="/gestor" class="d-none d-sm-flex align-items-center" style="gap:6px;">
+    <input type="date" name="data" value="{{ data_filtro }}" class="form-control form-control-sm" style="width:160px;">
+    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter"></i></button>
+</form>
+<span style="font-size:12px;color:#6b7280;display:flex;align-items:center;gap:5px;">
+    <i class="fas fa-sync-alt" id="refresh-icon"></i>
+    <span id="refresh-countdown" style="background:#f3f4f6;border-radius:20px;padding:2px 8px;font-weight:600;">30s</span>
+</span>
+{% endblock %}
+
+{# ── Main content ─────────────────────────────────────────────────── #}
+{% block content %}
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+
+    <div class="stat-card blue">
+        <div class="stat-icon blue"><i class="fas fa-box"></i></div>
+        <div class="stat-value">{{ total_dia }}</div>
+        <div class="stat-label">Entregas do Dia</div>
+    </div>
+
+    <div class="stat-card orange">
+        <div class="stat-icon orange"><i class="fas fa-hourglass-half"></i></div>
+        <div class="stat-value">{{ loja }}</div>
+        <div class="stat-label">Aguardando Entregador</div>
+    </div>
+
+    <div class="stat-card purple">
+        <div class="stat-icon purple"><i class="fas fa-motorcycle"></i></div>
+        <div class="stat-value">{{ rota }}</div>
+        <div class="stat-label">Em Rota Agora</div>
+    </div>
+
+    <div class="stat-card green">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-value">{{ finalizadas }}</div>
+        <div class="stat-label">Finalizadas no Dia</div>
+    </div>
+
+</div>
+
+<!-- ===== ALERTA CRÍTICO: ERROS DE ENTREGA ===== -->
+{% if entregas_erro %}
+<style>
+    @keyframes pulse-danger {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,.5); }
+        50%       { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+    }
+    .card-erro-critico { animation: pulse-danger 1.5s infinite; }
+</style>
+<div class="card card-erro-critico mb-4" style="border-left: 3px solid #dc2626 !important;">
+    <div class="card-header d-flex align-items-center justify-content-between" style="background:#fff8f8 !important;">
+        <h6 class="mb-0 font-weight-bold text-danger">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            ATENÇÃO — Entregas com Erro
+        </h6>
+        <span class="badge badge-danger" style="font-size:13px;">
+            {{ erros }} ocorrência{{ 's' if erros > 1 else '' }}
+        </span>
+    </div>
+    <div class="card-body p-0">
+        {% for e in entregas_erro %}
+        <div class="p-3 {% if not loop.last %}border-bottom{% endif %}">
+            <div class="d-flex justify-content-between align-items-start flex-wrap" style="gap:8px;">
+                <div>
+                    <strong class="text-danger">#{{ e.id }}</strong>
+                    <span class="ml-2 text-muted">Cupom: {{ e.cupom_fiscal }}</span><br>
+                    <small class="text-secondary">
+                        <i class="fas fa-map-marker-alt mr-1"></i>
+                        {{ e.rua }}, {{ e.numero }} — {{ e.bairro }}
+                    </small>
+                    {% if e.motivo_erro %}
+                    <div class="mt-1">
+                        <span class="badge badge-danger">Motivo:</span>
+                        <small class="text-danger ml-1">{{ e.motivo_erro }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+                <a href="/gestor/ajustar-entrega/{{ e.id }}" class="btn btn-sm btn-danger">
+                    <i class="fas fa-tools mr-1"></i> Ajustar
+                </a>
+            </div>
         </div>
-    </aside>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+<!-- ===== FIM ALERTA CRÍTICO ===== -->
 
-    <div class="content-wrapper" style="padding: 20px;">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2 align-items-center">
-                    <div class="col-sm-6">
-                        <h1>Dashboard</h1>
-                    </div>
-                    <!-- Filtro de data -->
-                    <div class="col-sm-6 text-sm-right mt-2 mt-sm-0">
-                        <form method="GET" action="/gestor" class="d-flex align-items-center filtro-form flex-wrap justify-content-sm-end" style="gap:6px;">
-                            <label class="mb-0 font-weight-bold">Data:</label>
-                            <input type="date" name="data" value="{{ data_filtro }}" class="form-control form-control-sm" style="width:160px; min-width:130px;">
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                <i class="fas fa-filter"></i> Filtrar
-                            </button>
-                        </form>
-                    </div>
+<!-- Two-column tables -->
+<div class="row mb-4">
+
+    <!-- Aguardando Entregador -->
+    <div class="col-md-6 mb-4 mb-md-0">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 font-weight-bold">
+                    <i class="fas fa-clock mr-1 text-warning"></i> Aguardando Entregador
+                </h6>
+                <span class="badge badge-warning">{{ loja }}</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Cupom</th>
+                                <th>Filial</th>
+                                <th>Endereço</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in entregas_loja %}
+                            <tr>
+                                <td>{{ e.id }}</td>
+                                <td>{{ e.cupom_fiscal }}</td>
+                                <td>
+                                    <span class="badge badge-secondary">
+                                        {{ filiais_map.get(e.filial_id, '—') }}
+                                    </span>
+                                </td>
+                                <td>{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">
+                                    Nenhuma entrega pendente.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <section class="content">
-            <div class="container-fluid">
-
-                <!-- Stats -->
-                <div class="row">
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-info">
-                            <div class="inner">
-                                <h3>{{ total_dia }}</h3>
-                                <p>Entregas do Dia</p>
-                            </div>
-                            <div class="icon"><i class="fas fa-box"></i></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-warning">
-                            <div class="inner">
-                                <h3>{{ loja }}</h3>
-                                <p>Aguardando Entregador</p>
-                            </div>
-                            <div class="icon"><i class="fas fa-store"></i></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-primary">
-                            <div class="inner">
-                                <h3>{{ rota }}</h3>
-                                <p>Em Rota Agora</p>
-                            </div>
-                            <div class="icon"><i class="fas fa-shipping-fast"></i></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-success">
-                            <div class="inner">
-                                <h3>{{ finalizadas }}</h3>
-                                <p>Finalizadas no Dia</p>
-                            </div>
-                            <div class="icon"><i class="fas fa-check-circle"></i></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ===== ALERTA CRÍTICO: ERROS DE ENTREGA ===== -->
-                {% if entregas_erro %}
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="card card-erro-critico">
-                            <div class="card-header erro-header">
-                                <h3 class="card-title">
-                                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                                    ATENÇÃO — Entregas com Erro
-                                </h3>
-                                <span class="badge badge-light float-right" style="font-size:14px;">
-                                    {{ erros }} ocorrência{{ 's' if erros > 1 else '' }}
-                                </span>
-                            </div>
-                            <div class="card-body p-0">
-                                {% for e in entregas_erro %}
-                                <div class="p-3 {% if not loop.last %}border-bottom{% endif %}">
-                                    <div class="d-flex justify-content-between align-items-start flex-wrap">
-                                        <div>
-                                            <strong class="text-danger">#{{ e.id }}</strong>
-                                            <span class="ml-2 text-muted">Cupom: {{ e.cupom_fiscal }}</span>
-                                            <br>
-                                            <small class="text-secondary">
-                                                <i class="fas fa-map-marker-alt mr-1"></i>
-                                                {{ e.rua }}, {{ e.numero }} — {{ e.bairro }}
-                                            </small>
-                                            {% if e.motivo_erro %}
-                                            <div class="mt-1">
-                                                <span class="badge badge-danger">Motivo:</span>
-                                                <small class="text-danger ml-1">{{ e.motivo_erro }}</small>
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                        <a href="/gestor/ajustar-entrega/{{ e.id }}"
-                                           class="btn btn-sm btn-danger mt-2">
-                                            <i class="fas fa-tools mr-1"></i> Ajustar Entrega
-                                        </a>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-                <!-- ===== FIM ALERTA CRÍTICO ===== -->
-
-                <div class="row">
-                    <!-- Pendentes na loja -->
-                    <div class="col-md-6">
-                        <div class="card card-warning card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <i class="fas fa-clock mr-1"></i> Aguardando Entregador
-                                </h3>
-                                <span class="badge badge-warning float-right">{{ loja }}</span>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive-sm">
-                                <table class="table table-sm table-hover mb-0">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Cupom</th>
-                                            <th>Filial</th>
-                                            <th>Endereço</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for e in entregas_loja %}
-                                        <tr>
-                                            <td>{{ e.id }}</td>
-                                            <td>{{ e.cupom_fiscal }}</td>
-                                            <td>
-                                                <span class="badge badge-secondary">
-                                                    {{ filiais_map.get(e.filial_id, '—') }}
-                                                </span>
-                                            </td>
-                                            <td>{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</td>
-                                        </tr>
-                                        {% else %}
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted py-3">
-                                                Nenhuma entrega pendente.
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Em rota -->
-                    <div class="col-md-6">
-                        <div class="card card-primary card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <i class="fas fa-shipping-fast mr-1"></i> Em Rota
-                                </h3>
-                                <span class="badge badge-primary float-right">{{ rota }}</span>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive-sm">
-                                <table class="table table-sm table-hover mb-0">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Cupom</th>
-                                            <th>Endereço</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for e in entregas_rota %}
-                                        <tr>
-                                            <td>{{ e.id }}</td>
-                                            <td>{{ e.cupom_fiscal }}</td>
-                                            <td>{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</td>
-                                            <td>
-                                                <span class="badge badge-primary">Em Rota</span>
-                                            </td>
-                                        </tr>
-                                        {% else %}
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted py-3">
-                                                Nenhuma entrega em rota.
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Stats por filial -->
-                <div class="row mt-2">
-                    <div class="col-12">
-                        <div class="card card-outline card-secondary">
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <i class="fas fa-store mr-1"></i> Resumo por Filial
-                                    <small class="text-muted ml-2">— {{ data_filtro }}</small>
-                                </h3>
-                                <div class="card-tools">
-                                    <a href="/gestao-filial" class="btn btn-xs btn-outline-secondary">
-                                        <i class="fas fa-cog"></i> Gerenciar Filiais
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive-sm">
-                                <table class="table table-sm table-hover mb-0">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th>Filial</th>
-                                            <th>Cidade</th>
-                                            <th class="text-center">Total</th>
-                                            <th class="text-center text-warning">Pendentes</th>
-                                            <th class="text-center text-primary">Em Rota</th>
-                                            <th class="text-center text-success">Finalizadas</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for s in stats_filiais %}
-                                        <tr>
-                                            <td><i class="fas fa-store text-secondary mr-1"></i> <strong>{{ s.nome }}</strong></td>
-                                            <td class="text-muted">{{ s.cidade or '—' }}</td>
-                                            <td class="text-center"><span class="badge badge-secondary">{{ s.total }}</span></td>
-                                            <td class="text-center"><span class="badge badge-warning">{{ s.pendentes }}</span></td>
-                                            <td class="text-center"><span class="badge badge-primary">{{ s.em_rota }}</span></td>
-                                            <td class="text-center"><span class="badge badge-success">{{ s.finalizadas }}</span></td>
-                                        </tr>
-                                        {% else %}
-                                        <tr>
-                                            <td colspan="6" class="text-center text-muted py-3">
-                                                Nenhuma filial cadastrada. <a href="/gestao-filial">Criar filial</a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+    <!-- Em Rota -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 font-weight-bold">
+                    <i class="fas fa-motorcycle mr-1 text-primary"></i> Em Rota
+                </h6>
+                <span class="badge badge-primary">{{ rota }}</span>
             </div>
-        </section>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Cupom</th>
+                                <th>Endereço</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in entregas_rota %}
+                            <tr>
+                                <td>{{ e.id }}</td>
+                                <td>{{ e.cupom_fiscal }}</td>
+                                <td>{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</td>
+                                <td><span class="badge badge-primary">Em Rota</span></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">
+                                    Nenhuma entrega em rota.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Stats por Filial -->
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 font-weight-bold">
+            <i class="fas fa-store mr-1 text-secondary"></i> Resumo por Filial
+            <small class="text-muted ml-2">— {{ data_filtro }}</small>
+        </h6>
+        <a href="/gestao-filial" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-cog mr-1"></i> Gerenciar Filiais
+        </a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Filial</th>
+                        <th>Cidade</th>
+                        <th class="text-center">Total</th>
+                        <th class="text-center">Pendentes</th>
+                        <th class="text-center">Em Rota</th>
+                        <th class="text-center">Finalizadas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in stats_filiais %}
+                    <tr>
+                        <td><i class="fas fa-store text-secondary mr-1"></i> <strong>{{ s.nome }}</strong></td>
+                        <td class="text-muted">{{ s.cidade or '—' }}</td>
+                        <td class="text-center"><span class="badge badge-secondary">{{ s.total }}</span></td>
+                        <td class="text-center"><span class="badge badge-warning">{{ s.pendentes }}</span></td>
+                        <td class="text-center"><span class="badge badge-primary">{{ s.em_rota }}</span></td>
+                        <td class="text-center"><span class="badge badge-success">{{ s.finalizadas }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-3">
+                            Nenhuma filial cadastrada. <a href="/gestao-filial">Criar filial</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+{% endblock %}
+
+{# ── Auto-refresh script ───────────────────────────────────────────── #}
+{% block extra_scripts %}
 <script>
-// ── Auto-refresh do painel do gestor ──────────────────────────────
 (function () {
-    const INTERVALO = 30; // segundos
+    const INTERVALO = 30;
     let restante = INTERVALO;
     const badge = document.getElementById('refresh-countdown');
     const icon  = document.getElementById('refresh-icon');
@@ -378,7 +252,8 @@
         if (badge) badge.textContent = restante + 's';
 
         if (restante <= 5 && badge) {
-            badge.className = 'badge badge-warning ml-1';
+            badge.style.background = '#f97316';
+            badge.style.color = '#fff';
         }
         if (restante <= 0) {
             if (icon)  icon.classList.add('fa-spin');
@@ -388,5 +263,4 @@
     }, 1000);
 })();
 </script>
-</body>
-</html>
+{% endblock %}

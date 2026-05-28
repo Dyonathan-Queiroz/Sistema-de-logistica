@@ -1,50 +1,243 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sistema Logístico | Login</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        body { background-color: #121212 !important; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
-        .login-box { width: 100%; max-width: 380px; }
-        .card { background-color: #1e1e1e !important; color: #fff; border: 1px solid #333; }
-        .btn-danger { background-color: #d32f2f !important; border-color: #d32f2f !important; }
-        .btn-danger:hover { background-color: #b71c1c !important; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Login — System Logística</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background: #0a0e1a;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #f1f5f9;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    /* ── Card ── */
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      background: #111827;
+      border: 1px solid #1f2d45;
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    /* ── Brand block ── */
+    .brand-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+
+    .brand-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-icon i {
+      font-size: 24px;
+      color: #fff;
+    }
+
+    .brand-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.2px;
+    }
+
+    .brand-sub {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: -6px;
+    }
+
+    .brand-hint {
+      font-size: 13px;
+      color: #475569;
+      margin-top: 2px;
+    }
+
+    /* ── Error alert ── */
+    .alert-error {
+      background: #2d1b1b;
+      border: 1px solid #f85149;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #f85149;
+      font-size: 13.5px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Form ── */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: 7px;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      background: #1f2937;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      padding: 12px 42px 12px 14px;
+      font-size: 14px;
+      color: #f1f5f9;
+      outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+
+    .input-wrap input::placeholder {
+      color: #4b5563;
+    }
+
+    .input-wrap input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #4b5563;
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    /* ── Submit button ── */
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      cursor: pointer;
+      margin-top: 8px;
+      box-shadow: 0 4px 14px rgba(59,130,246,0.4);
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn-submit:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    /* ── Footer ── */
+    .page-footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #374151;
+      text-align: center;
+    }
+  </style>
 </head>
-<body class="hold-transition login-page dark-mode">
-<div class="login-box">
-    <div class="card card-outline card-danger">
-        <div class="card-header text-center">
-            <h1 class="h2"><b>LOGÍSTICA</b></h1>
-        </div>
-        <div class="card-body">
-            <p class="login-box-msg">Entre com suas credenciais</p>
-            {% if error %}
-            <div class="alert alert-danger alert-dismissible">
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                {{ error }}
-            </div>
-            {% endif %}
-            <form action="/login" method="post">
-                <div class="input-group mb-3">
-                    <input type="text" name="username" class="form-control" placeholder="Usuário" required>
-                    <div class="input-group-append">
-                        <div class="input-group-text"><span class="fas fa-user"></span></div>
-                    </div>
-                </div>
-                <div class="input-group mb-3">
-                    <input type="password" name="password" class="form-control" placeholder="Senha" required>
-                    <div class="input-group-append">
-                        <div class="input-group-text"><span class="fas fa-lock"></span></div>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-danger btn-block">ENTRAR</button>
-            </form>
-        </div>
+<body>
+
+  <div class="login-card">
+
+    <!-- Brand -->
+    <div class="brand-block">
+      <div class="brand-icon">
+        <i class="fas fa-shipping-fast"></i>
+      </div>
+      <span class="brand-name">System Logística</span>
+      <span class="brand-sub">Super GAVIÃO</span>
+      <span class="brand-hint">Entre com suas credenciais</span>
     </div>
-</div>
+
+    <!-- Error alert -->
+    {% if error %}
+    <div class="alert-error">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form method="POST" action="/login">
+      <div class="form-group">
+        <label class="form-label" for="username">Usuário</label>
+        <div class="input-wrap">
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Digite seu usuário"
+            required
+            autocomplete="username"
+          />
+          <i class="fas fa-user input-icon"></i>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Senha</label>
+        <div class="input-wrap">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Digite sua senha"
+            required
+            autocomplete="current-password"
+          />
+          <i class="fas fa-lock input-icon"></i>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">ENTRAR</button>
+    </form>
+
+  </div>
+
+  <p class="page-footer">Criado por Dyonathan Henrique — Auxiliar T.I Gavião</p>
+
 </body>
 </html>

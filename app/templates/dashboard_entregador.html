@@ -1,386 +1,287 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Entregas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        :root {
-            --bg:           #0d1117;
-            --surface:      #161b22;
-            --surface2:     #21262d;
-            --border:       #30363d;
-            --text:         #e6edf3;
-            --muted:        #8b949e;
-            --blue:         #1f6feb;
-            --green:        #1a7f37;
-            --green-light:  #3fb950;
-            --yellow:       #d29922;
-            --radius:       12px;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            min-height: 100vh;
-            overscroll-behavior-y: none;
-        }
-
-        /* ── Header ── */
-        .app-header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-        }
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        .header-icon {
-            width: 36px; height: 36px;
-            background: var(--blue);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 17px; color: #fff;
-        }
-        .header-title  { font-size: 16px; font-weight: 700; color: var(--text); }
-        .header-sub    { font-size: 11px; color: var(--muted); }
-        .btn-logout {
-            background: none;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--muted);
-            padding: 7px 13px;
-            font-size: 13px;
-            cursor: pointer;
-            text-decoration: none;
-            display: flex; align-items: center; gap: 5px;
-            transition: border-color .15s, color .15s;
-        }
-        .btn-logout:active { border-color: #f85149; color: #f85149; }
-
-        /* ── Tab bar ── */
-        .tab-bar {
-            position: sticky;
-            top: 60px;
-            z-index: 99;
-            display: flex;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 14px 8px;
-            border: none;
-            background: none;
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            display: flex; align-items: center; justify-content: center; gap: 7px;
-            transition: color .15s, border-color .15s;
-        }
-        .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
-        .tab-badge {
-            font-size: 11px;
-            font-weight: 700;
-            padding: 2px 7px;
-            border-radius: 20px;
-            background: var(--blue);
-            color: #fff;
-        }
-        .tab-badge.green { background: var(--green); }
-
-        /* ── Panels ── */
-        .tab-panel          { display: none; padding: 14px 14px 80px; }
-        .tab-panel.active   { display: block; }
-
-        /* ── Cards ── */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-        .card.disponivel { border-left: 3px solid var(--blue); }
-        .card.em-rota    { border-left: 3px solid var(--green-light); }
-
-        .card-meta {
-            font-size: 12px;
-            color: var(--muted);
-            margin-bottom: 8px;
-            display: flex; align-items: center; gap: 6px;
-        }
-        .card-address {
-            font-size: 15px;
-            font-weight: 500;
-            line-height: 1.55;
-            margin-bottom: 4px;
-        }
-        .card-city {
-            font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 12px;
-            padding-left: 18px;
-        }
-        .card-obs {
-            font-size: 13px;
-            color: var(--yellow);
-            background: rgba(210,153,34,.1);
-            border-radius: 6px;
-            padding: 7px 10px;
-            margin-bottom: 12px;
-        }
-        .status-pill {
-            display: inline-flex; align-items: center; gap: 5px;
-            font-size: 11px; font-weight: 700;
-            padding: 3px 10px; border-radius: 20px;
-            margin-bottom: 10px;
-            background: rgba(63,185,80,.15);
-            color: var(--green-light);
-            border: 1px solid rgba(63,185,80,.25);
-        }
-
-        /* ── Action buttons ── */
-        .btn {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            width: 100%; padding: 14px 16px;
-            border-radius: 10px;
-            font-size: 15px; font-weight: 600;
-            border: none; cursor: pointer;
-            margin-bottom: 8px;
-            text-decoration: none;
-            transition: filter .15s, transform .1s;
-        }
-        .btn:last-child { margin-bottom: 0; }
-        .btn:active { filter: brightness(.82); transform: scale(.98); }
-
-        .btn-accept  { background: var(--blue);    color: #fff; }
-        .btn-details { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-        .btn-finish  { background: var(--green);   color: #fff; }
-
-        /* ── Empty state ── */
-        .empty {
-            text-align: center;
-            padding: 52px 24px;
-            color: var(--muted);
-        }
-        .empty-icon { font-size: 42px; opacity: .35; margin-bottom: 14px; }
-        .empty p    { font-size: 15px; }
-
-        /* ── Divider ── */
-        .divider {
-            border: none;
-            border-top: 1px solid var(--border);
-            margin: 10px 0 12px;
-        }
-
-        /* ── Botão Iniciar Rota ── */
-        .btn-maps-rota {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            padding: 16px;
-            margin-bottom: 18px;
-            background: #1a7f37;
-            color: #fff;
-            font-size: 15px;
-            font-weight: 700;
-            border-radius: 12px;
-            border: none;
-            cursor: pointer;
-            text-decoration: none;
-            letter-spacing: .3px;
-            box-shadow: 0 2px 12px rgba(26,127,55,.35);
-            transition: filter .15s, transform .1s;
-        }
-        .btn-maps-rota:active { filter: brightness(.82); transform: scale(.98); }
-        .btn-maps-rota .badge-count {
-            font-size: 12px;
-            font-weight: 700;
-            background: rgba(255,255,255,.25);
-            border-radius: 20px;
-            padding: 2px 8px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Entregas</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a; --card-bg: #111827; --card-border: #1f2d45;
+      --accent: #3b82f6; --accent-dark: #1d4ed8; --green: #22c55e;
+      --green-dark: #16a34a; --text: #f1f5f9; --text-muted: #64748b;
+      --text-sub: #94a3b8; --radius: 14px; --max-w: 500px;
+    }
+    html, body { min-height: 100%; background: var(--bg); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--text); overscroll-behavior-y: none; }
+    .app-shell { max-width: var(--max-w); margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+    @media (min-width: 768px) {
+      body { background: #060810; }
+      .app-shell { margin: 24px auto; min-height: calc(100vh - 48px); border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(0,0,0,0.7); }
+    }
+    .app-header { background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%); padding: 18px 20px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 20px rgba(29,78,216,0.45); }
+    .header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .header-moto { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.18); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .header-moto i { font-size: 20px; color: #fff; }
+    .header-brand h1 { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 0.2px; }
+    .header-brand p { font-size: 11.5px; color: rgba(255,255,255,0.72); margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .refresh-pill { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 5px 11px; font-size: 12px; font-weight: 600; color: #fff; backdrop-filter: blur(4px); }
+    .green-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: glow-green 1.8s infinite; }
+    @keyframes glow-green { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,0.8); } 70% { box-shadow: 0 0 0 6px rgba(74,222,128,0); } 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } }
+    .btn-header-sair { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 13px; color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer; backdrop-filter: blur(4px); transition: background 0.15s; display: flex; align-items: center; gap: 5px; text-decoration: none; }
+    .btn-header-sair:hover { background: rgba(255,255,255,0.25); color: #fff; text-decoration: none; }
+    .tab-bar { display: flex; background: #0d1424; border-bottom: 1px solid var(--card-border); position: sticky; top: 78px; z-index: 40; }
+    .tab-btn { flex: 1; padding: 13px 8px; background: none; border: none; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-muted); border-bottom: 3px solid transparent; transition: color 0.18s, border-color 0.18s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; border-radius: 10px; font-size: 11px; font-weight: 700; padding: 0 6px; }
+    .tab-btn.active .tab-badge { background: var(--accent); color: #fff; }
+    .tab-btn:not(.active) .tab-badge { background: rgba(255,255,255,0.1); color: var(--text-muted); }
+    .scroll-area { flex: 1; overflow-y: auto; padding: 16px 16px 8px; }
+    .scroll-area::-webkit-scrollbar { width: 4px; }
+    .scroll-area::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 4px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .delivery-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; transition: border-color 0.18s, box-shadow 0.18s; }
+    .delivery-card:hover { border-color: #2d4a6e; box-shadow: 0 4px 20px rgba(59,130,246,0.12); }
+    .card-top { padding: 14px 16px 12px; border-bottom: 1px solid var(--card-border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .cupom-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: #60a5fa; }
+    .card-body-pad { padding: 14px 16px 0; }
+    .address-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .pin-icon { color: var(--accent); font-size: 13px; margin-top: 2px; flex-shrink: 0; }
+    .address-text strong { display: block; font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; }
+    .address-text span { font-size: 12.5px; color: var(--text-sub); margin-top: 2px; display: block; }
+    .obs-box { display: flex; align-items: flex-start; gap: 8px; background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.25); border-radius: 8px; padding: 9px 12px; margin-bottom: 14px; margin-top: 4px; }
+    .obs-box i { color: #eab308; font-size: 13px; margin-top: 1px; flex-shrink: 0; }
+    .obs-box p { font-size: 12.5px; color: #fde68a; line-height: 1.5; margin: 0; }
+    .card-actions { padding: 12px 16px 14px; }
+    .btn-aceitar { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--accent-dark), var(--accent)); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(59,130,246,0.4); transition: opacity 0.15s, transform 0.1s; }
+    .btn-aceitar:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-aceitar:active { transform: translateY(0); }
+    .rota-card { background: var(--card-bg); border: 1px solid #1a3d2b; border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+    .rota-card-header { background: rgba(34,197,94,0.07); border-bottom: 1px solid #1a3d2b; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .pill-em-rota { display: inline-flex; align-items: center; gap: 5px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: #4ade80; }
+    .pill-em-rota i { font-size: 8px; }
+    .rota-card-body { padding: 14px 16px 0; }
+    .info-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+    .info-row .lbl { font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; min-width: 76px; margin-top: 1px; }
+    .info-row .val { font-size: 13.5px; color: var(--text); font-weight: 500; line-height: 1.4; }
+    .divider-line { height: 1px; background: var(--card-border); margin: 4px 0 14px; }
+    .rota-actions { padding: 0 16px 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-gray { flex: 1; min-width: 0; padding: 10px 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); border-radius: 9px; color: var(--text-sub); font-size: 12.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s, color 0.15s; text-decoration: none; }
+    .btn-gray:hover { background: rgba(255,255,255,0.09); color: var(--text); text-decoration: none; }
+    .btn-finalizar { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--green-dark), var(--green)); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(34,197,94,0.35); margin-top: 10px; transition: opacity 0.15s, transform 0.1s; }
+    .btn-finalizar:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-finalizar:active { transform: translateY(0); }
+    .btn-iniciar-rota { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px; background: linear-gradient(135deg, var(--green-dark), var(--green)); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(34,197,94,0.35); margin-bottom: 16px; text-decoration: none; }
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-state i { font-size: 40px; margin-bottom: 14px; opacity: 0.4; display: block; }
+    .empty-state p { font-size: 14px; }
+    .app-footer { padding: 16px 20px; text-align: center; font-size: 12px; color: #2d3a52; border-top: 1px solid #111e30; }
+    .app-footer span { color: #3b5bdb; font-weight: 600; }
+    .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--card-border); }
+  </style>
 </head>
 <body>
+<div class="app-shell">
 
-<!-- ── Header ── -->
-<header class="app-header">
+  <!-- HEADER -->
+  <header class="app-header">
     <div class="header-left">
-        <div class="header-icon"><i class="fas fa-motorcycle"></i></div>
-        <div>
-            <div class="header-title">Entregas</div>
-            <div class="header-sub">Painel do Entregador</div>
-        </div>
+      <div class="header-moto">
+        <i class="fas fa-motorcycle"></i>
+      </div>
+      <div class="header-brand">
+        <h1>System Logística</h1>
+        <p>Super GAVIÃO — Entregador</p>
+      </div>
     </div>
-    <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:11px; color:rgba(255,255,255,.5);">
-            <i class="fas fa-sync-alt" id="refresh-icon"></i>
-            <span id="refresh-countdown">20s</span>
-        </span>
-        <a href="/logout" class="btn-logout">
-            <i class="fas fa-sign-out-alt"></i> Sair
-        </a>
+    <div class="header-right">
+      <div class="refresh-pill">
+        <span class="green-dot"></span>
+        <span id="countdown">20s</span>
+      </div>
+      <a href="/logout" class="btn-header-sair">
+        <i class="fas fa-sign-out-alt"></i> Sair
+      </a>
     </div>
-</header>
+  </header>
 
-<!-- ── Tab bar ── -->
-<nav class="tab-bar">
-    <button class="tab-btn active" id="tab-btn-disp" onclick="trocarAba('disp', this)">
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="disponiveis" id="tab-disponiveis">
+      <i class="fas fa-inbox"></i>
+      Disponíveis
+      <span class="tab-badge" id="badge-disp">{{ disponiveis|length if disponiveis else 0 }}</span>
+    </button>
+    <button class="tab-btn" data-tab="emrota" id="tab-emrota">
+      <i class="fas fa-map-marked-alt"></i>
+      Em Rota
+      <span class="tab-badge" id="badge-rota">{{ em_rota|length if em_rota else 0 }}</span>
+    </button>
+  </div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll-area">
+
+    <!-- DISPONÍVEIS PANEL -->
+    <div class="tab-panel active" id="panel-disponiveis">
+      <p class="section-label"><i class="fas fa-box-open"></i> ENTREGAS DISPONÍVEIS</p>
+
+      {% for e in disponiveis %}
+      <div class="delivery-card">
+        <div class="card-top">
+          <span class="cupom-badge">
+            <i class="fas fa-ticket-alt"></i>
+            {{ e.cupom_fiscal }} · #{{ e.id }}
+          </span>
+        </div>
+        <div class="card-body-pad">
+          <div class="address-row">
+            <i class="fas fa-map-marker-alt pin-icon"></i>
+            <div class="address-text">
+              <strong>{{ e.rua }}, {{ e.numero }}</strong>
+              <span>{{ e.bairro }}</span>
+            </div>
+          </div>
+          {% if e.observacao %}
+          <div class="obs-box">
+            <i class="fas fa-exclamation-circle"></i>
+            <p>{{ e.observacao }}</p>
+          </div>
+          {% endif %}
+        </div>
+        <div class="card-actions">
+          <form action="/entregador/aceitar/{{ e.id }}" method="POST">
+            <button type="submit" class="btn-aceitar">
+              <i class="fas fa-check-circle"></i> Aceitar Entrega
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state">
         <i class="fas fa-box-open"></i>
-        Disponíveis
-        {% if disponiveis %}
-        <span class="tab-badge">{{ disponiveis | length }}</span>
-        {% endif %}
-    </button>
-    <button class="tab-btn" id="tab-btn-rota" onclick="trocarAba('rota', this)">
+        <p>Nenhuma entrega disponível no momento.</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- EM ROTA PANEL -->
+    <div class="tab-panel" id="panel-emrota">
+      <p class="section-label"><i class="fas fa-route"></i> SUAS ENTREGAS ATIVAS</p>
+
+      {% if em_rota and link_rota %}
+      <a href="{{ link_rota }}" target="_blank" class="btn-iniciar-rota">
+        <i class="fas fa-map-marked-alt"></i>
+        Iniciar Rota no Maps ({{ em_rota|length }} entrega{% if em_rota|length > 1 %}s{% endif %})
+      </a>
+      {% endif %}
+
+      {% for e in em_rota %}
+      <div class="rota-card">
+        <div class="rota-card-header">
+          <span class="pill-em-rota">
+            <i class="fas fa-circle"></i> Em Rota
+          </span>
+          <span style="font-size:12px;color:var(--text-sub);">
+            <i class="fas fa-receipt"></i> {{ e.cupom_fiscal }} · #{{ e.id }}
+          </span>
+        </div>
+        <div class="rota-card-body">
+          <div class="info-row">
+            <span class="lbl">Endereço</span>
+            <span class="val">{{ e.rua }}, {{ e.numero }}</span>
+          </div>
+          <div class="info-row">
+            <span class="lbl">Bairro</span>
+            <span class="val">{{ e.bairro }}</span>
+          </div>
+          {% if e.observacao %}
+          <div class="obs-box">
+            <i class="fas fa-exclamation-circle"></i>
+            <p>{{ e.observacao }}</p>
+          </div>
+          {% endif %}
+          <div class="divider-line"></div>
+        </div>
+        <div class="rota-actions">
+          <a href="/entregador/entrega/{{ e.id }}" class="btn-gray">
+            <i class="fas fa-info-circle"></i> Detalhes / Maps / WhatsApp
+          </a>
+          <form action="/entregador/finalizar/{{ e.id }}" method="POST" style="width:100%">
+            <button type="submit" class="btn-finalizar">
+              <i class="fas fa-check-double"></i> Finalizar Entrega
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state">
         <i class="fas fa-shipping-fast"></i>
-        Em Rota
-        {% if em_rota %}
-        <span class="tab-badge green">{{ em_rota | length }}</span>
-        {% endif %}
-    </button>
-</nav>
-
-<!-- ── Painel: Disponíveis ── -->
-<section class="tab-panel active" id="panel-disp">
-    {% for e in disponiveis %}
-    <div class="card disponivel">
-        <div class="card-meta">
-            <i class="fas fa-receipt"></i>
-            Cupom {{ e.cupom_fiscal }}&nbsp;·&nbsp;#{{ e.id }}
-        </div>
-        <div class="card-address">
-            <i class="fas fa-map-marker-alt" style="color:var(--blue);margin-right:4px;"></i>
-            {{ e.rua }}, {{ e.numero }}
-        </div>
-        <div class="card-city">{{ e.bairro }}</div>
-        {% if e.observacao %}
-        <div class="card-obs">
-            <i class="fas fa-exclamation-triangle"></i> {{ e.observacao }}
-        </div>
-        {% endif %}
-        <form action="/entregador/aceitar/{{ e.id }}" method="POST">
-            <button type="submit" class="btn btn-accept">
-                <i class="fas fa-check"></i> Aceitar Entrega
-            </button>
-        </form>
+        <p>Nenhuma entrega em rota.</p>
+      </div>
+      {% endfor %}
     </div>
-    {% else %}
-    <div class="empty">
-        <div class="empty-icon"><i class="fas fa-box-open"></i></div>
-        <p>Nenhuma entrega disponível</p>
-    </div>
-    {% endfor %}
-</section>
 
-<!-- ── Painel: Em Rota ── -->
-<section class="tab-panel" id="panel-rota">
-
-    {% if em_rota and link_rota %}
-    <a href="{{ link_rota }}" target="_blank" rel="noopener noreferrer" class="btn-maps-rota">
-        <i class="fas fa-route"></i>
-        Iniciar Rota no Maps
-        <span class="badge-count">{{ em_rota | length }} entrega{% if em_rota | length > 1 %}s{% endif %}</span>
-    </a>
-    {% endif %}
-
-    {% for e in em_rota %}
-    <div class="card em-rota">
-        <span class="status-pill">
-            <i class="fas fa-circle" style="font-size:6px;"></i> Em Rota
-        </span>
-        <div class="card-meta">
-            <i class="fas fa-receipt"></i>
-            Cupom {{ e.cupom_fiscal }}&nbsp;·&nbsp;#{{ e.id }}
-        </div>
-        <div class="card-address">
-            <i class="fas fa-map-marker-alt" style="color:var(--green-light);margin-right:4px;"></i>
-            {{ e.rua }}, {{ e.numero }}
-        </div>
-        <div class="card-city">{{ e.bairro }}</div>
-        {% if e.observacao %}
-        <div class="card-obs">
-            <i class="fas fa-exclamation-triangle"></i> {{ e.observacao }}
-        </div>
-        {% endif %}
-        <hr class="divider">
-        <a href="/entregador/entrega/{{ e.id }}" class="btn btn-details">
-            <i class="fas fa-map-marked-alt"></i> Detalhes / Maps / WhatsApp
-        </a>
-        <form action="/entregador/finalizar/{{ e.id }}" method="POST">
-            <button type="submit" class="btn btn-finish">
-                <i class="fas fa-flag-checkered"></i> Finalizar Entrega
-            </button>
-        </form>
+    <div class="app-footer">
+      ⚡ Criado por <span>Dyonathan Henrique</span> — Auxiliar T.I Gavião
     </div>
-    {% else %}
-    <div class="empty">
-        <div class="empty-icon"><i class="fas fa-shipping-fast"></i></div>
-        <p>Nenhuma entrega em rota</p>
-    </div>
-    {% endfor %}
-</section>
+
+  </div>
+  <!-- /scroll-area -->
+
+</div>
+<!-- /app-shell -->
 
 <script>
-// ── Troca de aba + salva no localStorage ─────────────────────────
-function trocarAba(id, btn) {
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('panel-' + id).classList.add('active');
-    btn.classList.add('active');
-    localStorage.setItem('abaAtiva', id);
-}
+  // ── Tab switching ──────────────────────────────────────────────
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  var tabPanels = document.querySelectorAll('.tab-panel');
 
-// Restaurar aba ativa após refresh
-(function () {
-    const aba = localStorage.getItem('abaAtiva');
-    if (aba) {
-        const btn = document.getElementById('tab-btn-' + aba);
-        if (btn) trocarAba(aba, btn);
+  function activateTab(tabName) {
+    tabBtns.forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    tabPanels.forEach(function(panel) {
+      panel.classList.toggle('active', panel.id === 'panel-' + tabName);
+    });
+    localStorage.setItem('abaAtiva', tabName);
+  }
+
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      activateTab(btn.dataset.tab);
+    });
+  });
+
+  // ── Restore tab on load ────────────────────────────────────────
+  (function() {
+    var saved = localStorage.getItem('abaAtiva');
+    if (saved) {
+      activateTab(saved);
     } else {
-        // Se tem entregas em rota mas nenhuma disponível, abre aba Em Rota
-        {% if em_rota and not disponiveis %}
-        trocarAba('rota', document.getElementById('tab-btn-rota'));
-        {% endif %}
+      {% if em_rota and not disponiveis %}
+      activateTab('emrota');
+      {% endif %}
     }
-})();
+  })();
 
-// ── Auto-refresh a cada 20 segundos ──────────────────────────────
-(function () {
-    const INTERVALO = 20;
-    let restante = INTERVALO;
-    const badge = document.getElementById('refresh-countdown');
-    const icon  = document.getElementById('refresh-icon');
+  // ── Auto-refresh countdown ─────────────────────────────────────
+  var seconds = 20;
+  var countdownEl = document.getElementById('countdown');
 
-    setInterval(function () {
-        restante--;
-        if (badge) badge.textContent = restante + 's';
-
-        if (restante <= 0) {
-            if (icon)  icon.style.animation = 'spin 0.5s linear infinite';
-            if (badge) badge.textContent = '…';
-            location.reload();
-        }
-    }, 1000);
-})();
+  var timer = setInterval(function() {
+    seconds -= 1;
+    if (seconds > 0) {
+      countdownEl.textContent = seconds + 's';
+    } else {
+      countdownEl.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>';
+      clearInterval(timer);
+      location.reload();
+    }
+  }, 1000);
 </script>
 </body>
 </html>

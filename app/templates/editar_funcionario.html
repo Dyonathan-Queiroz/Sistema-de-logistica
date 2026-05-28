@@ -1,82 +1,106 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gerenciar Funcionário</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        body { padding: 16px; }
-        .login-box { margin: 0 auto; }
-    </style>
-</head>
-<body class="hold-transition login-page">
-    <div class="login-box" style="width: 100%; max-width: 450px;">
-        <div class="card card-warning card-outline">
-            <div class="card-header text-center">
-                <h3><i class="fas fa-user-edit"></i> Gerenciar: <strong>{{ func.username }}</strong></h3>
+{% extends "base.html" %}
+
+{% block title %}Editar Funcionário{% endblock %}
+
+{% block page_title %}Gerenciar: {{ func.username }}{% endblock %}
+
+{% block nav_funcionarios %}active{% endblock %}
+
+{% block topbar_right %}
+<a href="/gestao-funcionario" class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-arrow-left mr-1"></i> Voltar
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 offset-md-3 col-lg-5 offset-lg-3">
+        <div class="card" style="border-left: 3px solid #f59e0b;">
+            <div class="card-header">
+                <h6 class="mb-0 font-weight-bold text-dark">
+                    <i class="fas fa-user-edit mr-2 text-warning"></i>Editar Cadastro
+                </h6>
             </div>
-            <form action="/processar-funcionario/{{ func.id }}" method="POST">
+            <form method="POST" action="/processar-funcionario/{{ func.id }}">
                 <div class="card-body">
+
                     <div class="form-group">
-                        <label><i class="fas fa-user"></i> Nome do Funcionário:</label>
-                        <input type="text" name="username" class="form-control" value="{{ func.username }}" required>
+                        <label for="username" class="font-weight-bold small text-dark">Nome de usuário</label>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            class="form-control"
+                            value="{{ func.username }}"
+                            required
+                        >
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-id-badge"></i> Perfil:</label>
-                        <select name="perfil" class="form-control" id="perfil-edit" onchange="toggleFilial(this.value)">
+                        <label for="perfil-edit" class="font-weight-bold small text-dark">Perfil</label>
+                        <select
+                            id="perfil-edit"
+                            name="perfil"
+                            class="form-control"
+                            onchange="toggleFilial(this.value)"
+                        >
                             <option value="entregador" {% if func.perfil == 'entregador' %}selected{% endif %}>Entregador</option>
-                            <option value="gestor"     {% if func.perfil == 'gestor'     %}selected{% endif %}>Gestor</option>
+                            <option value="gestor" {% if func.perfil == 'gestor' %}selected{% endif %}>Gestor</option>
                         </select>
                     </div>
 
                     <div class="form-group" id="filial-group">
-                        <label><i class="fas fa-store"></i> Filial:</label>
-                        <select name="filial_id" class="form-control">
+                        <label for="filial_id" class="font-weight-bold small text-dark">Filial</label>
+                        <select id="filial_id" name="filial_id" class="form-control">
                             <option value="">— Sem filial —</option>
                             {% for f in filiais %}
                             <option value="{{ f.id }}" {% if func.filial_id == f.id %}selected{% endif %}>
-                                {{ f.nome }}{% if f.cidade %} ({{ f.cidade }}){% endif %}
+                                {{ f.nome }} — {{ f.cidade }}
                             </option>
                             {% endfor %}
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-key"></i> Nova Senha:</label>
-                        <input type="password" name="nova_senha" class="form-control" placeholder="Deixe em branco para manter a atual">
-                        <small class="text-muted">Preencha apenas se desejar redefinir a senha.</small>
+                        <label for="nova_senha" class="font-weight-bold small text-dark">Nova Senha</label>
+                        <input
+                            type="password"
+                            id="nova_senha"
+                            name="nova_senha"
+                            class="form-control"
+                            placeholder="Deixe em branco para manter"
+                        >
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-cogs"></i> Ação:</label>
-                        <select name="acao" class="form-control">
+                        <label for="acao" class="font-weight-bold small text-dark">Ação</label>
+                        <select id="acao" name="acao" class="form-control">
                             <option value="editar">Salvar Alterações</option>
-                            <option value="excluir" class="text-danger">Excluir Cadastro</option>
+                            <option value="excluir">Excluir Cadastro</option>
                         </select>
                     </div>
+
                 </div>
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-warning btn-block">
-                        <i class="fas fa-save"></i> Confirmar Alteração
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <button type="submit" class="btn btn-warning font-weight-bold">
+                        <i class="fas fa-check mr-1"></i> Confirmar Alteração
                     </button>
-                    <a href="/gestao-funcionario" class="btn btn-default btn-block">
-                        <i class="fas fa-times"></i> Cancelar
+                    <a href="/gestao-funcionario" class="btn btn-outline-secondary">
+                        <i class="fas fa-times mr-1"></i> Cancelar
                     </a>
                 </div>
             </form>
         </div>
     </div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
-function toggleFilial(perfil) {
-    document.getElementById('filial-group').style.display =
-        (perfil === 'entregador') ? 'block' : 'none';
-}
-toggleFilial(document.getElementById('perfil-edit').value);
+    function toggleFilial(perfil) {
+        document.getElementById('filial-group').style.display =
+            (perfil === 'entregador') ? 'block' : 'none';
+    }
+    toggleFilial(document.getElementById('perfil-edit').value);
 </script>
-</body>
-</html>
+{% endblock %}

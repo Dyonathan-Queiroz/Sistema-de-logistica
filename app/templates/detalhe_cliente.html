@@ -1,274 +1,160 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ cliente.nome }} | Clientes</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        .section-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            color: #6c757d;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-        .avatar-circle {
-            width: 64px; height: 64px;
-            border-radius: 50%;
-            background: #007bff;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 26px; color: #fff; font-weight: 700;
-            flex-shrink: 0;
-        }
-        @media (max-width: 576px) { .content-wrapper { padding: 12px !important; } }
-    </style>
-</head>
-<body class="hold-transition sidebar-mini">
-<div class="wrapper">
+{% extends "base.html" %}
 
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/gestao-clientes">
-                    <i class="fas fa-arrow-left"></i> Clientes
-                </a>
-            </li>
-        </ul>
-    </nav>
+{% block title %}{{ cliente.nome }}{% endblock %}
 
-    <aside class="main-sidebar sidebar-dark-primary elevation-4" style="min-height:100vh;">
-        <a href="/gestor" class="brand-link">
-            <i class="fas fa-shipping-fast ml-2"></i>
-            <span class="brand-text font-weight-light">Logística System</span>
-        </a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column">
-                    <li class="nav-item"><a href="/gestor" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
-                    <li class="nav-item"><a href="/gestao-funcionario" class="nav-link"><i class="nav-icon fas fa-users"></i><p>Funcionários</p></a></li>
-                    <li class="nav-item"><a href="/gestao-veiculo" class="nav-link"><i class="nav-icon fas fa-truck"></i><p>Veículos</p></a></li>
-                    <li class="nav-item"><a href="/gestao-filial" class="nav-link"><i class="nav-icon fas fa-store"></i><p>Filiais</p></a></li>
-                    <li class="nav-item"><a href="/gestao-clientes" class="nav-link active"><i class="nav-icon fas fa-address-book"></i><p>Clientes</p></a></li>
-                    <li class="nav-item"><a href="/logout" class="nav-link text-danger"><i class="nav-icon fas fa-sign-out-alt"></i><p>Sair</p></a></li>
-                </ul>
-            </nav>
+{% block page_title %}Detalhes do Cliente{% endblock %}
+
+{% block nav_clientes %}active{% endblock %}
+
+{% block topbar_right %}
+<a href="/gestao-clientes" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
+{% endblock %}
+
+{% block content %}
+<!-- Flash messages -->
+{% if msg == 'atualizado' %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="fas fa-check-circle mr-1"></i> <strong>Sucesso!</strong> Dados do cliente atualizados.
+    <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">&times;</button>
+</div>
+{% elif msg == 'criado' %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="fas fa-check-circle mr-1"></i> <strong>Cliente criado!</strong> Você pode editar os dados abaixo.
+    <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">&times;</button>
+</div>
+{% elif msg == 'doc_duplicado' %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="fas fa-exclamation-circle mr-1"></i> <strong>Erro:</strong> Este CPF/CNPJ já está cadastrado para outro cliente.
+    <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">&times;</button>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Coluna Esquerda: Formulário de edição -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-edit mr-2"></i>Dados do Cliente</h6>
+            </div>
+            <form action="/gestao-clientes/{{ cliente.id }}/salvar" method="POST">
+                <div class="card-body">
+                    <p class="text-muted small mb-3 text-uppercase font-weight-bold">Identificação</p>
+                    <div class="form-row">
+                        <div class="form-group col-md-7">
+                            <label>Nome completo <span class="text-danger">*</span></label>
+                            <input type="text" name="nome" class="form-control" value="{{ cliente.nome }}" required>
+                        </div>
+                        <div class="form-group col-md-5">
+                            <label>CPF / CNPJ <span class="text-danger">*</span></label>
+                            <input type="text" name="documento" class="form-control" value="{{ cliente.documento or '' }}" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" name="telefone" class="form-control" value="{{ cliente.telefone or '' }}" placeholder="(99) 99999-9999">
+                    </div>
+
+                    <hr>
+                    <p class="text-muted small mb-3 text-uppercase font-weight-bold">Endereço</p>
+                    <div class="form-row">
+                        <div class="form-group col-md-7">
+                            <label>Rua / Logradouro</label>
+                            <input type="text" name="rua" class="form-control" value="{{ cliente.rua or '' }}" placeholder="Nome da rua">
+                        </div>
+                        <div class="form-group col-md-5">
+                            <label>Número</label>
+                            <input type="text" name="numero" class="form-control" value="{{ cliente.numero or '' }}" placeholder="Ex: 245">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label>Bairro</label>
+                            <input type="text" name="bairro" class="form-control" value="{{ cliente.bairro or '' }}" placeholder="Nome do bairro">
+                        </div>
+                        <div class="form-group col-md-5">
+                            <label>Município</label>
+                            <input type="text" name="municipio" class="form-control" value="{{ cliente.municipio or '' }}" placeholder="Cidade">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>UF</label>
+                            <input type="text" name="estado" class="form-control" value="{{ cliente.estado or '' }}" placeholder="SP" maxlength="2" style="text-transform: uppercase;">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <label>Ponto de Referência</label>
+                            <input type="text" name="ponto_referencia" class="form-control" value="{{ cliente.ponto_referencia or '' }}" placeholder="Ex: Próximo ao mercado X">
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-between">
+                    <a href="/gestao-clientes" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left mr-1"></i> Voltar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i> Salvar Alterações
+                    </button>
+                </div>
+            </form>
         </div>
-    </aside>
+    </div>
 
-    <div class="content-wrapper" style="padding:24px;">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row align-items-center mb-2">
-                    <div class="col d-flex align-items-center gap-3">
-                        <div class="avatar-circle mr-3">
-                            {{ cliente.nome[0].upper() }}
-                        </div>
-                        <div>
-                            <h1 class="mb-0">{{ cliente.nome }}</h1>
-                            <small class="text-muted">
-                                <code>{{ cliente.documento or '—' }}</code>
-                                &nbsp;·&nbsp; ID #{{ cliente.id }}
-                            </small>
-                        </div>
-                    </div>
-                </div>
+    <!-- Coluna Direita: Resumo + Zona de Perigo -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-info-circle mr-2"></i>Resumo</h6>
             </div>
-        </section>
-
-        <section class="content">
-            <div class="container-fluid">
-
-                <!-- Flash messages -->
-                {% if msg == 'atualizado' %}
-                <div class="alert alert-success alert-dismissible fade show">
-                    <i class="fas fa-check-circle mr-1"></i>
-                    <strong>Sucesso!</strong> Dados do cliente atualizados.
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                </div>
-                {% elif msg == 'criado' %}
-                <div class="alert alert-success alert-dismissible fade show">
-                    <i class="fas fa-check-circle mr-1"></i>
-                    <strong>Cliente criado!</strong> Você pode editar os dados abaixo.
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                </div>
-                {% elif msg == 'doc_duplicado' %}
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <i class="fas fa-exclamation-circle mr-1"></i>
-                    <strong>Erro:</strong> Este CPF/CNPJ já está cadastrado para outro cliente.
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>ID:</strong> #{{ cliente.id }}</p>
+                <p class="mb-1">
+                    <strong>Documento:</strong>
+                    <code>{{ cliente.documento or '—' }}</code>
+                </p>
+                <p class="mb-1">
+                    <strong>Telefone:</strong>
+                    {% if cliente.telefone %}
+                        <a href="tel:{{ cliente.telefone }}">{{ cliente.telefone }}</a>
+                    {% else %}
+                        <span class="text-muted">Não informado</span>
+                    {% endif %}
+                </p>
+                {% if cliente.rua %}
+                <p class="mb-0 text-muted small mt-2">
+                    <i class="fas fa-map-marker-alt mr-1"></i>
+                    {{ cliente.rua }}, {{ cliente.numero or 's/n' }}<br>
+                    {{ cliente.bairro or '' }}
+                    {% if cliente.municipio %}
+                    <br>{{ cliente.municipio }}{% if cliente.estado %} — {{ cliente.estado }}{% endif %}
+                    {% endif %}
+                </p>
                 {% endif %}
-
-                <div class="row">
-                    <!-- Formulário de edição -->
-                    <div class="col-lg-8">
-                        <div class="card card-outline card-primary">
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <i class="fas fa-edit mr-1"></i> Dados do Cliente
-                                </h3>
-                            </div>
-                            <form action="/gestao-clientes/{{ cliente.id }}/salvar" method="POST">
-                                <div class="card-body">
-
-                                    <div class="section-label">Identificação</div>
-                                    <div class="form-row">
-                                        <div class="form-group col-md-7">
-                                            <label>Nome completo <span class="text-danger">*</span></label>
-                                            <input type="text" name="nome" class="form-control"
-                                                   value="{{ cliente.nome }}" required>
-                                        </div>
-                                        <div class="form-group col-md-5">
-                                            <label>CPF / CNPJ <span class="text-danger">*</span></label>
-                                            <input type="text" name="documento" class="form-control"
-                                                   value="{{ cliente.documento or '' }}" required>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Telefone</label>
-                                        <input type="text" name="telefone" class="form-control"
-                                               value="{{ cliente.telefone or '' }}"
-                                               placeholder="(99) 99999-9999">
-                                    </div>
-
-                                    <hr>
-                                    <div class="section-label">Endereço</div>
-                                    <div class="form-row">
-                                        <div class="form-group col-md-7">
-                                            <label>Rua / Logradouro</label>
-                                            <input type="text" name="rua" class="form-control"
-                                                   value="{{ cliente.rua or '' }}"
-                                                   placeholder="Nome da rua">
-                                        </div>
-                                        <div class="form-group col-md-5">
-                                            <label>Número</label>
-                                            <input type="text" name="numero" class="form-control"
-                                                   value="{{ cliente.numero or '' }}"
-                                                   placeholder="Ex: 245">
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group col-md-4">
-                                            <label>Bairro</label>
-                                            <input type="text" name="bairro" class="form-control"
-                                                   value="{{ cliente.bairro or '' }}"
-                                                   placeholder="Nome do bairro">
-                                        </div>
-                                        <div class="form-group col-md-5">
-                                            <label>Município</label>
-                                            <input type="text" name="municipio" class="form-control"
-                                                   value="{{ cliente.municipio or '' }}"
-                                                   placeholder="Cidade">
-                                        </div>
-                                        <div class="form-group col-md-3">
-                                            <label>UF</label>
-                                            <input type="text" name="estado" class="form-control"
-                                                   value="{{ cliente.estado or '' }}"
-                                                   placeholder="SP" maxlength="2"
-                                                   style="text-transform:uppercase;">
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group col-md-12">
-                                            <label>Ponto de Referência</label>
-                                            <input type="text" name="ponto_referencia" class="form-control"
-                                                   value="{{ cliente.ponto_referencia or '' }}"
-                                                   placeholder="Ex: Próximo ao mercado X">
-                                        </div>
-                                    </div>
-
-                                </div>
-                                <div class="card-footer d-flex justify-content-end">
-                                    <a href="/gestao-clientes" class="btn btn-outline-secondary mr-2">
-                                        <i class="fas fa-arrow-left mr-1"></i> Voltar
-                                    </a>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save mr-1"></i> Salvar Alterações
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Painel lateral: resumo + excluir -->
-                    <div class="col-lg-4">
-                        <div class="card card-outline card-secondary">
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <i class="fas fa-info-circle mr-1"></i> Resumo
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-1"><strong>ID:</strong> #{{ cliente.id }}</p>
-                                <p class="mb-1">
-                                    <strong>Documento:</strong>
-                                    <code>{{ cliente.documento or '—' }}</code>
-                                </p>
-                                <p class="mb-1">
-                                    <strong>Telefone:</strong>
-                                    {% if cliente.telefone %}
-                                        <a href="tel:{{ cliente.telefone }}">{{ cliente.telefone }}</a>
-                                    {% else %}
-                                        <span class="text-muted">Não informado</span>
-                                    {% endif %}
-                                </p>
-                                {% if cliente.rua %}
-                                <p class="mb-0 text-muted small mt-2">
-                                    <i class="fas fa-map-marker-alt mr-1"></i>
-                                    {{ cliente.rua }}, {{ cliente.numero or 's/n' }}<br>
-                                    {{ cliente.bairro or '' }}
-                                    {% if cliente.municipio %}
-                                    <br>{{ cliente.municipio }}{% if cliente.estado %} — {{ cliente.estado }}{% endif %}
-                                    {% endif %}
-                                </p>
-                                {% endif %}
-                                {% if cliente.ponto_referencia %}
-                                <p class="mt-1 text-muted small">
-                                    <i class="fas fa-thumbtack mr-1"></i>
-                                    {{ cliente.ponto_referencia }}
-                                </p>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- Zona de perigo -->
-                        <div class="card card-outline card-danger">
-                            <div class="card-header">
-                                <h3 class="card-title text-danger">
-                                    <i class="fas fa-exclamation-triangle mr-1"></i> Zona de Perigo
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted small">
-                                    A exclusão é permanente e não pode ser desfeita.
-                                    Entregas vinculadas a este cliente <strong>não serão removidas</strong>.
-                                </p>
-                                <form action="/gestao-clientes/{{ cliente.id }}/excluir"
-                                      method="POST"
-                                      onsubmit="return confirm('Excluir {{ cliente.nome }}?\nEsta ação é permanente e não pode ser desfeita.')">
-                                    <button type="submit" class="btn btn-danger btn-block">
-                                        <i class="fas fa-trash-alt mr-1"></i> Excluir Cliente
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+                {% if cliente.ponto_referencia %}
+                <p class="mt-2 text-muted small">
+                    <i class="fas fa-thumbtack mr-1"></i> {{ cliente.ponto_referencia }}
+                </p>
+                {% endif %}
             </div>
-        </section>
+        </div>
+
+        <div class="card mb-4" style="border-left: 3px solid #dc3545;">
+            <div class="card-header">
+                <h6 class="mb-0 font-weight-bold text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Zona de Perigo</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    A exclusão é permanente e não pode ser desfeita.
+                    Entregas vinculadas a este cliente <strong>não serão removidas</strong>.
+                </p>
+                <form action="/gestao-clientes/{{ cliente.id }}/excluir" method="POST"
+                      onsubmit="return confirm('Excluir {{ cliente.nome }}?\nEsta ação é permanente e não pode ser desfeita.')">
+                    <button type="submit" class="btn btn-danger btn-block">
+                        <i class="fas fa-trash-alt mr-1"></i> Excluir Cliente
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-</body>
-</html>
+{% endblock %}
