@@ -45,6 +45,12 @@
         </ul>
         <ul class="navbar-nav ml-auto">
             <li class="nav-item">
+                <span class="nav-link text-muted" title="Atualização automática">
+                    <i class="fas fa-sync-alt" id="refresh-icon"></i>
+                    <span class="badge badge-secondary ml-1" id="refresh-countdown">30s</span>
+                </span>
+            </li>
+            <li class="nav-item">
                 <a href="/logout" class="nav-link text-danger">
                     <i class="fas fa-sign-out-alt"></i>
                     <span class="d-none d-sm-inline"> Sair</span>
@@ -359,5 +365,28 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script>
+// ── Auto-refresh do painel do gestor ──────────────────────────────
+(function () {
+    const INTERVALO = 30; // segundos
+    let restante = INTERVALO;
+    const badge = document.getElementById('refresh-countdown');
+    const icon  = document.getElementById('refresh-icon');
+
+    setInterval(function () {
+        restante--;
+        if (badge) badge.textContent = restante + 's';
+
+        if (restante <= 5 && badge) {
+            badge.className = 'badge badge-warning ml-1';
+        }
+        if (restante <= 0) {
+            if (icon)  icon.classList.add('fa-spin');
+            if (badge) badge.textContent = '…';
+            location.reload();
+        }
+    }, 1000);
+})();
+</script>
 </body>
 </html>
