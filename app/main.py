@@ -488,6 +488,11 @@ async def processar_funcionario(
     func = db.query(Usuario).filter(Usuario.id == func_id).first()
     if func:
         if acao == "excluir":
+            # Desvincular entregas antes de excluir (evita erro de chave estrangeira)
+            db.query(Entrega).filter(Entrega.entregador_id == func_id).update({"entregador_id": None})
+            db.query(Entrega).filter(Entrega.operador_id == func_id).update({"operador_id": None})
+            # Desvincular veículos
+            db.query(Veiculo).filter(Veiculo.entregador_id == func_id).update({"entregador_id": None})
             db.delete(func)
         else:
             func.username = username
