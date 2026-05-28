@@ -1,12 +1,14 @@
 """
-Script de inicialização — execute UMA VEZ após 'alembic upgrade head'.
+Script de inicialização — executado em cada deploy pelo Procfile.
 
-    python seed.py
+    alembic upgrade head && python seed.py && uvicorn ...
 
-Cria:
+Cria (apenas se não existirem):
   - Filial padrão "Filial Principal"
-  - Usuário admin (gestor) com senha configurável via variável ADMIN_SENHA
-    (padrão: admin123 — troque imediatamente em produção)
+  - Usuário admin (gestor) com senha definida via variável ADMIN_SENHA
+
+IMPORTANTE: Defina ADMIN_SENHA nas variáveis de ambiente do Railway.
+Se o admin já existir no banco, o seed é pulado sem erro.
 """
 
 import os
@@ -22,22 +24,15 @@ from app.models import Base, Filial, Usuario
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_SENHA = os.getenv("ADMIN_SENHA", "")
-
-if not ADMIN_SENHA:
-    raise SystemExit(
-        "[seed] ERRO: variável ADMIN_SENHA não definida.\n"
-        "  Configure a variável de ambiente antes de executar o seed.\n"
-        "  No Railway: vá em Settings → Variables → adicione ADMIN_SENHA."
-    )
+ADMIN_SENHA    = os.getenv("ADMIN_SENHA", "")
 
 
 def seed():
     if engine is None:
         print("[seed] DATABASE_URL não definida — pulando seed.")
         return
-    db: Session = SessionLocal()
 
+    db: Session = SessionLocal()
     try:
         # --- Filial padrão ---
         filial = db.query(Filial).filter(Filial.nome == "Filial Principal").first()
@@ -52,14 +47,22 @@ def seed():
         # --- Usuário admin ---
         admin = db.query(Usuario).filter(Usuario.username == ADMIN_USERNAME).first()
         if not admin:
-            admin = Usuario(
-                username=ADMIN_USERNAME,
-                perfil="gestor",
-                filial_id=filial.id,
-                senha=pwd_context.hash(ADMIN_SENHA),
-            )
-            db.add(admin)
-            print(f"[seed] Usuário criado: username='{ADMIN_USERNAME}' / senha='{ADMIN_SENHA}'")
+            # Só cria se a senha foi definida via variável de ambiente
+            if not ADMIN_SENHA:
+                print(
+                    f"[seed] AVISO: usuário '{ADMIN_USERNAME}' não existe e ADMIN_SENHA "
+                    "não está definida — admin NÃO foi criado.\n"
+                    "  Defina ADMIN_SENHA nas variáveis do Railway e faça um novo deploy."
+                )
+            else:
+                admin = Usuario(
+                    username=ADMIN_USERNAME,
+                    perfil="gestor",
+                    filial_id=filial.id,
+                    senha=pwd_context.hash(ADMIN_SENHA),
+                )
+                db.add(admin)
+                print(f"[seed] Usuário '{ADMIN_USERNAME}' criado com sucesso.")
         else:
             print(f"[seed] Usuário '{ADMIN_USERNAME}' já existe — nada alterado.")
 
