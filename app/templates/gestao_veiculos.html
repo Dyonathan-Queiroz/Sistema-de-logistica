@@ -1,117 +1,91 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Frota | Gestão de Veículos</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        .table td { vertical-align: middle !important; }
-        .card-outline.card-primary { border-top: 3px solid #007bff; }
-        .badge-light { background-color: #f8f9fa; border: 1px solid #dee2e6; }
-        .table-responsive-sm { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        @media (max-width: 576px) { .content-wrapper { padding: 12px !important; } }
-    </style>
-</head>
-<body class="hold-transition sidebar-mini">
-<div class="wrapper">
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-            </li>
-            <li class="nav-item"><a class="nav-link" href="/gestor"><i class="fas fa-arrow-left"></i> Voltar</a></li>
-        </ul>
-    </nav>
+{% extends "base.html" %}
 
-    <aside class="main-sidebar sidebar-dark-primary elevation-4" style="min-height: 100vh;">
-        <a href="/gestor" class="brand-link"><i class="fas fa-shipping-fast ml-2"></i> <span class="brand-text font-weight-light">Logística System</span></a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column">
-                    <li class="nav-item"><a href="/gestor" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
-                    <li class="nav-item"><a href="/gestao-funcionario" class="nav-link"><i class="nav-icon fas fa-users"></i><p>Funcionários</p></a></li>
-                    <li class="nav-item"><a href="/gestao-veiculo" class="nav-link active"><i class="nav-icon fas fa-truck"></i><p>Veículos</p></a></li>
-                    <li class="nav-item"><a href="/gestao-filial" class="nav-link"><i class="nav-icon fas fa-store"></i><p>Filiais</p></a></li>
-                    <li class="nav-item"><a href="/gestao-clientes" class="nav-link"><i class="nav-icon fas fa-address-book"></i><p>Clientes</p></a></li>
-                    <li class="nav-item"><a href="/logout" class="nav-link text-danger"><i class="nav-icon fas fa-sign-out-alt"></i><p>Sair</p></a></li>
-                </ul>
-            </nav>
+{% block title %}Veículos{% endblock %}
+
+{% block page_title %}Gerenciamento de Frota{% endblock %}
+
+{% block nav_veiculos %}active{% endblock %}
+
+{% block topbar_right %}
+<a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Coluna Esquerda: Novo Veículo -->
+    <div class="col-md-4">
+        <div class="card mb-4" style="border-left: 3px solid #16a34a;">
+            <div class="card-header">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-plus mr-2"></i>Novo Veículo</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/salvar-veiculo">
+                    <div class="form-group">
+                        <label for="placa">Placa</label>
+                        <input type="text" class="form-control" id="placa" name="placa" required placeholder="ABC-1234">
+                    </div>
+                    <div class="form-group">
+                        <label for="modelo">Modelo</label>
+                        <input type="text" class="form-control" id="modelo" name="modelo" required placeholder="Ex: Mercedes Sprinter">
+                    </div>
+                    <div class="form-group">
+                        <label for="tipo">Tipo</label>
+                        <select class="form-control" id="tipo" name="tipo">
+                            <option value="Moto">Moto</option>
+                            <option value="Carro">Carro</option>
+                            <option value="Caminhão">Caminhão</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-block">
+                        <i class="fas fa-save mr-1"></i> Registrar na Frota
+                    </button>
+                </form>
+            </div>
         </div>
-    </aside>
+    </div>
 
-    <div class="content-wrapper" style="padding: 20px;">
-        <section class="content-header">
-            <h1><i class="fas fa-truck text-secondary"></i> Gerenciamento de Frota</h1>
-        </section>
-        
-        <section class="content">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="card card-success card-outline">
-                        <div class="card-header"><h3 class="card-title"><i class="fas fa-plus"></i> Novo Veículo</h3></div>
-                        <form action="/salvar-veiculo" method="POST">
-                            <div class="card-body">
-                                <div class="form-group"><label>Placa</label><input type="text" name="placa" class="form-control" placeholder="ABC-1234" required></div>
-                                <div class="form-group"><label>Modelo</label><input type="text" name="modelo" class="form-control" placeholder="Ex: Mercedes Sprinter" required></div>
-                                <div class="form-group"><label>Tipo</label>
-                                    <select name="tipo" class="form-control">
-                                        <option value="Moto">Moto</option>
-                                        <option value="Carro">Carro</option>
-                                        <option value="Caminhão">Caminhão</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="card-footer"><button type="submit" class="btn btn-success btn-block">Registrar na Frota</button></div>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="col-md-8">
-                    <div class="card card-outline card-primary">
-                        <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-truck-moving mr-2"></i> Frota Ativa</h3>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive-sm">
-                            <table class="table table-hover table-striped">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>Veículo</th>
-                                        <th>Modelo</th>
-                                        <th class="text-center">Ações</th> </tr>
-                                </thead>
-                                <tbody>
-                                    {% for v in veiculos %}
-                                    <tr>
-                                        <td><span class="badge badge-light border">{{ v.placa }}</span></td>
-                                        <td>{{ v.modelo }}</td>
-                                        <td class="text-center">
-                                            <div class="btn-group">
-                                                <a href="/vincular-veiculo-page/{{ v.id }}" class="btn btn-sm btn-outline-info" title="Vincular Motorista">
-                                                    <i class="fas fa-link"></i>
-                                                </a>
-                                                <a href="/editar-veiculo/{{ v.id }}" class="btn btn-sm btn-outline-warning" title="Editar Veículo">
-                                                    <i class="fas fa-cog"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+    <!-- Coluna Direita: Frota Ativa -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-truck-moving mr-2"></i>Frota Ativa</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Veículo</th>
+                                <th>Modelo</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in veiculos %}
+                            <tr>
+                                <td><span class="badge badge-secondary">{{ v.placa }}</span></td>
+                                <td>{{ v.modelo }}</td>
+                                <td class="text-center">
+                                    <div class="btn-group">
+                                        <a href="/vincular-veiculo-page/{{ v.id }}" class="btn btn-sm btn-outline-info" title="Vincular Motorista">
+                                            <i class="fas fa-link"></i>
+                                        </a>
+                                        <a href="/editar-veiculo/{{ v.id }}" class="btn btn-sm btn-outline-warning" title="Editar Veículo">
+                                            <i class="fas fa-cog"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">Nenhum veículo cadastrado na frota.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </section>
+        </div>
     </div>
 </div>
-
-                            </div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-</body>
-</html>
+{% endblock %}
