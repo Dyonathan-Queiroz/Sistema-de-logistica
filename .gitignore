@@ -7,6 +7,12 @@
 .envrc
 env.bak/
 venv.bak/
+# Agente de sync — proteger credenciais Oracle e API
+sync_agent/.env
+sync_agent/*.env
+sync_agent/sync_tracking.db
+sync_agent/*.db
+sync_agent/*.log
 
 # =============================================================
 #  Ambiente virtual Python (Venv)

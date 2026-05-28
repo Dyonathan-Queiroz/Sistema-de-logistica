@@ -22,7 +22,14 @@ from app.models import Base, Filial, Usuario
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_SENHA = os.getenv("ADMIN_SENHA", "admin123")
+ADMIN_SENHA = os.getenv("ADMIN_SENHA", "")
+
+if not ADMIN_SENHA:
+    raise SystemExit(
+        "[seed] ERRO: variável ADMIN_SENHA não definida.\n"
+        "  Configure a variável de ambiente antes de executar o seed.\n"
+        "  No Railway: vá em Settings → Variables → adicione ADMIN_SENHA."
+    )
 
 
 def seed():
