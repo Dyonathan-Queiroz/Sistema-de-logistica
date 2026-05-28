@@ -258,14 +258,25 @@
 
   // ── Restore tab on load ────────────────────────────────────────
   (function() {
+    // 1. Parâmetro ?aba= na URL tem prioridade (ex: após aceitar entrega)
+    var urlParams = new URLSearchParams(window.location.search);
+    var abaUrl = urlParams.get('aba');
+    if (abaUrl) {
+      activateTab(abaUrl);
+      // Limpa o parâmetro da URL sem recarregar a página
+      history.replaceState(null, '', window.location.pathname);
+      return;
+    }
+    // 2. Aba salva no localStorage
     var saved = localStorage.getItem('abaAtiva');
     if (saved) {
       activateTab(saved);
-    } else {
-      {% if em_rota and not disponiveis %}
-      activateTab('emrota');
-      {% endif %}
+      return;
     }
+    // 3. Padrão: se tem em rota mas não tem disponíveis, abre em rota
+    {% if em_rota and not disponiveis %}
+    activateTab('emrota');
+    {% endif %}
   })();
 
   // ── Auto-refresh countdown ─────────────────────────────────────

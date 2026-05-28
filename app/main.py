@@ -218,7 +218,8 @@ async def aceitar_entrega(
         entrega.entregador_id = uid
         entrega.data_aceite = datetime.utcnow()
         db.commit()
-    return RedirectResponse(url="/entregador", status_code=303)
+    # Abre automaticamente a aba "Em Rota" após aceitar
+    return RedirectResponse(url="/entregador?aba=emrota", status_code=303)
 
 
 @app.get("/entregador/entrega/{entrega_id}")
