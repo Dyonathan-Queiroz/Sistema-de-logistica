@@ -56,7 +56,6 @@
                                 <div class="form-group"><label>Perfil</label>
                                     <select name="perfil" class="form-control" id="perfil-select" onchange="toggleFilial(this.value)">
                                         <option value="entregador">Entregador</option>
-                                        <option value="operador">Operador PDV</option>
                                         <option value="gestor">Gestor</option>
                                     </select>
                                 </div>
@@ -68,7 +67,7 @@
                                         <option value="{{ f.id }}">{{ f.nome }} {% if f.cidade %}({{ f.cidade }}){% endif %}</option>
                                         {% endfor %}
                                     </select>
-                                    <small class="text-muted">Obrigatório para Operador PDV.</small>
+                                    <small class="text-muted">Obrigatório para Entregador.</small>
                                 </div>
                             </div>
                             <div class="card-footer"><button type="submit" class="btn btn-primary btn-block">Salvar no Sistema</button></div>
@@ -90,8 +89,6 @@
                                         <td>
                                             {% if f.perfil == 'gestor' %}
                                                 <span class="badge badge-gestor"><i class="fas fa-user-shield"></i> Gestor</span>
-                                            {% elif f.perfil == 'operador' %}
-                                                <span class="badge" style="background:#17a2b8;color:white;"><i class="fas fa-desktop"></i> Operador PDV</span>
                                             {% else %}
                                                 <span class="badge badge-entregador"><i class="fas fa-motorcycle"></i> Entregador</span>
                                             {% endif %}
@@ -125,9 +122,9 @@
 <script>
 function toggleFilial(perfil) {
     document.getElementById('filial-group').style.display =
-        (perfil === 'operador') ? 'block' : 'none';
+        (perfil === 'entregador') ? 'block' : 'none';
 }
-// estado inicial: oculta filial se não for operador
+// estado inicial: mostra filial se for entregador
 toggleFilial(document.getElementById('perfil-select').value);
 </script>
 </body>

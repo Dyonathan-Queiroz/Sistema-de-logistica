@@ -28,7 +28,6 @@
                         <label><i class="fas fa-id-badge"></i> Perfil:</label>
                         <select name="perfil" class="form-control" id="perfil-edit" onchange="toggleFilial(this.value)">
                             <option value="entregador" {% if func.perfil == 'entregador' %}selected{% endif %}>Entregador</option>
-                            <option value="operador"   {% if func.perfil == 'operador'   %}selected{% endif %}>Operador PDV</option>
                             <option value="gestor"     {% if func.perfil == 'gestor'     %}selected{% endif %}>Gestor</option>
                         </select>
                     </div>
@@ -75,7 +74,7 @@
 <script>
 function toggleFilial(perfil) {
     document.getElementById('filial-group').style.display =
-        (perfil === 'operador') ? 'block' : 'none';
+        (perfil === 'entregador') ? 'block' : 'none';
 }
 toggleFilial(document.getElementById('perfil-edit').value);
 </script>
