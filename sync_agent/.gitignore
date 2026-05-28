@@ -1,0 +1,15 @@
+# Credenciais e variáveis de ambiente — NUNCA commitar
+.env
+*.env
+
+# Banco de rastreamento local (contém metadados das entregas sincronizadas)
+sync_tracking.db
+*.db
+
+# Logs gerados pelo agente
+*.log
+logs/
+
+# Cache Python
+__pycache__/
+*.pyc
