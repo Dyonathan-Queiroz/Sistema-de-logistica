@@ -4,12 +4,8 @@
 {% block page_title %}Dashboard{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 
-{# ── Topbar: date filter + refresh countdown ──────────────────────── #}
+{# ── Topbar: apenas countdown ─────────────────────────────────────── #}
 {% block topbar_right %}
-<form method="GET" action="/gestor" class="d-none d-sm-flex align-items-center" style="gap:6px;">
-    <input type="date" name="data" value="{{ data_filtro }}" class="form-control form-control-sm" style="width:160px;">
-    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter"></i></button>
-</form>
 <span style="font-size:12px;color:#6b7280;display:flex;align-items:center;gap:5px;">
     <i class="fas fa-sync-alt" id="refresh-icon"></i>
     <span id="refresh-countdown" style="background:#f3f4f6;border-radius:20px;padding:2px 8px;font-weight:600;">30s</span>
@@ -18,6 +14,24 @@
 
 {# ── Main content ─────────────────────────────────────────────────── #}
 {% block content %}
+
+<!-- Filtro de data (responsivo em todas as telas) -->
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-3" style="gap:8px;">
+    <form method="GET" action="/gestor" class="d-flex align-items-center flex-wrap" style="gap:6px;">
+        <label class="mb-0 text-muted small font-weight-bold" style="white-space:nowrap;">
+            <i class="fas fa-calendar-alt mr-1"></i> Data:
+        </label>
+        <input type="date" name="data" value="{{ data_filtro }}"
+               class="form-control form-control-sm" style="width:150px;">
+        <button type="submit" class="btn btn-sm btn-primary">
+            <i class="fas fa-filter mr-1"></i> Filtrar
+        </button>
+        <a href="/gestor" class="btn btn-sm btn-outline-secondary" title="Hoje">
+            <i class="fas fa-calendar-day"></i> Hoje
+        </a>
+    </form>
+    <small class="text-muted">Atualiza automaticamente a cada 30s</small>
+</div>
 
 <!-- Stats Grid -->
 <div class="stats-grid">
@@ -100,7 +114,7 @@
 <div class="row mb-4">
 
     <!-- Aguardando Entregador -->
-    <div class="col-md-6 mb-4 mb-md-0">
+    <div class="col-12 col-md-6 mb-4 mb-md-0">
         <div class="card h-100">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h6 class="mb-0 font-weight-bold">
@@ -146,7 +160,7 @@
     </div>
 
     <!-- Em Rota -->
-    <div class="col-md-6">
+    <div class="col-12 col-md-6">
         <div class="card h-100">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h6 class="mb-0 font-weight-bold">
@@ -191,7 +205,7 @@
 
 <!-- Stats por Filial -->
 <div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
         <h6 class="mb-0 font-weight-bold">
             <i class="fas fa-store mr-1 text-secondary"></i> Resumo por Filial
             <small class="text-muted ml-2">— {{ data_filtro }}</small>

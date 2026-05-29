@@ -28,13 +28,13 @@
 {% endif %}
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center" style="gap:10px;">
         <h6 class="mb-0 font-weight-bold">
             <i class="fas fa-list mr-1"></i> Lista de Clientes
             <span class="badge badge-secondary ml-1">{{ clientes | length }}</span>
         </h6>
-        <form method="GET" action="/gestao-clientes" class="d-inline-flex">
-            <div class="input-group input-group-sm" style="width: 280px;">
+        <form method="GET" action="/gestao-clientes" style="width:100%;max-width:300px;">
+            <div class="input-group input-group-sm">
                 <input type="text" name="q" value="{{ q }}" class="form-control"
                        placeholder="Buscar por nome, CPF ou telefone...">
                 <div class="input-group-append">
@@ -114,45 +114,45 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-row">
-                        <div class="form-group col-md-8">
+                        <div class="form-group col-12 col-sm-8">
                             <label>Nome <span class="text-danger">*</span></label>
                             <input type="text" name="nome" class="form-control" required placeholder="Nome completo do cliente">
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-12 col-sm-4">
                             <label>CPF / CNPJ <span class="text-danger">*</span></label>
                             <input type="text" name="documento" class="form-control" required placeholder="Somente números">
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-12 col-sm-4">
                             <label>Telefone</label>
                             <input type="text" name="telefone" class="form-control" placeholder="(99) 99999-9999">
                         </div>
-                        <div class="form-group col-md-5">
+                        <div class="form-group col-12 col-sm-5">
                             <label>Rua</label>
                             <input type="text" name="rua" class="form-control" placeholder="Nome da rua">
                         </div>
-                        <div class="form-group col-md-3">
+                        <div class="form-group col-12 col-sm-3">
                             <label>Número</label>
                             <input type="text" name="numero" class="form-control" placeholder="Ex: 245">
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group col-md-5">
+                        <div class="form-group col-12 col-sm-5">
                             <label>Bairro</label>
                             <input type="text" name="bairro" class="form-control" placeholder="Nome do bairro">
                         </div>
-                        <div class="form-group col-md-5">
+                        <div class="form-group col-12 col-sm-5">
                             <label>Município</label>
                             <input type="text" name="municipio" class="form-control" placeholder="Cidade">
                         </div>
-                        <div class="form-group col-md-2">
+                        <div class="form-group col-12 col-sm-2">
                             <label>UF</label>
                             <input type="text" name="estado" class="form-control" placeholder="SP" maxlength="2" style="text-transform: uppercase;">
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group col-md-12">
+                        <div class="form-group col-12">
                             <label>Ponto de Referência</label>
                             <input type="text" name="ponto_referencia" class="form-control" placeholder="Ex: Próximo ao mercado X">
                         </div>
