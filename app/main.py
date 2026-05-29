@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, case as sql_case, or_
 from passlib.context import CryptContext
 from datetime import date, datetime
+from app.utils import agora
 import re
 import os
 
@@ -216,7 +217,7 @@ async def aceitar_entrega(
     if entrega and entrega.status == "pendente" and uid:
         entrega.status = "em_rota"
         entrega.entregador_id = uid
-        entrega.data_aceite = datetime.utcnow()
+        entrega.data_aceite = agora()
         db.commit()
     # Abre automaticamente a aba "Em Rota" após aceitar
     return RedirectResponse(url="/entregador?aba=emrota", status_code=303)
@@ -249,8 +250,10 @@ async def detalhe_entrega(
     if telefone_wa and not telefone_wa.startswith("55"):
         telefone_wa = "55" + telefone_wa
 
-    municipio_cliente = (cliente.municipio or "") if cliente else ""
-    estado_cliente = (cliente.estado or "") if cliente else ""
+    # Municipio/UF: prioriza o snapshot da entrega (vindo do Consinco),
+    # cai no cadastro do cliente como fallback
+    municipio_cliente = (entrega.municipio or (cliente.municipio if cliente else "") or "")
+    estado_cliente    = (entrega.uf        or (cliente.estado    if cliente else "") or "")
 
     partes_maps = [f"{entrega.rua}, {entrega.numero}", entrega.bairro]
     if municipio_cliente:
@@ -289,7 +292,7 @@ async def finalizar_entrega(
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if entrega and entrega.status == "em_rota" and entrega.entregador_id == uid:
         entrega.status = "finalizado"
-        entrega.data_finalizacao = datetime.utcnow()
+        entrega.data_finalizacao = agora()
         db.commit()
     return RedirectResponse(url="/entregador", status_code=303)
 
@@ -683,6 +686,9 @@ async def api_lancar_entrega(dados: dict, db: Session = Depends(get_db)):
         rua=dados.get("rua"),
         numero=dados.get("numero"),
         bairro=dados.get("bairro"),
+        municipio=dados.get("municipio"),
+        uf=dados.get("uf"),
+        cep=dados.get("cep"),
         observacao=dados.get("observacao"),
         status="pendente",
     )

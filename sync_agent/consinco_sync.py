@@ -297,21 +297,19 @@ def processar(api: LogisticaAPI, registros: list):
             log.error("Não foi possível garantir cliente para emp=%s seq=%s — pulando.", nroempresa, seqdocto)
             continue
 
-        # 2. Observação enriquecida
-        obs_partes = []
-        if r.get("CIDADE"):     obs_partes.append(f"Cidade: {r['CIDADE']}")
-        if r.get("UF"):         obs_partes.append(f"UF: {r['UF']}")
-        if r.get("CEP"):        obs_partes.append(f"CEP: {r['CEP']}")
-        if r.get("OBSERVACAO"): obs_partes.append(r["OBSERVACAO"])
-        obs = " | ".join(obs_partes) or None
+        # 2. Observação: apenas o campo real do Consinco (sem misturar cidade/UF/CEP)
+        obs = (r.get("OBSERVACAO") or "").strip() or None
 
-        # 3. Criar entrega
+        # 3. Criar entrega com municipio, uf e cep em colunas próprias
         entrega = api.criar_entrega({
             "cupom_fiscal": str(r["NROCHECKOUT"]),
             "cliente_id":   cliente["id"],
             "rua":          r["LOGRADOURO"],
             "numero":       r["NUMERO"],
             "bairro":       r["BAIRRO"],
+            "municipio":    (r.get("CIDADE")    or "").strip() or None,
+            "uf":           (r.get("UF")        or "").strip() or None,
+            "cep":          (r.get("CEP")       or "").strip() or None,
             "observacao":   obs,
             "filial_id":    filial_id,
         })
