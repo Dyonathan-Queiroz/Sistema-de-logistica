@@ -58,6 +58,11 @@ class Entrega(Base):
     observacao = Column(Text, nullable=True)
     motivo_erro = Column(Text, nullable=True)
 
+    # IDs de rastreabilidade do Consinco (Oracle)
+    nro_checkout = Column(Integer, nullable=True)   # NROCHECKOUT — número do checkout PDV
+    seq_docto    = Column(Integer, nullable=True)   # SEQDOCTO    — sequencial do documento
+    seq_pessoa   = Column(Integer, nullable=True)   # SEQPESSOA   — sequencial do cliente
+
 class Veiculo(Base):
     __tablename__ = "veiculos"
     id = Column(Integer, primary_key=True, index=True)
