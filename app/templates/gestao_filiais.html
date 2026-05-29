@@ -13,7 +13,7 @@
 {% block content %}
 <div class="row">
     <!-- Coluna Esquerda: Nova Filial -->
-    <div class="col-md-4">
+    <div class="col-12 col-md-4 mb-4 mb-md-0">
         <div class="card mb-4" style="border-left: 3px solid #16a34a;">
             <div class="card-header">
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-plus mr-2"></i>Nova Filial</h6>
@@ -37,7 +37,7 @@
     </div>
 
     <!-- Coluna Direita: Filiais Cadastradas -->
-    <div class="col-md-8">
+    <div class="col-12 col-md-8">
         <div class="card mb-4">
             <div class="card-header">
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-list mr-2"></i>Filiais Cadastradas</h6>
@@ -72,13 +72,13 @@
                         <form action="/processar-filial/{{ f.id }}" method="POST">
                             <input type="hidden" name="acao" value="editar">
                             <div class="form-row">
-                                <div class="form-group col-md-5">
+                                <div class="form-group col-12 col-sm-5">
                                     <input type="text" name="nome" value="{{ f.nome }}" class="form-control form-control-sm" placeholder="Nome" required>
                                 </div>
-                                <div class="form-group col-md-5">
+                                <div class="form-group col-12 col-sm-5">
                                     <input type="text" name="cidade" value="{{ f.cidade or '' }}" class="form-control form-control-sm" placeholder="Cidade">
                                 </div>
-                                <div class="form-group col-md-2">
+                                <div class="form-group col-12 col-sm-2">
                                     <button type="submit" class="btn btn-sm btn-warning btn-block">
                                         <i class="fas fa-save"></i> Salvar
                                     </button>
