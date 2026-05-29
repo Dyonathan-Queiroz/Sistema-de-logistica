@@ -75,6 +75,7 @@
             .stats-grid { grid-template-columns: repeat(2,1fr); gap: 10px; }
         }
     </style>
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
 
@@ -97,6 +98,9 @@
         <div class="nav-section-label">Principal</div>
         <a href="/gestor" class="nav-link {% block nav_dashboard %}{% endblock %}">
             <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a href="/gestor/log" class="nav-link {% block nav_log %}{% endblock %}">
+            <i class="fas fa-history"></i> Log de Entregas
         </a>
 
         <div class="nav-section-label">Gestão</div>

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, case as sql_case, or_
 from passlib.context import CryptContext
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from app.utils import agora
 import re
 import os
@@ -414,6 +414,188 @@ async def salvar_ajuste_entrega(
     db.commit()
 
     return RedirectResponse(url="/gestor", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# LOG DE ENTREGAS
+# ---------------------------------------------------------------------------
+
+_PER_PAGE = 20
+
+@app.get("/gestor/log")
+async def log_entregas_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user_role: str = Cookie(None),
+    inicio: str = None,
+    fim: str = None,
+    status: str = None,
+    filial_id: str = None,
+    q: str = None,
+    page: int = 1,
+):
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    # ── Datas padrão: últimos 30 dias ──
+    hoje = agora().date()
+    inicio_str = inicio or (hoje - timedelta(days=30)).strftime("%Y-%m-%d")
+    fim_str    = fim    or hoje.strftime("%Y-%m-%d")
+
+    try:
+        inicio_dt = datetime.strptime(inicio_str, "%Y-%m-%d")
+        fim_dt    = datetime.strptime(fim_str,    "%Y-%m-%d") + timedelta(days=1)
+    except ValueError:
+        inicio_dt = datetime.combine(hoje - timedelta(days=30), datetime.min.time())
+        fim_dt    = datetime.combine(hoje, datetime.max.time())
+
+    # ── Query base (com filtros de data) ──
+    base_q = db.query(Entrega).filter(
+        Entrega.data_criacao >= inicio_dt,
+        Entrega.data_criacao <  fim_dt,
+    )
+
+    # ── Stats (contagens por status no período, sem filtro de status) ──
+    cnt_total     = base_q.count()
+    cnt_pendente  = base_q.filter(Entrega.status == "pendente").count()
+    cnt_em_rota   = base_q.filter(Entrega.status == "em_rota").count()
+    cnt_finalizado= base_q.filter(Entrega.status == "finalizado").count()
+    cnt_erro      = base_q.filter(Entrega.status == "erro_entrega").count()
+
+    # ── Filtros adicionais para a tabela ──
+    lista_q = db.query(Entrega).filter(
+        Entrega.data_criacao >= inicio_dt,
+        Entrega.data_criacao <  fim_dt,
+    )
+    if status:
+        lista_q = lista_q.filter(Entrega.status == status)
+    if filial_id:
+        try:
+            lista_q = lista_q.filter(Entrega.filial_id == int(filial_id))
+        except ValueError:
+            pass
+    if q:
+        # busca por cupom fiscal
+        lista_q = lista_q.filter(
+            or_(
+                Entrega.cupom_fiscal.ilike(f"%{q}%"),
+            )
+        )
+
+    lista_q = lista_q.order_by(Entrega.data_criacao.desc())
+    total   = lista_q.count()
+    total_pages = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+    page    = max(1, min(page, total_pages))
+
+    entregas_raw = lista_q.offset((page - 1) * _PER_PAGE).limit(_PER_PAGE).all()
+
+    # ── Enriquece com dados de cliente / filial / entregador ──
+    clientes_map  = {c.id: c for c in db.query(Cliente).all()}
+    filiais_map   = {f.id: f for f in db.query(Filial).all()}
+    usuarios_map  = {u.id: u for u in db.query(Usuario).all()}
+
+    entregas = []
+    for e in entregas_raw:
+        cli  = clientes_map.get(e.cliente_id)
+        fil  = filiais_map.get(e.filial_id)
+        ent  = usuarios_map.get(e.entregador_id)
+        entregas.append({
+            "entrega":        e,
+            "cliente_nome":   cli.nome      if cli  else "",
+            "cliente_doc":    cli.documento if cli  else "",
+            "cliente_tel":    cli.telefone  if cli  else "",
+            "filial_nome":    fil.nome      if fil  else "",
+            "entregador_nome":ent.username  if ent  else "",
+        })
+
+    # ── Querystring preservada para paginação ──
+    params = {}
+    if inicio: params["inicio"]   = inicio
+    if fim:    params["fim"]      = fim
+    if status: params["status"]   = status
+    if filial_id: params["filial_id"] = filial_id
+    if q:      params["q"]        = q
+    qs = "&".join(f"{k}={v}" for k, v in params.items())
+
+    filiais = db.query(Filial).order_by(Filial.nome).all()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="log_entregas.html",
+        context={
+            "entregas":      entregas,
+            "total":         total,
+            "page":          page,
+            "total_pages":   total_pages,
+            "qs":            qs,
+            "filiais":       filiais,
+            "cnt_total":     cnt_total,
+            "cnt_pendente":  cnt_pendente,
+            "cnt_em_rota":   cnt_em_rota,
+            "cnt_finalizado":cnt_finalizado,
+            "cnt_erro":      cnt_erro,
+            "filtros": {
+                "inicio":    inicio_str,
+                "fim":       fim_str,
+                "status":    status or "",
+                "filial_id": filial_id or "",
+                "q":         q or "",
+            },
+        },
+    )
+
+
+@app.post("/gestor/log/editar/{entrega_id}")
+async def salvar_edicao_log(
+    entrega_id: int,
+    rua:              str  = Form(...),
+    numero:           str  = Form(...),
+    bairro:           str  = Form(...),
+    municipio:        str  = Form(default=""),
+    uf:               str  = Form(default=""),
+    cep:              str  = Form(default=""),
+    observacao:       str  = Form(default=""),
+    novo_status:      str  = Form(default=""),
+    motivo_erro:      str  = Form(default=""),
+    motivo_alteracao: str  = Form(default=""),
+    db: Session = Depends(get_db),
+    user_role: str = Cookie(None),
+):
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
+    if not entrega:
+        return RedirectResponse(url="/gestor/log", status_code=303)
+
+    # Atualiza campos de endereço
+    entrega.rua       = rua.strip()
+    entrega.numero    = numero.strip()
+    entrega.bairro    = bairro.strip()
+    entrega.municipio = municipio.strip() or entrega.municipio
+    entrega.uf        = uf.strip().upper() or entrega.uf
+    entrega.cep       = cep.strip() or entrega.cep
+    if observacao.strip():
+        entrega.observacao = observacao.strip()
+
+    # Atualiza status (se solicitado)
+    if novo_status in ("pendente", "finalizado", "erro_entrega"):
+        entrega.status = novo_status
+        if novo_status == "pendente":
+            # Reabrir: limpa entregador e datas
+            entrega.entregador_id  = None
+            entrega.data_aceite    = None
+            entrega.data_finalizacao = None
+            entrega.motivo_erro    = None
+        if novo_status == "finalizado" and not entrega.data_finalizacao:
+            entrega.data_finalizacao = agora()
+
+    # Registra motivo do erro quando aplicável
+    if motivo_erro.strip():
+        entrega.motivo_erro = motivo_erro.strip()
+
+    db.commit()
+    return RedirectResponse(url="/gestor/log", status_code=303)
 
 
 # ---------------------------------------------------------------------------

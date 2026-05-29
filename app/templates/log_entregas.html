@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+{% block title %}Log de Entregas{% endblock %}
+{% block nav_log %}active{% endblock %}
+{% block page_title %}Log de Entregas{% endblock %}
+
+{% block topbar_right %}
+<span style="font-size:13px;color:#6b7280;">
+    <i class="fas fa-filter" style="margin-right:4px;"></i>
+    {{ total }} registro(s) encontrado(s)
+</span>
+{% endblock %}
+
+{# ── CSS específico desta página ── #}
+{% block extra_head %}
+<style>
+  /* Stat cards — 5 colunas */
+  .log-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:24px; }
+  @media(max-width:992px){ .log-stats{ grid-template-columns:repeat(3,1fr); } }
+  @media(max-width:576px){ .log-stats{ grid-template-columns:repeat(2,1fr); } }
+
+  /* Filtros */
+  .filter-card { background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); border:1px solid #e5e7eb; padding:18px 20px; margin-bottom:20px; }
+  .filter-title { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#9ca3af; font-weight:700; margin-bottom:14px; }
+  .filter-grid { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .filter-group { display:flex; flex-direction:column; gap:4px; }
+  .filter-group label { font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+  .filter-group input,
+  .filter-group select { border:1px solid #e5e7eb; border-radius:8px; padding:7px 10px; font-size:13px; color:#374151; outline:none; transition:border-color .15s; min-width:120px; }
+  .filter-group input:focus,
+  .filter-group select:focus { border-color:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.08); }
+  .filter-group.grow { flex:1; min-width:180px; }
+
+  /* Badges status */
+  .badge-status { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
+  .badge-status .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .bs-pendente   { background:#fef3c7; color:#92400e; }
+  .bs-pendente   .dot { background:#f59e0b; }
+  .bs-em_rota    { background:#dbeafe; color:#1e40af; }
+  .bs-em_rota    .dot { background:#3b82f6; }
+  .bs-finalizado { background:#d1fae5; color:#065f46; }
+  .bs-finalizado .dot { background:#10b981; }
+  .bs-erro       { background:#fee2e2; color:#991b1b; }
+  .bs-erro       .dot { background:#ef4444; animation:pulse-dot 1.2s infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* Tabela */
+  .log-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .log-table thead tr { background:#f9fafb; }
+  .log-table th { padding:10px 14px; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid #e5e7eb; white-space:nowrap; }
+  .log-table td { padding:12px 14px; border-bottom:1px solid #f3f4f6; color:#374151; vertical-align:middle; }
+  .log-table tbody tr:hover { background:#fafafa; }
+  .log-table tbody tr:last-child td { border-bottom:none; }
+
+  .td-cupom   { font-family:monospace; font-weight:700; color:#111827; font-size:12px; }
+  .td-cli strong { display:block; color:#111827; }
+  .td-cli small  { color:#9ca3af; font-size:11px; }
+  .td-end        { max-width:220px; }
+  .td-end .end-rua  { color:#111827; }
+  .td-end .end-cid  { font-size:11px; color:#9ca3af; margin-top:2px; }
+  .td-end .end-obs  { font-size:11px; color:#c4b5fd; font-style:italic; margin-top:2px; }
+  .td-data small { color:#9ca3af; font-size:11px; display:block; }
+
+  /* Paginação */
+  .pg-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-top:1px solid #e5e7eb; }
+  .pg-info { font-size:13px; color:#9ca3af; }
+  .pg-btns { display:flex; gap:4px; }
+  .pg-btn { width:34px; height:34px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; color:#374151; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; text-decoration:none; transition:all .15s; }
+  .pg-btn:hover { background:#f3f4f6; color:#111827; }
+  .pg-btn.active { background:#7c3aed; color:#fff; border-color:#7c3aed; }
+  .pg-btn.disabled { opacity:.4; pointer-events:none; }
+
+  /* Linha com erro — destaque sutil */
+  .row-erro td { background:#fff5f5 !important; }
+
+  /* Modal */
+  .modal-section-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#9ca3af; margin-bottom:10px; margin-top:18px; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
+  .modal-section-label:first-child { margin-top:0; }
+  .form-grid-3 { display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; margin-bottom:12px; }
+  .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  @media(max-width:576px){ .form-grid-3,.form-grid-2{ grid-template-columns:1fr; } }
+  .form-field-label { font-size:11px; font-weight:600; color:#6b7280; display:block; margin-bottom:4px; }
+  .motivo-box { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:14px; margin-top:16px; }
+  .motivo-box-title { font-size:11px; font-weight:700; color:#c2410c; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+
+  /* Stat card red */
+  .stat-card.red::before { background:linear-gradient(90deg,#ef4444,#f87171); }
+  .stat-icon.red { background:#fef2f2; color:#ef4444; }
+
+  /* Stat card 5 cols overrides */
+  .log-stats .stat-card { padding:16px; }
+  .log-stats .stat-value { font-size:26px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── STATS ── #}
+<div class="log-stats">
+  <div class="stat-card blue">
+    <div class="stat-icon blue"><i class="fas fa-boxes"></i></div>
+    <div class="stat-value">{{ cnt_total }}</div>
+    <div class="stat-label">Total no período</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+    <div class="stat-value">{{ cnt_pendente }}</div>
+    <div class="stat-label">Pendentes</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-icon purple"><i class="fas fa-motorcycle"></i></div>
+    <div class="stat-value">{{ cnt_em_rota }}</div>
+    <div class="stat-label">Em Rota</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+    <div class="stat-value">{{ cnt_finalizado }}</div>
+    <div class="stat-label">Finalizadas</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-icon red"><i class="fas fa-exclamation-triangle"></i></div>
+    <div class="stat-value">{{ cnt_erro }}</div>
+    <div class="stat-label">Erros / Inconsist.</div>
+  </div>
+</div>
+
+{# ── FILTROS ── #}
+<div class="filter-card">
+  <div class="filter-title"><i class="fas fa-filter"></i> Filtros</div>
+  <form method="get" action="/gestor/log">
+    <div class="filter-grid">
+      <div class="filter-group">
+        <label>Data início</label>
+        <input type="date" name="inicio" value="{{ filtros.inicio }}">
+      </div>
+      <div class="filter-group">
+        <label>Data fim</label>
+        <input type="date" name="fim" value="{{ filtros.fim }}">
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="">Todos</option>
+          <option value="pendente"     {% if filtros.status == "pendente"     %}selected{% endif %}>Pendente</option>
+          <option value="em_rota"      {% if filtros.status == "em_rota"      %}selected{% endif %}>Em Rota</option>
+          <option value="finalizado"   {% if filtros.status == "finalizado"   %}selected{% endif %}>Finalizado</option>
+          <option value="erro_entrega" {% if filtros.status == "erro_entrega" %}selected{% endif %}>Erro / Inconsistência</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Filial</label>
+        <select name="filial_id">
+          <option value="">Todas</option>
+          {% for f in filiais %}
+          <option value="{{ f.id }}" {% if filtros.filial_id == f.id|string %}selected{% endif %}>{{ f.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group grow">
+        <label>Buscar (cupom, cliente, documento)</label>
+        <input type="text" name="q" value="{{ filtros.q }}" placeholder="Ex: 000523 ou João Silva...">
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <button type="submit" class="btn btn-primary btn-sm" style="height:36px;padding:0 16px;">
+          <i class="fas fa-search"></i> Filtrar
+        </button>
+        <a href="/gestor/log" class="btn btn-outline-secondary btn-sm" style="height:36px;padding:0 14px;display:flex;align-items:center;">
+          <i class="fas fa-times"></i>
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+
+{# ── TABELA ── #}
+<div class="card" style="overflow:hidden;">
+  <div class="card-header d-flex align-items-center justify-content-between" style="padding:14px 20px;">
+    <span style="font-weight:700;font-size:15px;color:#1a1f2e;">
+      <i class="fas fa-history" style="color:#9ca3af;margin-right:6px;"></i>Histórico de Entregas
+    </span>
+    <span style="font-size:13px;color:#9ca3af;">{{ total }} registro(s)</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Cupom</th>
+          <th>Cliente</th>
+          <th>Endereço</th>
+          <th>Filial</th>
+          <th>Entregador</th>
+          <th>Criado em</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in entregas %}
+        <tr class="{% if item.entrega.status == 'erro_entrega' %}row-erro{% endif %}">
+          <td style="color:#d1d5db;font-size:12px;">#{{ item.entrega.id }}</td>
+          <td class="td-cupom">{{ item.entrega.cupom_fiscal or "—" }}</td>
+          <td class="td-cli">
+            <strong>{{ item.cliente_nome or "—" }}</strong>
+            <small>{{ item.cliente_doc or "" }}</small>
+            {% if item.cliente_tel %}
+            <small><i class="fas fa-phone" style="font-size:10px;"></i> {{ item.cliente_tel }}</small>
+            {% endif %}
+          </td>
+          <td class="td-end">
+            <div class="end-rua">{{ item.entrega.rua or "—" }}{% if item.entrega.numero %}, {{ item.entrega.numero }}{% endif %}</div>
+            {% if item.entrega.bairro or item.entrega.municipio %}
+            <div class="end-cid">
+              {% if item.entrega.bairro %}{{ item.entrega.bairro }}{% endif %}
+              {% if item.entrega.municipio %} · {{ item.entrega.municipio }}/{{ item.entrega.uf or "" }}{% endif %}
+              {% if item.entrega.cep %} · {{ item.entrega.cep }}{% endif %}
+            </div>
+            {% endif %}
+            {% if item.entrega.observacao %}
+            <div class="end-obs">{{ item.entrega.observacao[:60] }}{% if item.entrega.observacao|length > 60 %}…{% endif %}</div>
+            {% endif %}
+          </td>
+          <td style="font-size:13px;">{{ item.filial_nome or "—" }}</td>
+          <td style="font-size:13px;{% if not item.entregador_nome %}color:#d1d5db;font-style:italic;{% endif %}">
+            {{ item.entregador_nome or "— nenhum" }}
+          </td>
+          <td class="td-data">
+            {% if item.entrega.data_criacao %}
+              {{ item.entrega.data_criacao.strftime('%d/%m/%Y') }}
+              <small>{{ item.entrega.data_criacao.strftime('%H:%M') }}</small>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if item.entrega.status == "pendente" %}
+              <span class="badge-status bs-pendente"><span class="dot"></span>Pendente</span>
+            {% elif item.entrega.status == "em_rota" %}
+              <span class="badge-status bs-em_rota"><span class="dot"></span>Em Rota</span>
+            {% elif item.entrega.status == "finalizado" %}
+              <span class="badge-status bs-finalizado"><span class="dot"></span>Finalizado</span>
+            {% elif item.entrega.status == "erro_entrega" %}
+              <span class="badge-status bs-erro"><span class="dot"></span>Erro</span>
+            {% else %}
+              <span class="badge badge-secondary">{{ item.entrega.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <button type="button"
+              class="btn btn-sm {% if item.entrega.status == 'erro_entrega' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}"
+              style="font-size:12px;"
+              data-toggle="modal" data-target="#modalEditar"
+              data-id="{{ item.entrega.id }}"
+              data-cupom="{{ item.entrega.cupom_fiscal or '' }}"
+              data-cliente="{{ item.cliente_nome or '' }}"
+              data-status="{{ item.entrega.status }}"
+              data-rua="{{ item.entrega.rua or '' }}"
+              data-numero="{{ item.entrega.numero or '' }}"
+              data-bairro="{{ item.entrega.bairro or '' }}"
+              data-municipio="{{ item.entrega.municipio or '' }}"
+              data-uf="{{ item.entrega.uf or '' }}"
+              data-cep="{{ item.entrega.cep or '' }}"
+              data-obs="{{ item.entrega.observacao or '' }}"
+              data-motivo="{{ item.entrega.motivo_erro or '' }}">
+              <i class="fas fa-pencil-alt"></i> Editar
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center py-5" style="color:#9ca3af;">
+            <i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+            Nenhuma entrega encontrada para os filtros selecionados.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── PAGINAÇÃO ── #}
+  {% if total_pages > 1 %}
+  <div class="pg-row">
+    <span class="pg-info">
+      Página {{ page }} de {{ total_pages }} &mdash; {{ total }} registro(s)
+    </span>
+    <div class="pg-btns">
+      {# Anterior #}
+      {% if page > 1 %}
+      <a href="?{{ qs }}&page={{ page - 1 }}" class="pg-btn"><i class="fas fa-chevron-left"></i></a>
+      {% else %}
+      <span class="pg-btn disabled"><i class="fas fa-chevron-left"></i></span>
+      {% endif %}
+
+      {# Números de página #}
+      {% set p_start = [page - 2, 1] | max %}
+      {% set p_end   = [page + 2, total_pages] | min %}
+      {% if p_start > 1 %}
+        <a href="?{{ qs }}&page=1" class="pg-btn">1</a>
+        {% if p_start > 2 %}<span class="pg-btn disabled" style="cursor:default;">…</span>{% endif %}
+      {% endif %}
+      {% for p in range(p_start, p_end + 1) %}
+        <a href="?{{ qs }}&page={{ p }}" class="pg-btn {% if p == page %}active{% endif %}">{{ p }}</a>
+      {% endfor %}
+      {% if p_end < total_pages %}
+        {% if p_end < total_pages - 1 %}<span class="pg-btn disabled" style="cursor:default;">…</span>{% endif %}
+        <a href="?{{ qs }}&page={{ total_pages }}" class="pg-btn">{{ total_pages }}</a>
+      {% endif %}
+
+      {# Próxima #}
+      {% if page < total_pages %}
+      <a href="?{{ qs }}&page={{ page + 1 }}" class="pg-btn"><i class="fas fa-chevron-right"></i></a>
+      {% else %}
+      <span class="pg-btn disabled"><i class="fas fa-chevron-right"></i></span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{# ── MODAL EDITAR ── #}
+<div class="modal fade" id="modalEditar" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content" style="border-radius:12px;border:none;">
+      <div class="modal-header" style="border-bottom:1px solid #e5e7eb;padding:18px 22px;">
+        <div>
+          <h5 class="modal-title" style="font-weight:700;color:#1a1f2e;">
+            <i class="fas fa-edit" style="color:#7c3aed;margin-right:8px;"></i>Editar Entrega
+          </h5>
+          <p class="mb-0" id="modal-sub" style="font-size:13px;color:#6b7280;margin-top:3px;"></p>
+        </div>
+        <button type="button" class="close" data-dismiss="modal" style="color:#9ca3af;">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <form method="post" id="form-editar" action="">
+        <div class="modal-body" style="padding:22px;">
+
+          {# Chips de info #}
+          <div id="modal-chips" class="mb-3 d-flex flex-wrap" style="gap:6px;"></div>
+
+          {# Endereço #}
+          <div class="modal-section-label"><i class="fas fa-map-marker-alt"></i> Endereço de Entrega</div>
+          <div class="form-grid-3">
+            <div>
+              <label class="form-field-label">Rua / Avenida</label>
+              <input type="text" name="rua" id="ed-rua" class="form-control form-control-sm" placeholder="Ex: Av. Cap. Ene Garcez">
+            </div>
+            <div>
+              <label class="form-field-label">Número</label>
+              <input type="text" name="numero" id="ed-numero" class="form-control form-control-sm" placeholder="Ex: 1830">
+            </div>
+            <div>
+              <label class="form-field-label">CEP</label>
+              <input type="text" name="cep" id="ed-cep" class="form-control form-control-sm" placeholder="Ex: 69317-102">
+            </div>
+          </div>
+          <div class="form-grid-3">
+            <div>
+              <label class="form-field-label">Bairro</label>
+              <input type="text" name="bairro" id="ed-bairro" class="form-control form-control-sm" placeholder="Ex: Caçari">
+            </div>
+            <div>
+              <label class="form-field-label">Município</label>
+              <input type="text" name="municipio" id="ed-municipio" class="form-control form-control-sm" placeholder="Ex: BOA VISTA">
+            </div>
+            <div>
+              <label class="form-field-label">UF</label>
+              <input type="text" name="uf" id="ed-uf" maxlength="2" class="form-control form-control-sm" placeholder="RR" style="text-transform:uppercase;">
+            </div>
+          </div>
+
+          {# Observação #}
+          <div class="modal-section-label"><i class="fas fa-comment-alt"></i> Observação</div>
+          <textarea name="observacao" id="ed-obs" class="form-control form-control-sm" rows="2" placeholder="Informações adicionais para o entregador..."></textarea>
+
+          {# Status #}
+          <div class="modal-section-label"><i class="fas fa-sync-alt"></i> Status da Entrega</div>
+          <div class="form-grid-2">
+            <div>
+              <label class="form-field-label">Alterar status para</label>
+              <select name="novo_status" id="ed-status" class="form-control form-control-sm">
+                <option value="">— manter atual —</option>
+                <option value="pendente">Pendente (reabrir)</option>
+                <option value="finalizado">Finalizado</option>
+                <option value="erro_entrega">Erro / Inconsistência</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-field-label">Motivo do erro (se aplicável)</label>
+              <input type="text" name="motivo_erro" id="ed-motivo" class="form-control form-control-sm" placeholder="Ex: Endereço não localizado">
+            </div>
+          </div>
+
+          {# Motivo da alteração (obrigatório) #}
+          <div class="motivo-box">
+            <div class="motivo-box-title">
+              <i class="fas fa-exclamation-triangle"></i>
+              Motivo da alteração <span style="font-weight:400;color:#9a3412;">(obrigatório)</span>
+            </div>
+            <textarea name="motivo_alteracao" id="ed-motivo-alt" class="form-control form-control-sm" rows="2"
+              placeholder="Descreva por que está editando. Ex: CEP incorreto no Consinco, cliente mudou de endereço..."></textarea>
+          </div>
+
+        </div><!-- /modal-body -->
+
+        <div class="modal-footer" style="border-top:1px solid #e5e7eb;padding:14px 22px;">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm" id="btn-salvar">
+            <i class="fas fa-save"></i> Salvar alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Popula o modal quando abre ──────────────────────────────────────────────
+$('#modalEditar').on('show.bs.modal', function(e) {
+    var btn = $(e.relatedTarget);
+    var id       = btn.data('id');
+    var cupom    = btn.data('cupom');
+    var cliente  = btn.data('cliente');
+    var status   = btn.data('status');
+
+    // Subtítulo e ação do form
+    $('#modal-sub').text('Cupom #' + cupom + ' · ' + cliente);
+    $('#form-editar').attr('action', '/gestor/log/editar/' + id);
+
+    // Chips de info
+    var statusLabel = {
+        'pendente': '<span class="badge-status bs-pendente"><span class="dot"></span>Pendente</span>',
+        'em_rota':  '<span class="badge-status bs-em_rota"><span class="dot"></span>Em Rota</span>',
+        'finalizado': '<span class="badge-status bs-finalizado"><span class="dot"></span>Finalizado</span>',
+        'erro_entrega': '<span class="badge-status bs-erro"><span class="dot"></span>Erro</span>',
+    };
+    $('#modal-chips').html(
+        '<span class="badge badge-light border mr-1" style="font-size:12px;padding:5px 10px;">' +
+        '<i class="fas fa-hashtag" style="color:#9ca3af;margin-right:4px;"></i>Entrega #' + id + '</span>' +
+        (statusLabel[status] || '') +
+        '<span class="badge badge-light border ml-1" style="font-size:12px;padding:5px 10px;">' +
+        '<i class="fas fa-user" style="color:#9ca3af;margin-right:4px;"></i>' + (cliente || '—') + '</span>'
+    );
+
+    // Campos de endereço
+    $('#ed-rua').val(btn.data('rua'));
+    $('#ed-numero').val(btn.data('numero'));
+    $('#ed-bairro').val(btn.data('bairro'));
+    $('#ed-municipio').val(btn.data('municipio'));
+    $('#ed-uf').val(btn.data('uf'));
+    $('#ed-cep').val(btn.data('cep'));
+    $('#ed-obs').val(btn.data('obs'));
+    $('#ed-motivo').val(btn.data('motivo'));
+    $('#ed-status').val('');
+    $('#ed-motivo-alt').val('').css('border-color', '');
+});
+
+// ── Validação: motivo obrigatório ───────────────────────────────────────────
+$('#form-editar').on('submit', function(e) {
+    var motivo = $('#ed-motivo-alt').val().trim();
+    if (!motivo) {
+        e.preventDefault();
+        $('#ed-motivo-alt').css('border-color', '#ef4444').focus();
+        return false;
+    }
+    $('#btn-salvar').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Salvando...');
+});
+
+// ── UF em maiúsculas ─────────────────────────────────────────────────────────
+$('#ed-uf').on('input', function(){ this.value = this.value.toUpperCase(); });
+</script>
+{% endblock %}
