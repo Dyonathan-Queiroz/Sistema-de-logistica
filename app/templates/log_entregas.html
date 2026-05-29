@@ -259,7 +259,10 @@
               data-uf="{{ item.entrega.uf or '' }}"
               data-cep="{{ item.entrega.cep or '' }}"
               data-obs="{{ item.entrega.observacao or '' }}"
-              data-motivo="{{ item.entrega.motivo_erro or '' }}">
+              data-motivo="{{ item.entrega.motivo_erro or '' }}"
+              data-nrocheckout="{{ item.entrega.nro_checkout or '' }}"
+              data-seqdocto="{{ item.entrega.seq_docto or '' }}"
+              data-seqpessoa="{{ item.entrega.seq_pessoa or '' }}">
               <i class="fas fa-pencil-alt"></i> Editar
             </button>
           </td>
@@ -337,6 +340,25 @@
 
           {# Chips de info #}
           <div id="modal-chips" class="mb-3 d-flex flex-wrap" style="gap:6px;"></div>
+
+          {# IDs do Consinco (somente leitura) #}
+          <div id="consinco-ids-row" class="mb-3" style="display:none;">
+            <div class="modal-section-label" style="margin-top:0;"><i class="fas fa-database"></i> IDs Consinco (referência)</div>
+            <div class="form-grid-3">
+              <div>
+                <label class="form-field-label">NRCheckout</label>
+                <input type="text" id="info-checkout" class="form-control form-control-sm" readonly style="background:#f9fafb;color:#6b7280;">
+              </div>
+              <div>
+                <label class="form-field-label">SeqDocto</label>
+                <input type="text" id="info-seqdocto" class="form-control form-control-sm" readonly style="background:#f9fafb;color:#6b7280;">
+              </div>
+              <div>
+                <label class="form-field-label">SeqPessoa</label>
+                <input type="text" id="info-seqpessoa" class="form-control form-control-sm" readonly style="background:#f9fafb;color:#6b7280;">
+              </div>
+            </div>
+          </div>
 
           {# Endereço #}
           <div class="modal-section-label"><i class="fas fa-map-marker-alt"></i> Endereço de Entrega</div>
@@ -446,6 +468,19 @@ $('#modalEditar').on('show.bs.modal', function(e) {
         '<span class="badge badge-light border ml-1" style="font-size:12px;padding:5px 10px;">' +
         '<i class="fas fa-user" style="color:#9ca3af;margin-right:4px;"></i>' + (cliente || '—') + '</span>'
     );
+
+    // IDs do Consinco (somente leitura)
+    var checkout  = btn.data('nrocheckout');
+    var seqdocto  = btn.data('seqdocto');
+    var seqpessoa = btn.data('seqpessoa');
+    if (checkout || seqdocto || seqpessoa) {
+        $('#info-checkout').val(checkout  || '—');
+        $('#info-seqdocto').val(seqdocto  || '—');
+        $('#info-seqpessoa').val(seqpessoa || '—');
+        $('#consinco-ids-row').show();
+    } else {
+        $('#consinco-ids-row').hide();
+    }
 
     // Campos de endereço
     $('#ed-rua').val(btn.data('rua'));

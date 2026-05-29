@@ -872,6 +872,10 @@ async def api_lancar_entrega(dados: dict, db: Session = Depends(get_db)):
         uf=dados.get("uf"),
         cep=dados.get("cep"),
         observacao=dados.get("observacao"),
+        # IDs de rastreabilidade do Consinco
+        nro_checkout=dados.get("nro_checkout"),
+        seq_docto=dados.get("seq_docto"),
+        seq_pessoa=dados.get("seq_pessoa"),
         status="pendente",
     )
     db.add(nova)

@@ -300,7 +300,13 @@ def processar(api: LogisticaAPI, registros: list):
         # 2. Observação: apenas o campo real do Consinco (sem misturar cidade/UF/CEP)
         obs = (r.get("OBSERVACAO") or "").strip() or None
 
-        # 3. Criar entrega com municipio, uf e cep em colunas próprias
+        # 3. Criar entrega com municipio, uf, cep e IDs do Consinco
+        def _to_int(val):
+            try:
+                return int(val) if val is not None else None
+            except (TypeError, ValueError):
+                return None
+
         entrega = api.criar_entrega({
             "cupom_fiscal": str(r["NROCHECKOUT"]),
             "cliente_id":   cliente["id"],
@@ -312,6 +318,10 @@ def processar(api: LogisticaAPI, registros: list):
             "cep":          (r.get("CEP")       or "").strip() or None,
             "observacao":   obs,
             "filial_id":    filial_id,
+            # IDs de rastreabilidade do Consinco
+            "nro_checkout": _to_int(r.get("NROCHECKOUT")),
+            "seq_docto":    _to_int(r.get("SEQDOCTO")),
+            "seq_pessoa":   _to_int(r.get("SEQPESSOA")),
         })
 
         if entrega:
