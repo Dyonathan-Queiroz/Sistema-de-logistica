@@ -253,6 +253,14 @@ def buscar_entregas(conn, seqs_por_empresa: dict) -> list:
         return []
 
 
+# ─── HELPER: converte qualquer valor Oracle para str limpa ────────────────────
+def _s(val) -> str:
+    """Converte int/float/None vindos do Oracle para str sem quebrar no .strip()."""
+    if val is None:
+        return ""
+    return str(val).strip()
+
+
 # ─── PROCESSAMENTO ────────────────────────────────────────────────────────────
 def processar(api: LogisticaAPI, registros: list):
     for r in registros:
@@ -266,7 +274,7 @@ def processar(api: LogisticaAPI, registros: list):
         # SEQPESSOA é o identificador único do cliente no Consinco
         seq_pessoa = str(r["SEQPESSOA"])
         nome       = f"CLIENTE {seq_pessoa}"
-        fone       = str(r.get("FONE") or "").strip() or None
+        fone       = _s(r.get("FONE")) or None
 
         # 1. Localizar ou criar cliente pelo SEQPESSOA (usado como documento)
         cliente = api.get_cliente(seq_pessoa)
@@ -276,10 +284,10 @@ def processar(api: LogisticaAPI, registros: list):
                 "nome":             nome,
                 "documento":        seq_pessoa,
                 "telefone":         fone,
-                "rua":              r["LOGRADOURO"],
-                "numero":           r["NUMERO"],
-                "bairro":           r["BAIRRO"],
-                "ponto_referencia": r["COMPLEMENTO"] or None,
+                "rua":              _s(r["LOGRADOURO"]),
+                "numero":           _s(r["NUMERO"]),
+                "bairro":           _s(r["BAIRRO"]),
+                "ponto_referencia": _s(r.get("COMPLEMENTO")) or None,
             })
 
         if not cliente:
@@ -287,7 +295,7 @@ def processar(api: LogisticaAPI, registros: list):
             continue
 
         # 2. Observação: apenas o campo real do Consinco (sem misturar cidade/UF/CEP)
-        obs = (r.get("OBSERVACAO") or "").strip() or None
+        obs = _s(r.get("OBSERVACAO")) or None
 
         # 3. Criar entrega com municipio, uf, cep e IDs do Consinco
         def _to_int(val):
@@ -299,12 +307,12 @@ def processar(api: LogisticaAPI, registros: list):
         entrega = api.criar_entrega({
             "cupom_fiscal": str(r["NROCHECKOUT"]),
             "cliente_id":   cliente["id"],
-            "rua":          r["LOGRADOURO"],
-            "numero":       r["NUMERO"],
-            "bairro":       r["BAIRRO"],
-            "municipio":    (r.get("CIDADE")    or "").strip() or None,
-            "uf":           (r.get("UF")        or "").strip() or None,
-            "cep":          (r.get("CEP")       or "").strip() or None,
+            "rua":          _s(r["LOGRADOURO"]),
+            "numero":       _s(r["NUMERO"]),
+            "bairro":       _s(r["BAIRRO"]),
+            "municipio":    _s(r.get("CIDADE"))  or None,
+            "uf":           _s(r.get("UF"))     or None,
+            "cep":          _s(r.get("CEP"))    or None,
             "observacao":   obs,
             "filial_id":    filial_id,
             # IDs de rastreabilidade do Consinco
@@ -328,8 +336,8 @@ def processar(api: LogisticaAPI, registros: list):
                 f"| Filial {filial_id}"
             )
             _escrever_registro(
-                f"     Endereco: {r['LOGRADOURO']}, {r['NUMERO']} — {r['BAIRRO']}"
-                + (f", {r['CIDADE']}/{r['UF']}" if r.get('CIDADE') else "")
+                f"     Endereco: {_s(r['LOGRADOURO'])}, {_s(r['NUMERO'])} — {_s(r['BAIRRO'])}"
+                + (f", {_s(r['CIDADE'])}/{_s(r['UF'])}" if r.get('CIDADE') else "")
             )
         else:
             log.error("✗  emp %s  SEQDOCTO %s  →  falhou criar entrega.", nroempresa, seqdocto)
