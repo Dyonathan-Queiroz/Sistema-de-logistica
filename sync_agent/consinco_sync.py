@@ -115,25 +115,12 @@ def mark_synced(nroempresa: int, seqdocto: int, checkout, filial_id: int):
     con.commit()
     con.close()
 
-def ultimo_seq_por_empresa() -> dict:
-    """Retorna {nroempresa: max_seqdocto} para todas as empresas já sincronizadas."""
+def get_synced_set() -> set:
+    """Retorna um set {(nroempresa, seqdocto)} de todos os registros já vistos."""
     con = sqlite3.connect(TRACKING_DB)
-    rows = con.execute(
-        "SELECT nroempresa, MAX(seqdocto) FROM synced GROUP BY nroempresa"
-    ).fetchall()
+    rows = con.execute("SELECT nroempresa, seqdocto FROM synced").fetchall()
     con.close()
-    return {int(r[0]): int(r[1]) for r in rows if r[1] is not None}
-
-def seed_empresa(nroempresa: int, seqdocto: int):
-    """Define o ponto de partida para uma empresa sem importar histórico."""
-    con = sqlite3.connect(TRACKING_DB)
-    con.execute(
-        "INSERT OR IGNORE INTO synced(nroempresa, seqdocto, checkout, filial_id, synced_at) VALUES(?,?,NULL,NULL,?)",
-        (nroempresa, seqdocto, datetime.now().isoformat()),
-    )
-    con.commit()
-    con.close()
-    log.info("Seed: empresa %s iniciará a partir do SEQDOCTO %s", nroempresa, seqdocto)
+    return {(int(r[0]), int(r[1])) for r in rows}
 
 
 # ─── API DO SISTEMA LOGÍSTICO ─────────────────────────────────────────────────
@@ -187,36 +174,7 @@ class LogisticaAPI:
 
 
 # ─── QUERY ORACLE ─────────────────────────────────────────────────────────────
-def _build_where(seqs_por_empresa: dict) -> tuple:
-    """
-    Monta cláusula WHERE dinâmica por empresa.
-    Retorna (where_sql, bind_params).
-
-    Ex: seqs_por_empresa = {1: 57500, 2: 105800}
-    → WHERE (d.NROEMPRESA=:e1 AND d.SEQDOCTO>:s1) OR (d.NROEMPRESA=:e2 AND d.SEQDOCTO>:s2)
-    """
-    if not seqs_por_empresa:
-        return "1=1", {}   # sem filtro: busca tudo (primeiro run após seed)
-
-    partes = []
-    params = {}
-    for i, (emp, seq) in enumerate(seqs_por_empresa.items()):
-        partes.append(f"(d.NROEMPRESA=:e{i} AND d.SEQDOCTO>:s{i})")
-        params[f"e{i}"] = emp
-        params[f"s{i}"] = seq
-
-    # Empresas ainda não vistas: incluir
-    empresas_conhecidas = list(seqs_por_empresa.keys())
-    if empresas_conhecidas:
-        placeholders = ",".join([f":k{i}" for i in range(len(empresas_conhecidas))])
-        partes.append(f"d.NROEMPRESA NOT IN ({placeholders})")
-        for i, emp in enumerate(empresas_conhecidas):
-            params[f"k{i}"] = emp
-
-    return " OR ".join(partes), params
-
-
-# Query única — sem JOIN externo.
+# Busca TODAS as linhas da tabela — a filtragem de "já visto" é feita em Python.
 # Usa SEQPESSOA como identificador do cliente (documento + nome gerado).
 BASE_SELECT = """
     SELECT
@@ -234,20 +192,30 @@ BASE_SELECT = """
         NVL(TO_CHAR(d.FONE),          '')              AS FONE,
         d.SEQPESSOA
     FROM TB_DOCTOENTREGA d
-    WHERE {where}
     ORDER BY d.NROEMPRESA, d.SEQDOCTO ASC
 """
 
-def buscar_entregas(conn, seqs_por_empresa: dict) -> list:
-    where, params = _build_where(seqs_por_empresa)
-    query = BASE_SELECT.format(where=where)
+def buscar_entregas_novas(conn) -> list:
+    """
+    Busca TODAS as linhas da tabela Oracle e retorna apenas as que ainda não
+    foram sincronizadas. Detecta qualquer linha nova, independente do SEQDOCTO.
+    """
     try:
         cur = conn.cursor()
-        cur.execute(query, params)
+        cur.execute(BASE_SELECT)
         cols = [c[0] for c in cur.description]
-        rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+        todos = [dict(zip(cols, row)) for row in cur.fetchall()]
         cur.close()
-        return rows
+
+        ja_vistos = get_synced_set()
+        novos = [r for r in todos
+                 if (int(r["NROEMPRESA"]), int(r["SEQDOCTO"])) not in ja_vistos]
+
+        log.info(
+            "Tabela Oracle: %d linhas | Já sincronizadas: %d | Novas: %d",
+            len(todos), len(todos) - len(novos), len(novos),
+        )
+        return novos
     except oracledb.DatabaseError as e:
         log.error("Erro ao consultar TB_DOCTOENTREGA: %s", e)
         return []
@@ -351,21 +319,39 @@ def processar(api: LogisticaAPI, registros: list):
 # ─── SEED INICIAL ─────────────────────────────────────────────────────────────
 def seed_inicial_se_necessario(oracle_conn):
     """
-    Na primeira vez que roda, consulta o MAX(SEQDOCTO) por empresa
-    e salva como ponto de partida — evita importar histórico antigo.
+    Na primeira vez que roda (SQLite vazio), marca TODOS os registros existentes
+    na tabela Oracle como "já vistos" — sem criar entregas — para que apenas
+    linhas genuinamente novas sejam importadas a partir deste momento.
     """
-    seqs = ultimo_seq_por_empresa()
-    if seqs:
-        return  # já tem dados, não precisa seed
+    con = sqlite3.connect(TRACKING_DB)
+    total_local = con.execute("SELECT COUNT(*) FROM synced").fetchone()[0]
+    con.close()
 
-    log.info("Primeiro run detectado — aplicando seed inicial por empresa…")
+    if total_local > 0:
+        return  # já tem dados, seed não é necessário
+
+    log.info("Primeiro run detectado — registrando todos os registros existentes como já vistos…")
     cur = oracle_conn.cursor()
-    cur.execute("SELECT NROEMPRESA, MAX(SEQDOCTO) FROM TB_DOCTOENTREGA GROUP BY NROEMPRESA")
-    for nroempresa, max_seq in cur.fetchall():
-        if max_seq:
-            seed_empresa(int(nroempresa), int(max_seq))
+    cur.execute("SELECT NROEMPRESA, SEQDOCTO FROM TB_DOCTOENTREGA")
+    existentes = [(int(r[0]), int(r[1])) for r in cur.fetchall()]
     cur.close()
-    log.info("Seed concluído. O agente vai capturar apenas registros novos daqui em diante.")
+
+    if existentes:
+        agora = datetime.now().isoformat()
+        con = sqlite3.connect(TRACKING_DB)
+        con.executemany(
+            "INSERT OR IGNORE INTO synced(nroempresa, seqdocto, synced_at) VALUES(?,?,?)",
+            [(e, s, agora) for e, s in existentes],
+        )
+        con.commit()
+        con.close()
+        log.info(
+            "Seed concluído: %d registros históricos ignorados. "
+            "Apenas linhas novas na tabela serão importadas.",
+            len(existentes),
+        )
+    else:
+        log.info("Tabela Oracle está vazia — tudo que aparecer será importado.")
 
 
 # ─── LOOP PRINCIPAL ───────────────────────────────────────────────────────────
@@ -403,15 +389,10 @@ def main():
                 seed_inicial_se_necessario(oracle_conn)
 
                 while True:
-                    seqs = ultimo_seq_por_empresa()
-                    log.info("Verificando novos registros  |  seqs por empresa: %s", seqs)
-
-                    registros = buscar_entregas(oracle_conn, seqs)
+                    registros = buscar_entregas_novas(oracle_conn)
                     if registros:
-                        log.info("%d novo(s) registro(s) encontrado(s).", len(registros))
+                        log.info("%d novo(s) registro(s) encontrado(s) — processando…", len(registros))
                         processar(api, registros)
-                    else:
-                        log.info("Nenhum registro novo.")
 
                     time.sleep(POLL_INTERVAL)
 
