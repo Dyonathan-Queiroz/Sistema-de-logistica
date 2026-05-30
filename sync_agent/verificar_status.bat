@@ -29,13 +29,17 @@ if %ERRORLEVEL% == 0 (
 
 echo.
 
-REM Mostra as ultimas 10 linhas do log
-if exist "sync_agent.log" (
-    echo ---- Ultimas linhas do log --------------------------------
-    powershell -Command "Get-Content sync_agent.log -Tail 10"
+REM Mostra as ultimas 10 linhas do registro legivel
+if exist "registro_entregas.txt" (
+    echo ---- Ultimas entregas sincronizadas -----------------------
+    powershell -Command "Get-Content registro_entregas.txt -Tail 10"
     echo -----------------------------------------------------------
+    echo.
+    set /P ABRIR="Abrir registro_entregas.txt no Bloco de Notas? (S/N): "
+    if /I "%ABRIR%"=="S" start notepad.exe "registro_entregas.txt"
 ) else (
-    echo [LOG] Arquivo sync_agent.log nao encontrado.
+    echo [LOG] Nenhuma entrega sincronizada ainda.
+    echo       O arquivo registro_entregas.txt sera criado na proxima sincronizacao.
 )
 
 echo.

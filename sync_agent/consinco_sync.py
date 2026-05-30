@@ -60,7 +60,7 @@ def filial_id_para(nroempresa) -> int:
 
 TRACKING_DB = Path(__file__).parent / "sync_tracking.db"
 
-# ─── LOGGING ──────────────────────────────────────────────────────────────────
+# ─── LOGGING TÉCNICO (sync_agent.log) ────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -70,6 +70,15 @@ logging.basicConfig(
     ],
 )
 log = logging.getLogger("consinco_sync")
+
+# ─── LOG LEGÍVEL (registro_entregas.txt) ─────────────────────────────────────
+_REGISTRO_PATH = Path(__file__).parent / "registro_entregas.txt"
+
+def _escrever_registro(linha: str):
+    """Adiciona uma linha ao registro_entregas.txt com timestamp."""
+    ts = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    with open(_REGISTRO_PATH, "a", encoding="utf-8") as f:
+        f.write(f"[{ts}] {linha}\n")
 
 
 # ─── RASTREAMENTO LOCAL (SQLite) ───────────────────────────────────────────────
@@ -310,8 +319,25 @@ def processar(api: LogisticaAPI, registros: list):
                 "✓  emp %-3s  SEQDOCTO %-8s  →  filial %-3s  |  Entrega #%s  (%s)",
                 nroempresa, seqdocto, filial_id, entrega.get("id"), nome,
             )
+            # ── Registro legível ──────────────────────────────────────────
+            _escrever_registro(
+                f"OK  | Entrega #{entrega.get('id'):<6} "
+                f"| Checkout {r['NROCHECKOUT']:<8} "
+                f"| SeqDocto {seqdocto:<8} "
+                f"| SeqPessoa {seq_pessoa:<8} "
+                f"| Filial {filial_id}"
+            )
+            _escrever_registro(
+                f"     Endereco: {r['LOGRADOURO']}, {r['NUMERO']} — {r['BAIRRO']}"
+                + (f", {r['CIDADE']}/{r['UF']}" if r.get('CIDADE') else "")
+            )
         else:
             log.error("✗  emp %s  SEQDOCTO %s  →  falhou criar entrega.", nroempresa, seqdocto)
+            # ── Registro legível ──────────────────────────────────────────
+            _escrever_registro(
+                f"ERRO| Empresa {nroempresa} | SeqDocto {seqdocto} "
+                f"| SeqPessoa {seq_pessoa} — falhou criar entrega na API"
+            )
 
 
 # ─── SEED INICIAL ─────────────────────────────────────────────────────────────
@@ -340,6 +366,11 @@ def main():
     log.info("  Consinco Sync Agent  |  %s", datetime.now().strftime("%d/%m/%Y %H:%M"))
     log.info("  Mapeamento de filiais: %s", FILIAL_MAP)
     log.info("=" * 60)
+
+    # Cabeçalho no registro legível
+    _escrever_registro("=" * 56)
+    _escrever_registro(f"  AGENTE INICIADO | Polling a cada {POLL_INTERVAL}s")
+    _escrever_registro("=" * 56)
 
     if not API_USERNAME or not API_PASSWORD:
         log.error("API_USERNAME e API_PASSWORD não configurados no .env!")
