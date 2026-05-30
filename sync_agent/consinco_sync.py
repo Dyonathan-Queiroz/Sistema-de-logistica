@@ -373,8 +373,15 @@ def main():
     init_db()
 
     api = LogisticaAPI()
-    if not api.login():
-        log.error("Login na API falhou. Verifique API_USERNAME / API_PASSWORD no .env")
+    # Tenta login até 10 vezes com espera crescente (DNS lento ou API temporariamente indisponível)
+    for tentativa in range(1, 11):
+        if api.login():
+            break
+        espera = min(30 * tentativa, 300)
+        log.warning("Login falhou (tentativa %d/10) — aguardando %ds antes de tentar novamente…", tentativa, espera)
+        time.sleep(espera)
+    else:
+        log.error("Login na API falhou após 10 tentativas. Verifique API_USERNAME / API_PASSWORD no .env")
         sys.exit(1)
 
     dsn = oracledb.makedsn(ORACLE_HOST, ORACLE_PORT, service_name=ORACLE_SERVICE)
