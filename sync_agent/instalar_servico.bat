@@ -10,30 +10,28 @@ if %ERRORLEVEL% NEQ 0 (
     exit /B 1
 )
 
+REM pushd aceita caminhos de rede (UNC)
+pushd "%~dp0"
+
 echo.
 echo ============================================================
 echo   INSTALAR CONSINCO SYNC AGENT COMO SERVICO WINDOWS
+echo   Pasta: %CD%
 echo ============================================================
 echo.
 
-REM Caminho deste script
-set PASTA=%~dp0
-set PASTA=%PASTA:~0,-1%
-
 REM Descobre onde esta o python
-for /f "delims=" %%i in ('where python') do set PYTHON=%%i
+for /f "delims=" %%i in ('where python 2^>NUL') do set PYTHON=%%i
 if not defined PYTHON (
     echo ERRO: Python nao encontrado no PATH!
+    popd
     pause
     exit /B 1
 )
 echo [OK] Python encontrado: %PYTHON%
 
-REM Cria wrapper .bat para o servico
-set WRAPPER=%PASTA%\servico_wrapper.bat
-echo @echo off > "%WRAPPER%"
-echo cd /d "%PASTA%" >> "%WRAPPER%"
-echo "%PYTHON%" "%PASTA%\consinco_sync.py" >> "%WRAPPER%"
+REM Pasta atual (pode ser UNC mapeado por pushd)
+set PASTA=%CD%
 
 REM Remove servico antigo se existir
 sc query "ConsincoSyncAgent" >NUL 2>&1
@@ -44,7 +42,6 @@ if %ERRORLEVEL% == 0 (
     timeout /t 2 /nobreak >NUL
 )
 
-REM Cria o servico usando sc.exe com srvany ou NSSM
 REM Verifica se NSSM esta disponivel
 where nssm >NUL 2>&1
 if %ERRORLEVEL% == 0 (
@@ -87,4 +84,5 @@ if %ERRORLEVEL% == 0 (
 echo.
 echo Pronto! Para verificar o status rode: verificar_status.bat
 echo.
+popd
 pause

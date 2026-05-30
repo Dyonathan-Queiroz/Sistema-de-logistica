@@ -1,6 +1,9 @@
 @echo off
 title Verificar Status — Consinco Sync Agent
 color 0A
+
+pushd "%~dp0"
+
 echo.
 echo ============================================================
 echo   STATUS DO CONSINCO SYNC AGENT
@@ -36,11 +39,12 @@ if exist "registro_entregas.txt" (
     echo -----------------------------------------------------------
     echo.
     set /P ABRIR="Abrir registro_entregas.txt no Bloco de Notas? (S/N): "
-    if /I "%ABRIR%"=="S" start notepad.exe "registro_entregas.txt"
+    if /I "%ABRIR%"=="S" start notepad.exe "%CD%\registro_entregas.txt"
 ) else (
     echo [LOG] Nenhuma entrega sincronizada ainda.
     echo       O arquivo registro_entregas.txt sera criado na proxima sincronizacao.
 )
 
 echo.
+popd
 pause
