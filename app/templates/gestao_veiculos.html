@@ -55,16 +55,16 @@
                     <table class="table table-hover mb-0">
                         <thead class="thead-light">
                             <tr>
-                                <th>Veículo</th>
-                                <th>Modelo</th>
+                                <th>Placa</th>
+                                <th class="col-mob-hide">Modelo</th>
                                 <th class="text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for v in veiculos %}
                             <tr>
-                                <td><span class="badge badge-secondary">{{ v.placa }}</span></td>
-                                <td>{{ v.modelo }}</td>
+                                <td><span class="badge badge-secondary">{{ v.placa }}</span> <span class="d-inline d-md-none text-muted small">{{ v.modelo }}</span></td>
+                                <td class="col-mob-hide">{{ v.modelo }}</td>
                                 <td class="text-center">
                                     <div class="btn-group">
                                         <a href="/vincular-veiculo-page/{{ v.id }}" class="btn btn-sm btn-outline-info" title="Vincular Motorista">

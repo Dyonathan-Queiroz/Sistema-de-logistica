@@ -66,7 +66,7 @@
                             <tr>
                                 <th>Usuário</th>
                                 <th>Perfil</th>
-                                <th>Filial</th>
+                                <th class="col-mob-hide">Filial</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -81,7 +81,7 @@
                                     <span class="badge badge-pill badge-success"><i class="fas fa-motorcycle mr-1"></i>Entregador</span>
                                     {% endif %}
                                 </td>
-                                <td class="text-muted small">
+                                <td class="text-muted small col-mob-hide">
                                     {% if f.filial_id %}
                                         <i class="fas fa-store mr-1"></i>{% for fil in filiais %}{% if fil.id == f.filial_id %}{{ fil.nome }}{% endif %}{% endfor %}
                                     {% else %}

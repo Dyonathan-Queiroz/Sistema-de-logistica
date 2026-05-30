@@ -55,22 +55,22 @@
             <table class="table table-sm table-hover mb-0">
                 <thead class="thead-light">
                     <tr>
-                        <th>#</th>
+                        <th class="col-mob-hide">#</th>
                         <th>Nome</th>
                         <th>CPF / CNPJ</th>
-                        <th>Telefone</th>
-                        <th>Endereço</th>
+                        <th class="col-mob-hide">Telefone</th>
+                        <th class="col-mob-hide">Endereço</th>
                         <th class="text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for c in clientes %}
                     <tr>
-                        <td class="text-muted">{{ c.id }}</td>
+                        <td class="text-muted col-mob-hide">{{ c.id }}</td>
                         <td><strong>{{ c.nome }}</strong></td>
                         <td><code>{{ c.documento or '—' }}</code></td>
-                        <td>{{ c.telefone or '—' }}</td>
-                        <td class="text-muted small">
+                        <td class="col-mob-hide">{{ c.telefone or '—' }}</td>
+                        <td class="text-muted small col-mob-hide">
                             {% if c.rua %}
                                 {{ c.rua }}, {{ c.numero or 's/n' }} — {{ c.bairro or '' }}
                             {% else %}
