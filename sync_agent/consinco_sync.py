@@ -207,62 +207,41 @@ def _build_where(seqs_por_empresa: dict) -> tuple:
     return " OR ".join(partes), params
 
 
+# Query única — sem JOIN externo.
+# Usa SEQPESSOA como identificador do cliente (documento + nome gerado).
 BASE_SELECT = """
     SELECT
         d.NROEMPRESA,
         d.SEQDOCTO,
         d.NROCHECKOUT,
-        NVL(d.LOGRADOURO,             'NAO INFORMADO')               AS LOGRADOURO,
-        NVL(TO_CHAR(d.NROLOGRADOURO), 'S/N')                        AS NUMERO,
-        NVL(d.BAIRRO,                 'NAO INFORMADO')               AS BAIRRO,
-        NVL(d.COMPLEMENTO,            '')                            AS COMPLEMENTO,
-        NVL(d.CIDADE,                 'NAO INFORMADA')               AS CIDADE,
-        NVL(d.UF,                     '')                            AS UF,
-        NVL(d.CEP,                    '')                            AS CEP,
-        NVL(d.OBSERVACAO,             '')                            AS OBSERVACAO,
-        NVL(TO_CHAR(d.FONE),          '')                            AS FONE,
-        d.SEQPESSOA,
-        {nome_col}                                                   AS NOME,
-        {doc_col}                                                     AS DOCUMENTO
+        NVL(d.LOGRADOURO,             'NAO INFORMADO') AS LOGRADOURO,
+        NVL(TO_CHAR(d.NROLOGRADOURO), 'S/N')           AS NUMERO,
+        NVL(d.BAIRRO,                 'NAO INFORMADO') AS BAIRRO,
+        NVL(d.COMPLEMENTO,            '')              AS COMPLEMENTO,
+        NVL(d.CIDADE,                 'NAO INFORMADA') AS CIDADE,
+        NVL(d.UF,                     '')              AS UF,
+        NVL(d.CEP,                    '')              AS CEP,
+        NVL(d.OBSERVACAO,             '')              AS OBSERVACAO,
+        NVL(TO_CHAR(d.FONE),          '')              AS FONE,
+        d.SEQPESSOA
     FROM TB_DOCTOENTREGA d
-    {join}
     WHERE {where}
     ORDER BY d.NROEMPRESA, d.SEQDOCTO ASC
 """
 
 def buscar_entregas(conn, seqs_por_empresa: dict) -> list:
     where, params = _build_where(seqs_por_empresa)
-
-    queries = [
-        # com JOIN em TB_PESSOACLIENTE
-        BASE_SELECT.format(
-            nome_col="NVL(p.NOMEPESSOA, 'CLIENTE ' || TO_CHAR(d.SEQPESSOA))",
-            doc_col="NVL(p.NROCPFCNPJ, TO_CHAR(d.SEQPESSOA))",
-            join="LEFT JOIN TB_PESSOACLIENTE p ON p.SEQPESSOA = d.SEQPESSOA",
-            where=where,
-        ),
-        # fallback sem JOIN
-        BASE_SELECT.format(
-            nome_col="'CLIENTE ' || TO_CHAR(d.SEQPESSOA)",
-            doc_col="TO_CHAR(d.SEQPESSOA)",
-            join="",
-            where=where,
-        ),
-    ]
-
-    for query, label in zip(queries, ["completa", "simples"]):
-        try:
-            cur = conn.cursor()
-            cur.execute(query, params)
-            cols = [c[0] for c in cur.description]
-            rows = [dict(zip(cols, row)) for row in cur.fetchall()]
-            cur.close()
-            return rows
-        except oracledb.DatabaseError as e:
-            log.warning("Query %s falhou (%s) — tentando modo simples…", label, e)
-
-    log.error("Ambas as queries falharam.")
-    return []
+    query = BASE_SELECT.format(where=where)
+    try:
+        cur = conn.cursor()
+        cur.execute(query, params)
+        cols = [c[0] for c in cur.description]
+        rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+        cur.close()
+        return rows
+    except oracledb.DatabaseError as e:
+        log.error("Erro ao consultar TB_DOCTOENTREGA: %s", e)
+        return []
 
 
 # ─── PROCESSAMENTO ────────────────────────────────────────────────────────────
@@ -275,17 +254,18 @@ def processar(api: LogisticaAPI, registros: list):
         if is_synced(nroempresa, seqdocto):
             continue
 
-        nome      = str(r.get("NOME")      or f"CLIENTE {r['SEQPESSOA']}")
-        documento = str(r.get("DOCUMENTO") or r["SEQPESSOA"])
-        fone      = str(r.get("FONE")      or "").strip() or "00000000000"
+        # SEQPESSOA é o identificador único do cliente no Consinco
+        seq_pessoa = str(r["SEQPESSOA"])
+        nome       = f"CLIENTE {seq_pessoa}"
+        fone       = str(r.get("FONE") or "").strip() or None
 
-        # 1. Localizar ou criar cliente
-        cliente = api.get_cliente(documento)
+        # 1. Localizar ou criar cliente pelo SEQPESSOA (usado como documento)
+        cliente = api.get_cliente(seq_pessoa)
         if not cliente:
-            log.info("Cliente '%s' não encontrado → criando…", nome)
+            log.info("SeqPessoa %s não encontrado → criando cliente…", seq_pessoa)
             cliente = api.criar_cliente({
                 "nome":             nome,
-                "documento":        documento,
+                "documento":        seq_pessoa,
                 "telefone":         fone,
                 "rua":              r["LOGRADOURO"],
                 "numero":           r["NUMERO"],
