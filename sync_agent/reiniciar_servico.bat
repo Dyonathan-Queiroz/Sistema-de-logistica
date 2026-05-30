@@ -9,9 +9,10 @@ if %ERRORLEVEL% NEQ 0 (
     exit /B 1
 )
 
+pushd "%~dp0"
+
 echo Parando agente...
 
-REM Tenta parar via NSSM
 where nssm >NUL 2>&1
 if %ERRORLEVEL% == 0 (
     nssm stop ConsincoSyncAgent
@@ -32,4 +33,5 @@ if %ERRORLEVEL% == 0 (
 
 echo.
 echo [OK] Agente reiniciado!
+popd
 pause
