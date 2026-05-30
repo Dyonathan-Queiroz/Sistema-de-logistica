@@ -1,11 +1,75 @@
 @echo off
 title Consinco Sync Agent
+color 0A
 cd /d "%~dp0"
-echo Instalando dependencias...
+
+echo.
+echo ============================================================
+echo   CONSINCO SYNC AGENT
+echo ============================================================
+echo.
+
+REM ── 1. Verifica Python ──────────────────────────────────────
+echo [1/3] Verificando Python...
+python --version >NUL 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo  ERRO: Python nao encontrado no PATH!
+    echo  Instale o Python e marque "Add to PATH" na instalacao.
+    echo.
+    pause
+    exit /B 1
+)
+python --version
+echo       OK!
+echo.
+
+REM ── 2. Instala dependências ──────────────────────────────────
+echo [2/3] Instalando/verificando dependencias...
 pip install -r requirements.txt -q
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo  ERRO: Falha ao instalar dependencias!
+    echo  Verifique sua conexao com a internet.
+    echo.
+    pause
+    exit /B 1
+)
+echo       OK!
 echo.
-echo Iniciando agente de sincronizacao...
-echo Pressione CTRL+C para encerrar.
+
+REM ── 3. Verifica .env ────────────────────────────────────────
+echo [3/3] Verificando arquivo .env...
+if not exist ".env" (
+    color 0C
+    echo.
+    echo  ERRO: Arquivo .env nao encontrado!
+    echo  Crie o arquivo .env nesta pasta com as credenciais.
+    echo.
+    pause
+    exit /B 1
+)
+echo       OK!
 echo.
+
+REM ── Inicia o agente ──────────────────────────────────────────
+echo ============================================================
+echo   INICIANDO AGENTE — pressione CTRL+C para encerrar
+echo ============================================================
+echo.
+
 python consinco_sync.py
+
+REM ── Se chegou aqui, o agente encerrou ────────────────────────
+echo.
+echo ============================================================
+color 0E
+echo   AGENTE ENCERRADO
+echo   Codigo de saida: %ERRORLEVEL%
+echo ============================================================
+echo.
+echo Verifique o arquivo registro_entregas.txt para detalhes.
+echo.
 pause
