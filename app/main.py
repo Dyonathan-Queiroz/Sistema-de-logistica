@@ -422,6 +422,178 @@ async def salvar_ajuste_entrega(
 
 _PER_PAGE = 20
 
+# ---------------------------------------------------------------------------
+# GESTÃO DE DESEMPENHO
+# ---------------------------------------------------------------------------
+
+_PERF_GRADIENTS = [
+    {"header":"linear-gradient(135deg,#7c3aed,#4f46e5)","avatar":"linear-gradient(135deg,#f59e0b,#b45309)","ring":"#7c3aed"},
+    {"header":"linear-gradient(135deg,#1e40af,#3b82f6)","avatar":"linear-gradient(135deg,#374151,#111827)","ring":"#3b82f6"},
+    {"header":"linear-gradient(135deg,#c2410c,#f97316)","avatar":"linear-gradient(135deg,#f97316,#c2410c)","ring":"#f97316"},
+    {"header":"linear-gradient(135deg,#5b21b6,#7c3aed)","avatar":"linear-gradient(135deg,#6366f1,#4338ca)","ring":"#6366f1"},
+    {"header":"linear-gradient(135deg,#065f46,#16a34a)","avatar":"linear-gradient(135deg,#16a34a,#065f46)","ring":"#16a34a"},
+    {"header":"linear-gradient(135deg,#9f1239,#e11d48)","avatar":"linear-gradient(135deg,#e11d48,#9f1239)","ring":"#e11d48"},
+]
+_DIAS_PT = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
+
+
+@app.get("/gestor/desempenho")
+async def desempenho_gestor(
+    request: Request,
+    db: Session = Depends(get_db),
+    user_role: str = Cookie(None),
+    inicio: str = None,
+    fim: str = None,
+    entregador_id: str = None,
+    filial_id: str = None,
+):
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    hoje       = agora().date()
+    inicio_str = inicio or hoje.replace(day=1).strftime("%Y-%m-%d")
+    fim_str    = fim    or hoje.strftime("%Y-%m-%d")
+    try:
+        inicio_dt = datetime.strptime(inicio_str, "%Y-%m-%d")
+        fim_dt    = datetime.strptime(fim_str, "%Y-%m-%d") + timedelta(days=1)
+    except ValueError:
+        inicio_dt = datetime.combine(hoje.replace(day=1), datetime.min.time())
+        fim_dt    = datetime.combine(hoje + timedelta(days=1), datetime.min.time())
+
+    filiais_map       = {f.id: f for f in db.query(Filial).all()}
+    todos_entregadores = (
+        db.query(Usuario).filter(Usuario.perfil == "entregador").order_by(Usuario.username).all()
+    )
+    entregas_periodo = db.query(Entrega).filter(
+        Entrega.data_criacao >= inicio_dt,
+        Entrega.data_criacao <  fim_dt,
+    ).all()
+    sete_atras  = datetime.combine(hoje - timedelta(days=6), datetime.min.time())
+    entregas_7d = db.query(Entrega).filter(Entrega.data_criacao >= sete_atras).all()
+    em_rota_ids = {
+        e.entregador_id for e in db.query(Entrega).filter(Entrega.status == "em_rota").all()
+        if e.entregador_id
+    }
+    dias_labels = [_DIAS_PT[(hoje - timedelta(days=i)).weekday()] for i in range(6, -1, -1)]
+
+    ranking = []
+    for u in todos_entregadores:
+        minhas      = [e for e in entregas_periodo if e.entregador_id == u.id]
+        total       = len(minhas)
+        finalizadas = sum(1 for e in minhas if e.status == "finalizado")
+        erros       = sum(1 for e in minhas if e.status == "erro_entrega")
+        concluidas  = finalizadas + erros
+        taxa_sucesso = round(finalizadas / concluidas * 100) if concluidas > 0 else None
+
+        tr, te, tt = [], [], []
+        for e in minhas:
+            if e.status == "finalizado" and e.data_aceite and e.data_finalizacao:
+                r   = (e.data_aceite      - e.data_criacao).total_seconds() / 60
+                en  = (e.data_finalizacao - e.data_aceite).total_seconds()  / 60
+                tot = (e.data_finalizacao - e.data_criacao).total_seconds() / 60
+                if 0 < r   < 180: tr.append(r)
+                if 0 < en  < 300: te.append(en)
+                if 0 < tot < 480: tt.append(tot)
+
+        t_reacao  = round(sum(tr) / len(tr)) if tr else None
+        t_entrega = round(sum(te) / len(te)) if te else None
+        t_total   = round(sum(tt) / len(tt)) if tt else None
+
+        status_atual = (
+            "em_rota"    if u.id in em_rota_ids else
+            "disponivel" if total > 0            else
+            "inativo"
+        )
+
+        spark_counts = []
+        for i in range(6, -1, -1):
+            dia = hoje - timedelta(days=i)
+            spark_counts.append(
+                sum(1 for e in entregas_7d if e.entregador_id == u.id and e.data_criacao.date() == dia)
+            )
+        spark_max = max(spark_counts) if any(c > 0 for c in spark_counts) else 1
+        spark_avg = round(sum(spark_counts) / 7, 1)
+        spark_bars = [
+            {
+                "pct":     max(int((c / spark_max) * 100), 4) if c > 0 else 4,
+                "opacity": round(0.3 + (c / spark_max) * 0.7, 2) if c > 0 else 0.15,
+                "label":   dias_labels[i],
+            }
+            for i, c in enumerate(spark_counts)
+        ]
+
+        filial      = filiais_map.get(u.filial_id)
+        ring_offset = round(263.9 * (1 - (taxa_sucesso or 0) / 100), 1)
+
+        ranking.append({
+            "usuario":      u,
+            "filial_nome":  filial.nome if filial else "—",
+            "total":        total,
+            "finalizadas":  finalizadas,
+            "erros":        erros,
+            "taxa_sucesso": taxa_sucesso,
+            "ring_offset":  ring_offset,
+            "t_reacao":     t_reacao,
+            "t_entrega":    t_entrega,
+            "t_total":      t_total,
+            "status_atual": status_atual,
+            "spark_bars":   spark_bars,
+            "spark_avg":    spark_avg,
+        })
+
+    ranking.sort(key=lambda x: (x["finalizadas"], x["total"]), reverse=True)
+    for idx, item in enumerate(ranking):
+        item["colors"] = _PERF_GRADIENTS[idx % len(_PERF_GRADIENTS)]
+        item["rank"]   = idx + 1
+
+    lista_filtrada = ranking[:]
+    if entregador_id and entregador_id.isdigit():
+        lista_filtrada = [r for r in ranking if r["usuario"].id == int(entregador_id)]
+    if filial_id and filial_id.isdigit():
+        lista_filtrada = [r for r in lista_filtrada if r["usuario"].filial_id == int(filial_id)]
+
+    ativos      = sum(1 for r in ranking if r["total"] > 0)
+    em_rota_cnt = sum(1 for r in ranking if r["status_atual"] == "em_rota")
+    total_ent   = sum(r["total"] for r in ranking)
+    total_fin   = sum(r["finalizadas"] for r in ranking)
+    total_err   = sum(r["erros"] for r in ranking)
+    conc_geral  = total_fin + total_err
+    taxa_media  = round(total_fin / conc_geral * 100) if conc_geral > 0 else None
+    tempos_g    = [r["t_total"] for r in ranking if r["t_total"] is not None]
+    tempo_medio = round(sum(tempos_g) / len(tempos_g)) if tempos_g else None
+
+    destaque = ranking[0] if ranking else None
+    top3     = ranking[:3]
+    filiais  = db.query(Filial).order_by(Filial.nome).all()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="gestao_desempenho.html",
+        context={
+            "ranking":        lista_filtrada,
+            "top3":           top3,
+            "destaque":       destaque,
+            "ativos":         ativos,
+            "em_rota_cnt":    em_rota_cnt,
+            "total_entregas": total_ent,
+            "taxa_media":     taxa_media,
+            "tempo_medio":    tempo_medio,
+            "entregadores":   todos_entregadores,
+            "filiais":        filiais,
+            "filtros": {
+                "inicio":        inicio_str,
+                "fim":           fim_str,
+                "entregador_id": entregador_id or "",
+                "filial_id":     filial_id or "",
+            },
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# LOG DE ENTREGAS
+# ---------------------------------------------------------------------------
+
 @app.get("/gestor/log")
 async def log_entregas_page(
     request: Request,
