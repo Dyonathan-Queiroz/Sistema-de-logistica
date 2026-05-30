@@ -63,7 +63,7 @@
   /* Paginação */
   .pg-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-top:1px solid #e5e7eb; }
   .pg-info { font-size:13px; color:#9ca3af; }
-  .pg-btns { display:flex; gap:4px; }
+  .pg-btns { display:flex; gap:4px; flex-wrap:wrap; }
   .pg-btn { width:34px; height:34px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; color:#374151; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; text-decoration:none; transition:all .15s; }
   .pg-btn:hover { background:#f3f4f6; color:#111827; }
   .pg-btn.active { background:#7c3aed; color:#fff; border-color:#7c3aed; }
@@ -81,6 +81,86 @@
   .form-field-label { font-size:11px; font-weight:600; color:#6b7280; display:block; margin-bottom:4px; }
   .motivo-box { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:14px; margin-top:16px; }
   .motivo-box-title { font-size:11px; font-weight:700; color:#c2410c; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+
+  /* Estado vazio: não vira card no mobile */
+  .log-table tr.log-empty { border:none !important; box-shadow:none !important; background:transparent !important; border-radius:0 !important; }
+  .log-table tr.log-empty td { display:block !important; border-bottom:none !important; padding:32px 16px !important; }
+  .log-table tr.log-empty td::before { display:none !important; }
+
+  /* ── MOBILE: tabela → cards ─────────────────────────────── */
+  @media (max-width: 767px) {
+    /* Filtros: empilhar campos */
+    .filter-grid { flex-direction: column; }
+    .filter-group, .filter-group.grow { width: 100%; min-width: 0; }
+    .filter-group input, .filter-group select { min-width: 0; width: 100%; }
+    .filter-grid > div:last-child { width: 100%; }
+    .filter-grid > div:last-child .btn { flex: 1; }
+
+    /* Transformar tabela em cards */
+    .log-table thead { display: none; }
+    .log-table,
+    .log-table tbody { display: block; width: 100%; }
+    .log-table tr {
+      display: block;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      overflow: hidden;
+    }
+    .log-table tr.row-erro { border-color: #fca5a5; background: #fff8f8; }
+    .log-table td {
+      display: flex !important;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 14px !important;
+      border-bottom: 1px solid #f3f4f6 !important;
+      border-radius: 0 !important;
+      gap: 8px;
+    }
+    .log-table td::before {
+      content: attr(data-label);
+      font-size: 10px;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      min-width: 68px;
+    }
+    .log-table td[data-label=""]::before,
+    .log-table td.td-btn::before { display: none; }
+    .log-table td.td-btn {
+      justify-content: stretch;
+      border-bottom: none !important;
+      padding: 10px 14px 12px !important;
+    }
+    .log-table td.td-btn .btn {
+      width: 100%;
+      justify-content: center;
+      font-size: 13px;
+    }
+    /* ID: embutir no cupom, ocultar separado */
+    .td-id-mob { display: none !important; }
+    /* Ocultar colunas secundárias: filial, entregador, data */
+    .log-col-sec { display: none !important; }
+    /* Cliente: empilhar nome e sub-info */
+    .log-table .td-cli { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .log-table .td-cli::before { margin-bottom: 2px; }
+    /* End: empilhar */
+    .log-table .td-end { flex-direction: column; align-items: flex-start; gap: 2px; max-width: 100%; }
+    .log-table .td-end::before { margin-bottom: 2px; }
+    /* Paginação */
+    .pg-row { flex-direction: column; gap: 10px; align-items: center; }
+    .pg-info { text-align: center; }
+    /* Log stats */
+    .log-stats { grid-template-columns: repeat(3,1fr) !important; }
+  }
+  @media (max-width: 479px) {
+    .log-stats { grid-template-columns: repeat(2,1fr) !important; }
+  }
 
   /* Stat card red */
   .stat-card.red::before { background:linear-gradient(90deg,#ef4444,#f87171); }
@@ -184,13 +264,13 @@
     <table class="log-table">
       <thead>
         <tr>
-          <th>#</th>
+          <th class="td-id-mob">#</th>
           <th>Cupom</th>
           <th>Cliente</th>
           <th>Endereço</th>
-          <th>Filial</th>
-          <th>Entregador</th>
-          <th>Criado em</th>
+          <th class="log-col-sec">Filial</th>
+          <th class="log-col-sec">Entregador</th>
+          <th class="log-col-sec">Criado em</th>
           <th>Status</th>
           <th></th>
         </tr>
@@ -198,16 +278,16 @@
       <tbody>
         {% for item in entregas %}
         <tr class="{% if item.entrega.status == 'erro_entrega' %}row-erro{% endif %}">
-          <td style="color:#d1d5db;font-size:12px;">#{{ item.entrega.id }}</td>
-          <td class="td-cupom">{{ item.entrega.cupom_fiscal or "—" }}</td>
-          <td class="td-cli">
+          <td class="td-id-mob" data-label="" style="color:#d1d5db;font-size:12px;">#{{ item.entrega.id }}</td>
+          <td class="td-cupom" data-label="Cupom">{{ item.entrega.cupom_fiscal or "—" }}<span style="color:#d1d5db;font-size:11px;margin-left:4px;">#{{ item.entrega.id }}</span></td>
+          <td class="td-cli" data-label="Cliente">
             <strong>{{ item.cliente_nome or "—" }}</strong>
             <small>{{ item.cliente_doc or "" }}</small>
             {% if item.cliente_tel %}
             <small><i class="fas fa-phone" style="font-size:10px;"></i> {{ item.cliente_tel }}</small>
             {% endif %}
           </td>
-          <td class="td-end">
+          <td class="td-end" data-label="Endereço">
             <div class="end-rua">{{ item.entrega.rua or "—" }}{% if item.entrega.numero %}, {{ item.entrega.numero }}{% endif %}</div>
             {% if item.entrega.bairro or item.entrega.municipio %}
             <div class="end-cid">
@@ -220,17 +300,17 @@
             <div class="end-obs">{{ item.entrega.observacao[:60] }}{% if item.entrega.observacao|length > 60 %}…{% endif %}</div>
             {% endif %}
           </td>
-          <td style="font-size:13px;">{{ item.filial_nome or "—" }}</td>
-          <td style="font-size:13px;{% if not item.entregador_nome %}color:#d1d5db;font-style:italic;{% endif %}">
+          <td class="log-col-sec" data-label="Filial" style="font-size:13px;">{{ item.filial_nome or "—" }}</td>
+          <td class="log-col-sec" data-label="Entregador" style="font-size:13px;{% if not item.entregador_nome %}color:#d1d5db;font-style:italic;{% endif %}">
             {{ item.entregador_nome or "— nenhum" }}
           </td>
-          <td class="td-data">
+          <td class="td-data log-col-sec" data-label="Data">
             {% if item.entrega.data_criacao %}
               {{ item.entrega.data_criacao.strftime('%d/%m/%Y') }}
               <small>{{ item.entrega.data_criacao.strftime('%H:%M') }}</small>
             {% else %}—{% endif %}
           </td>
-          <td>
+          <td data-label="Status">
             {% if item.entrega.status == "pendente" %}
               <span class="badge-status bs-pendente"><span class="dot"></span>Pendente</span>
             {% elif item.entrega.status == "em_rota" %}
@@ -243,7 +323,7 @@
               <span class="badge badge-secondary">{{ item.entrega.status }}</span>
             {% endif %}
           </td>
-          <td>
+          <td class="td-btn" data-label="">
             <button type="button"
               class="btn btn-sm {% if item.entrega.status == 'erro_entrega' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}"
               style="font-size:12px;"
@@ -268,7 +348,7 @@
           </td>
         </tr>
         {% else %}
-        <tr>
+        <tr class="log-empty">
           <td colspan="9" class="text-center py-5" style="color:#9ca3af;">
             <i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
             Nenhuma entrega encontrada para os filtros selecionados.
@@ -321,7 +401,7 @@
 
 {# ── MODAL EDITAR ── #}
 <div class="modal fade" id="modalEditar" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg" role="document">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
     <div class="modal-content" style="border-radius:12px;border:none;">
       <div class="modal-header" style="border-bottom:1px solid #e5e7eb;padding:18px 22px;">
         <div>
