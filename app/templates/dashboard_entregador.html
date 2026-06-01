@@ -132,10 +132,23 @@
       {% for e in disponiveis %}
       <div class="delivery-card">
         <div class="card-top">
-          <span class="cupom-badge">
-            <i class="fas fa-ticket-alt"></i>
-            {{ e.cupom_fiscal }} · #{{ e.id }}
-          </span>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">
+            {% if e.nro_checkout is not none %}
+            <span class="cupom-badge" style="background:rgba(59,130,246,.13);border-color:rgba(59,130,246,.3);color:#60a5fa;">
+              <i class="fas fa-cash-register"></i> Caixa {{ e.nro_checkout }}
+            </span>
+            {% endif %}
+            {% if e.seq_docto is not none %}
+            <span class="cupom-badge" style="background:rgba(124,58,237,.13);border-color:rgba(124,58,237,.3);color:#a78bfa;">
+              <i class="fas fa-file-alt"></i> Doc {{ e.seq_docto }}
+            </span>
+            {% endif %}
+            {% if e.filial_id and filiais_map.get(e.filial_id) %}
+            <span class="cupom-badge" style="background:rgba(34,197,94,.11);border-color:rgba(34,197,94,.28);color:#4ade80;">
+              <i class="fas fa-store"></i> {{ filiais_map[e.filial_id].nome }}
+            </span>
+            {% endif %}
+          </div>
         </div>
         <div class="card-body-pad">
           <div class="address-row">
@@ -185,9 +198,18 @@
           <span class="pill-em-rota">
             <i class="fas fa-circle"></i> Em Rota
           </span>
-          <span style="font-size:12px;color:var(--text-sub);">
-            <i class="fas fa-receipt"></i> {{ e.cupom_fiscal }} · #{{ e.id }}
-          </span>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;justify-content:flex-end;">
+            {% if e.nro_checkout is not none %}
+            <span class="cupom-badge" style="background:rgba(59,130,246,.13);border-color:rgba(59,130,246,.3);color:#60a5fa;font-size:11px;padding:3px 8px;">
+              <i class="fas fa-cash-register"></i> Cx {{ e.nro_checkout }}
+            </span>
+            {% endif %}
+            {% if e.seq_docto is not none %}
+            <span class="cupom-badge" style="background:rgba(124,58,237,.13);border-color:rgba(124,58,237,.3);color:#a78bfa;font-size:11px;padding:3px 8px;">
+              <i class="fas fa-file-alt"></i> {{ e.seq_docto }}
+            </span>
+            {% endif %}
+          </div>
         </div>
         <div class="rota-card-body">
           <div class="info-row">
@@ -198,6 +220,12 @@
             <span class="lbl">Bairro</span>
             <span class="val">{{ e.bairro }}</span>
           </div>
+          {% if e.filial_id and filiais_map.get(e.filial_id) %}
+          <div class="info-row">
+            <span class="lbl">Filial</span>
+            <span class="val" style="color:#4ade80;"><i class="fas fa-store" style="font-size:11px;margin-right:4px;"></i>{{ filiais_map[e.filial_id].nome }}</span>
+          </div>
+          {% endif %}
           {% if e.observacao %}
           <div class="obs-box">
             <i class="fas fa-exclamation-circle"></i>

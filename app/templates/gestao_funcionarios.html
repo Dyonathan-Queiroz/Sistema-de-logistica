@@ -35,15 +35,15 @@
                             <option value="gestor">Gestor</option>
                         </select>
                     </div>
-                    <div class="form-group" id="filial-group">
+                    <div class="form-group">
                         <label for="filial_id"><i class="fas fa-store mr-1"></i> Filial</label>
                         <select class="form-control" id="filial_id" name="filial_id">
-                            <option value="">— Sem filial —</option>
+                            <option value="">— Todas as filiais —</option>
                             {% for f in filiais %}
                             <option value="{{ f.id }}">{{ f.nome }}{% if f.cidade %} ({{ f.cidade }}){% endif %}</option>
                             {% endfor %}
                         </select>
-                        <small class="text-muted">Obrigatório para Entregador.</small>
+                        <small class="text-muted">Opcional — deixe em branco para atender todas as filiais.</small>
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">
                         <i class="fas fa-save mr-1"></i> Salvar no Sistema
@@ -81,11 +81,11 @@
                                     <span class="badge badge-pill badge-success"><i class="fas fa-motorcycle mr-1"></i>Entregador</span>
                                     {% endif %}
                                 </td>
-                                <td class="text-muted small col-mob-hide">
+                                <td class="col-mob-hide">
                                     {% if f.filial_id %}
-                                        <i class="fas fa-store mr-1"></i>{% for fil in filiais %}{% if fil.id == f.filial_id %}{{ fil.nome }}{% endif %}{% endfor %}
+                                        <span class="text-muted small"><i class="fas fa-store mr-1"></i>{% for fil in filiais %}{% if fil.id == f.filial_id %}{{ fil.nome }}{% endif %}{% endfor %}</span>
                                     {% else %}
-                                        —
+                                        <span class="badge badge-pill" style="background:rgba(22,163,74,.15);color:#16a34a;border:1px solid rgba(22,163,74,.3);font-size:11px;"><i class="fas fa-globe mr-1"></i>Todas as filiais</span>
                                     {% endif %}
                                 </td>
                                 <td>
