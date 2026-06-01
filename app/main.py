@@ -191,13 +191,16 @@ async def dashboard_entregador(
 
     link_rota = gerar_link_rota(em_rota, cidade=cidade_filial)
 
+    filiais_map = {f.id: f for f in db.query(Filial).all()}
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard_entregador.html",
         context={
-            "disponiveis": disponiveis,
-            "em_rota": em_rota,
-            "link_rota": link_rota,
+            "disponiveis":  disponiveis,
+            "em_rota":      em_rota,
+            "link_rota":    link_rota,
+            "filiais_map":  filiais_map,
         },
     )
 
