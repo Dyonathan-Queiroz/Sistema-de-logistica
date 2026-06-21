@@ -1,326 +1,2138 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Entregas</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Entregas — {{ entregador_nome if entregador_nome else 'Entregador' }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --bg: #0a0e1a; --card-bg: #111827; --card-border: #1f2d45;
-      --accent: #3b82f6; --accent-dark: #1d4ed8; --green: #22c55e;
-      --green-dark: #16a34a; --text: #f1f5f9; --text-muted: #64748b;
-      --text-sub: #94a3b8; --radius: 14px; --max-w: 500px;
+      --bg:        #070A10;
+      --s1:        #0D1220;
+      --s2:        #141C2E;
+      --s3:        #1B2540;
+      --brd:       rgba(255,255,255,0.06);
+      --brd2:      rgba(255,255,255,0.12);
+
+      /* Amber (brand) */
+      --amber:     #f59e0b;
+      --amber-dk:  #d97706;
+      --amber-light: #fffbeb;
+      --amber-mid: #fcd34d;
+      --a-dim:     rgba(245,158,11,0.12);
+      --a-dim2:    rgba(245,158,11,0.06);
+
+      /* Danger — keep red only for errors */
+      --danger:    #DC2626;
+      --d-dim:     rgba(220,38,38,0.12);
+      --d-dim2:    rgba(220,38,38,0.06);
+
+      /* Semantic status */
+      --blue:      #2563EB;
+      --b-dim:     rgba(37,99,235,0.12);
+      --b-dim2:    rgba(37,99,235,0.06);
+      --green:     #16A34A;
+      --g-dim:     rgba(22,163,74,0.12);
+      --g-dim2:    rgba(22,163,74,0.06);
+
+      /* Accent (teal — for fuel form preview only) */
+      --primary:   #0DF5C0;
+      --p-dim:     rgba(13,245,192,0.12);
+      --p-dim2:    rgba(13,245,192,0.06);
+
+      --orange:    #FF6229;
+      --o-dim:     rgba(255,98,41,0.12);
+      --purple:    #B08BFF;
+      --pu-dim:    rgba(176,139,255,0.12);
+      --whatsapp:  #25D366;
+
+      --text:      #EEF2FF;
+      --text2:     #7A8BB0;
+      --text3:     #404C66;
+      --font:      'Barlow', sans-serif;
+      --fcond:     'Barlow Condensed', sans-serif;
+      --radius:    14px;
+
+      /* Card shadow system */
+      --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+      --shadow:    0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+      --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
     }
-    html, body { min-height: 100%; background: var(--bg); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--text); overscroll-behavior-y: none; }
-    .app-shell { max-width: var(--max-w); margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
-    @media (min-width: 768px) {
-      body { background: #060810; }
-      .app-shell { margin: 24px auto; min-height: calc(100vh - 48px); border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(0,0,0,0.7); }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
     }
-    .app-header { background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%); padding: 18px 20px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 20px rgba(29,78,216,0.45); }
-    .header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .header-moto { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.18); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .header-moto i { font-size: 20px; color: #fff; }
-    .header-brand h1 { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 0.2px; }
-    .header-brand p { font-size: 11.5px; color: rgba(255,255,255,0.72); margin-top: 1px; }
-    .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .refresh-pill { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 5px 11px; font-size: 12px; font-weight: 600; color: #fff; backdrop-filter: blur(4px); }
-    .green-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: glow-green 1.8s infinite; }
-    @keyframes glow-green { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,0.8); } 70% { box-shadow: 0 0 0 6px rgba(74,222,128,0); } 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } }
-    .btn-header-sair { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 13px; color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer; backdrop-filter: blur(4px); transition: background 0.15s; display: flex; align-items: center; gap: 5px; text-decoration: none; }
-    .btn-header-sair:hover { background: rgba(255,255,255,0.25); color: #fff; text-decoration: none; }
-    .tab-bar { display: flex; background: #0d1424; border-bottom: 1px solid var(--card-border); position: sticky; top: 78px; z-index: 40; }
-    .tab-btn { flex: 1; padding: 13px 8px; background: none; border: none; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-muted); border-bottom: 3px solid transparent; transition: color 0.18s, border-color 0.18s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; border-radius: 10px; font-size: 11px; font-weight: 700; padding: 0 6px; }
-    .tab-btn.active .tab-badge { background: var(--accent); color: #fff; }
-    .tab-btn:not(.active) .tab-badge { background: rgba(255,255,255,0.1); color: var(--text-muted); }
-    .scroll-area { flex: 1; overflow-y: auto; padding: 16px 16px 8px; }
-    .scroll-area::-webkit-scrollbar { width: 4px; }
-    .scroll-area::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 4px; }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-    .delivery-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; transition: border-color 0.18s, box-shadow 0.18s; }
-    .delivery-card:hover { border-color: #2d4a6e; box-shadow: 0 4px 20px rgba(59,130,246,0.12); }
-    .card-top { padding: 14px 16px 12px; border-bottom: 1px solid var(--card-border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-    .cupom-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: #60a5fa; }
-    .card-body-pad { padding: 14px 16px 0; }
-    .address-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
-    .pin-icon { color: var(--accent); font-size: 13px; margin-top: 2px; flex-shrink: 0; }
-    .address-text strong { display: block; font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; }
-    .address-text span { font-size: 12.5px; color: var(--text-sub); margin-top: 2px; display: block; }
-    .obs-box { display: flex; align-items: flex-start; gap: 8px; background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.25); border-radius: 8px; padding: 9px 12px; margin-bottom: 14px; margin-top: 4px; }
-    .obs-box i { color: #eab308; font-size: 13px; margin-top: 1px; flex-shrink: 0; }
-    .obs-box p { font-size: 12.5px; color: #fde68a; line-height: 1.5; margin: 0; }
-    .card-actions { padding: 12px 16px 14px; }
-    .btn-aceitar { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--accent-dark), var(--accent)); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(59,130,246,0.4); transition: opacity 0.15s, transform 0.1s; }
-    .btn-aceitar:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-aceitar:active { transform: translateY(0); }
-    .rota-card { background: var(--card-bg); border: 1px solid #1a3d2b; border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
-    .rota-card-header { background: rgba(34,197,94,0.07); border-bottom: 1px solid #1a3d2b; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .pill-em-rota { display: inline-flex; align-items: center; gap: 5px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: #4ade80; }
-    .pill-em-rota i { font-size: 8px; }
-    .rota-card-body { padding: 14px 16px 0; }
-    .info-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
-    .info-row .lbl { font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; min-width: 76px; margin-top: 1px; }
-    .info-row .val { font-size: 13.5px; color: var(--text); font-weight: 500; line-height: 1.4; }
-    .divider-line { height: 1px; background: var(--card-border); margin: 4px 0 14px; }
-    .rota-actions { padding: 0 16px 14px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn-gray { flex: 1; min-width: 0; padding: 10px 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); border-radius: 9px; color: var(--text-sub); font-size: 12.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s, color 0.15s; text-decoration: none; }
-    .btn-gray:hover { background: rgba(255,255,255,0.09); color: var(--text); text-decoration: none; }
-    .btn-finalizar { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--green-dark), var(--green)); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(34,197,94,0.35); margin-top: 10px; transition: opacity 0.15s, transform 0.1s; }
-    .btn-finalizar:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-finalizar:active { transform: translateY(0); }
-    .btn-iniciar-rota { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px; background: linear-gradient(135deg, var(--green-dark), var(--green)); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(34,197,94,0.35); margin-bottom: 16px; text-decoration: none; }
-    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
-    .empty-state i { font-size: 40px; margin-bottom: 14px; opacity: 0.4; display: block; }
-    .empty-state p { font-size: 14px; }
-    .app-footer { padding: 16px 20px; text-align: center; font-size: 12px; color: #2d3a52; border-top: 1px solid #111e30; }
-    .app-footer span { color: #3b5bdb; font-weight: 600; }
-    .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; margin-top: 4px; display: flex; align-items: center; gap: 6px; }
-    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--card-border); }
+
+    /* ── SCROLLBAR ───────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 2px; }
+
+    /* ── APP SHELL ───────────────────────────────────────── */
+    .shell {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      max-width: 430px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ──────────────────────────────────────────── */
+    .hdr {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px 12px;
+      background: var(--s1);
+      border-bottom: 1px solid var(--brd);
+      position: relative;
+      z-index: 10;
+    }
+    .hdr::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(245,158,11,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hdr-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--amber), var(--amber-dk));
+      color: #000;
+      font-family: var(--fcond);
+      font-size: 19px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      /* amber ring when turno is active */
+      box-shadow: 0 0 0 2px rgba(245,158,11,0.35);
+    }
+    .hdr-avatar.turno-ativo {
+      box-shadow: 0 0 0 2.5px var(--amber), 0 0 0 4px rgba(245,158,11,0.2);
+    }
+    .hdr-info { flex: 1; min-width: 0; }
+    .hdr-name {
+      font-family: var(--fcond);
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hdr-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--text2);
+      margin-top: 1px;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      animation: pulse-dot 1.8s infinite;
+    }
+    .dot-green  { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+    .dot-amber  { background: var(--amber);  box-shadow: 0 0 6px var(--amber); }
+    .dot-blue   { background: var(--blue);   box-shadow: 0 0 6px var(--blue); }
+    .dot-danger { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .btn-sair {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--s2);
+      border: 1px solid var(--brd);
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-size: 14px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-sair:hover { background: var(--d-dim); color: var(--danger); }
+
+    /* ── STATS BAR ───────────────────────────────────────── */
+    .stats {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--s1);
+      border-bottom: 1px solid var(--brd);
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 6px;
+      background: var(--bg);
+      border: 1px solid var(--brd);
+      border-radius: 10px;
+    }
+    .stat-num {
+      font-family: var(--fcond);
+      font-size: 26px;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-lbl {
+      font-size: 10px;
+      color: var(--text2);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    /* Pending = blue, In-Route = amber, Completed = green */
+    .num-blue  { color: var(--blue); }
+    .num-amber { color: var(--amber); }
+    .num-green { color: var(--green); }
+
+    /* ── TURNO BANNER ────────────────────────────────────── */
+    .turno-banner {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--brd);
+      font-size: 12.5px;
+    }
+    /* Active shift: amber accent */
+    .com-turno   { background: rgba(245,158,11,0.08); border-bottom-color: rgba(245,158,11,0.18); }
+    .sem-turno   { background: rgba(37,99,235,0.05); }
+    .sem-veiculo { background: rgba(220,38,38,0.05); }
+
+    .tbanner-ico {
+      width: 32px; height: 32px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .com-turno   .tbanner-ico { background: var(--a-dim);  color: var(--amber); }
+    .sem-turno   .tbanner-ico { background: var(--b-dim2); color: var(--blue); }
+    .sem-veiculo .tbanner-ico { background: var(--d-dim);  color: var(--danger); }
+
+    .tbanner-info { flex: 1; min-width: 0; }
+    .tbanner-title {
+      font-weight: 700;
+      font-size: 12.5px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tbanner-sub {
+      font-size: 11px;
+      color: var(--text2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tbanner-btn {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      min-height: 32px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .tbanner-btn.azul    { background: var(--b-dim);  color: var(--blue);   border: 1px solid rgba(37,99,235,0.2); }
+    .tbanner-btn.vermelho { background: var(--d-dim); color: var(--danger); border: 1px solid rgba(220,38,38,0.2); }
+
+    /* ── BOTTOM NAV ──────────────────────────────────────── */
+    .tabs {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      background: var(--s1);
+      border-top: 1px solid var(--brd);
+      order: 999;
+    }
+    .tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 8px 4px 10px;
+      min-height: 44px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text3);
+      font-size: 9px;
+      font-family: var(--font);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      position: relative;
+      transition: color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab i {
+      font-size: 16px;
+      transition: color 0.15s;
+    }
+    .tab::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      border-radius: 2px 2px 0 0;
+      background: var(--amber);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    /* Default active = amber */
+    .tab.active { color: var(--amber); }
+    .tab.active::after { opacity: 1; }
+    .tab.active i { color: var(--amber); }
+    /* Fuel tab — amber too */
+    .tab.fuel-tab.active  { color: var(--amber); }
+    .tab.fuel-tab.active::after { background: var(--amber); }
+    .tab.fuel-tab.active i { color: var(--amber); }
+    /* Maintenance tab — purple */
+    .tab.mnt-tab.active   { color: var(--purple); }
+    .tab.mnt-tab.active::after { background: var(--purple); }
+    .tab.mnt-tab.active i { color: var(--purple); }
+    /* Today tab — green */
+    .tab.hoje-tab.active  { color: var(--green); }
+    .tab.hoje-tab.active::after { background: var(--green); }
+    .tab.hoje-tab.active i { color: var(--green); }
+
+    .tbadge {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      background: var(--orange);
+      color: #fff;
+      font-size: 8.5px;
+      font-weight: 800;
+      min-width: 14px;
+      height: 14px;
+      border-radius: 7px;
+      padding: 0 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── SCROLL AREA ─────────────────────────────────────── */
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    /* ── PANEL ───────────────────────────────────────────── */
+    .panel { display: none; padding-bottom: 20px; }
+    .panel.active { display: block; }
+
+    /* ── SECTION LABEL ───────────────────────────────────── */
+    .sec-lbl {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text3);
+      padding: 14px 16px 6px;
+    }
+
+    /* ── LOCK BANNER ─────────────────────────────────────── */
+    .panel-lock-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 12px 14px 0;
+      padding: 12px 14px;
+      background: rgba(245,158,11,0.06);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--radius);
+    }
+    .plb-ico {
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      background: var(--a-dim);
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .plb-info { flex: 1; min-width: 0; }
+    .plb-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .plb-sub   { font-size: 11px; color: var(--text2); margin-top: 1px; }
+    .plb-btn {
+      flex-shrink: 0;
+      padding: 7px 13px;
+      min-height: 36px;
+      border-radius: 9px;
+      background: var(--b-dim);
+      color: var(--blue);
+      border: 1px solid rgba(37,99,235,0.2);
+      font-size: 11.5px;
+      font-weight: 700;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    /* ── FILIAL ACCORDION ────────────────────────────────── */
+    .filial { margin: 8px 14px 0; }
+    .filial-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--s1);
+      border: 1px solid var(--brd);
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--text);
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .filial-btn:active { background: var(--s2); }
+    .filial-btn.open {
+      border-color: rgba(245,158,11,0.2);
+      background: rgba(245,158,11,0.04);
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .filial-ico {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: var(--a-dim2);
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .filial-info { flex: 1; min-width: 0; }
+    .filial-nome {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .filial-hint { font-size: 11px; color: var(--text2); margin-top: 1px; }
+    .filial-count {
+      font-family: var(--fcond);
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--amber);
+      min-width: 20px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .filial-chev {
+      font-size: 11px;
+      color: var(--text3);
+      transition: transform 0.25s;
+    }
+    .filial-btn.open .filial-chev { transform: rotate(180deg); }
+
+    .filial-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      background: var(--s1);
+      border: 1px solid rgba(245,158,11,0.1);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+    .filial-inner { padding: 6px 10px 10px; }
+
+    /* ── DELIVERY CARD ───────────────────────────────────── */
+    .dcard {
+      background: var(--bg);
+      border: 1px solid var(--brd);
+      border-radius: 11px;
+      margin-top: 7px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .dcard:active { border-color: var(--brd2); }
+    .dcard-top { padding: 12px 14px 8px; }
+    .dcard-addr {
+      font-family: var(--fcond);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .dcard-bairro {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--text2);
+      margin-top: 4px;
+    }
+    .dcard-bairro i { font-size: 10px; color: var(--blue); }
+    .dcard-tags {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-top: 7px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+    .tag-blue   { background: var(--b-dim);  color: var(--blue);   border: 1px solid rgba(37,99,235,0.2); }
+    .tag-purple { background: var(--pu-dim); color: var(--purple); border: 1px solid rgba(176,139,255,0.2); }
+
+    .dcard-obs {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      margin: 0 14px 8px;
+      padding: 8px 11px;
+      background: rgba(245,158,11,0.06);
+      border-left: 2px solid var(--amber);
+      border-radius: 0 7px 7px 0;
+    }
+    .dcard-obs i { color: var(--amber); font-size: 11px; margin-top: 2px; flex-shrink: 0; }
+    .dcard-obs p { font-size: 11.5px; color: var(--text2); line-height: 1.4; }
+
+    .dcard-action { padding: 0 12px 12px; }
+
+    /* Accept button — amber bg, black text */
+    .btn-accept {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 11px;
+      min-height: 44px;
+      background: var(--amber);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-family: var(--fcond);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      box-shadow: 0 4px 14px rgba(245,158,11,0.3);
+    }
+    .btn-accept:hover { background: var(--amber-dk); }
+    .btn-accept:active { opacity: 0.85; transform: scale(0.98); }
+
+    .btn-locked {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 11px;
+      min-height: 44px;
+      background: var(--s2);
+      border: 1px dashed var(--brd2);
+      border-radius: 10px;
+      color: var(--text3);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+
+    /* ── ROUTE CARDS ─────────────────────────────────────── */
+    /* Map link — ghost/outline style */
+    .btn-maps-full {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 12px 14px 0;
+      padding: 12px;
+      min-height: 44px;
+      background: transparent;
+      border: 1.5px solid rgba(22,163,74,0.35);
+      border-radius: var(--radius);
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-maps-full:active { background: var(--g-dim2); border-color: var(--green); }
+
+    .rcard {
+      margin: 10px 14px 0;
+      background: var(--s1);
+      border: 1px solid var(--brd);
+      /* amber left accent for in-route status */
+      border-left: 3px solid var(--amber);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .rcard-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 0;
+    }
+    .pill-rota {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--amber);
+    }
+    .pill-rota i { font-size: 8px; color: var(--amber); }
+    .rcard-tags {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .rcard-body { padding: 8px 14px; }
+    .rcard-addr {
+      font-family: var(--fcond);
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .rcard-bairro {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--text2);
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .rcard-bairro i { font-size: 10px; }
+    .rcard-sep {
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: var(--text3);
+      flex-shrink: 0;
+    }
+    .rcard-obs {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      margin-top: 7px;
+      padding: 7px 10px;
+      background: rgba(245,158,11,0.05);
+      border-left: 2px solid var(--amber);
+      border-radius: 0 6px 6px 0;
+    }
+    .rcard-obs i { color: var(--amber); font-size: 11px; margin-top: 2px; }
+    .rcard-obs p { font-size: 11.5px; color: var(--text2); }
+    .rcard-actions { padding: 10px 12px 12px; }
+    .rcard-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-bottom: 8px;
+    }
+    .btn-ico {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 9px;
+      min-height: 44px;
+      background: var(--s2);
+      border: 1px solid var(--brd);
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text2);
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-ico:active { background: var(--s3); }
+
+    /* Finalizar button — green bg, white text */
+    .btn-finish {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 11px;
+      min-height: 44px;
+      background: var(--green);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-family: var(--fcond);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(22,163,74,0.3);
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-finish:hover { background: #15803d; }
+    .btn-finish:active { opacity: 0.85; transform: scale(0.98); }
+
+    /* ── TIMELINE ────────────────────────────────────────── */
+    .timeline { padding: 0 14px; }
+    .tcard {
+      padding: 12px 14px;
+      background: var(--s1);
+      border: 1px solid var(--brd);
+      border-radius: 11px;
+      margin-top: 7px;
+    }
+    .tcard-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .tcard-addr {
+      font-family: var(--fcond);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      flex: 1;
+    }
+    .tcard-hora {
+      font-family: var(--fcond);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green);
+      flex-shrink: 0;
+      background: var(--g-dim2);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+    .tcard-bairro {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 5px;
+      flex-wrap: wrap;
+    }
+    .tdot {
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: var(--text3);
+    }
+
+    /* ── FUEL FORM ───────────────────────────────────────── */
+    .fuel-form-card {
+      margin: 12px 14px 0;
+      background: var(--s1);
+      border: 1px solid var(--brd);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .fuel-form-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--fcond);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      padding: 13px 14px 0;
+      color: var(--text);
+    }
+    .fuel-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px 14px 0;
+    }
+    .fuel-field { display: flex; flex-direction: column; gap: 4px; }
+    .fuel-field.full { grid-column: 1 / -1; }
+    .fuel-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text2);
+    }
+    .fuel-input {
+      background: var(--s2);
+      border: 1.5px solid var(--brd);
+      border-radius: 9px;
+      padding: 10px 12px;
+      min-height: 44px;
+      color: var(--text);
+      font-size: 16px; /* prevent iOS zoom */
+      font-family: var(--font);
+      outline: none;
+      width: 100%;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .fuel-input:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+    }
+    .fuel-input::placeholder { color: var(--text3); }
+    .fuel-preview {
+      display: none;
+      margin: 10px 14px 0;
+      padding: 8px 12px;
+      background: var(--a-dim2);
+      border: 1px solid rgba(245,158,11,0.15);
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: var(--text2);
+    }
+    .fuel-preview span { color: var(--amber); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .btn-fuel-submit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: calc(100% - 28px);
+      margin: 12px 14px;
+      padding: 13px;
+      min-height: 44px;
+      background: var(--amber);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-family: var(--fcond);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(245,158,11,0.3);
+      transition: background 0.15s;
+    }
+    .btn-fuel-submit:hover { background: var(--amber-dk); }
+    .btn-fuel-submit:disabled {
+      background: var(--s2);
+      color: var(--text3);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .fuel-total-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 10px 14px 0;
+      padding: 10px 14px;
+      background: rgba(245,158,11,0.06);
+      border: 1px solid rgba(245,158,11,0.15);
+      border-radius: 10px;
+      font-size: 13px;
+    }
+    .fuel-total-bar .label { color: var(--text2); }
+    .fuel-total-bar .valor {
+      font-family: var(--fcond);
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--amber);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .abt-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 7px 14px 0;
+      padding: 11px 13px;
+      background: var(--s1);
+      border: 1px solid var(--brd);
+      border-radius: 11px;
+    }
+    .abt-ico {
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      background: var(--a-dim);
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .abt-info { flex: 1; min-width: 0; }
+    .abt-title { font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .abt-sub   { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .abt-valor {
+      font-family: var(--fcond);
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fuel-sem-veiculo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+      gap: 10px;
+      text-align: center;
+      color: var(--text2);
+    }
+    .fuel-sem-veiculo i { font-size: 36px; color: var(--text3); margin-bottom: 4px; }
+    .fuel-sem-veiculo p { font-size: 13px; line-height: 1.5; }
+
+    /* ── EMPTY STATE ─────────────────────────────────────── */
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+      gap: 10px;
+      text-align: center;
+    }
+    .empty-box {
+      width: 64px; height: 64px;
+      border-radius: 18px;
+      background: var(--s2);
+      border: 1px solid var(--brd);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: var(--text3);
+      margin-bottom: 4px;
+    }
+    .empty h3 { font-family: var(--fcond); font-size: 18px; font-weight: 800; color: var(--text); }
+    .empty p  { font-size: 13px; color: var(--text2); line-height: 1.5; max-width: 240px; }
+
+    /* ── TURNO PANEL ─────────────────────────────────────── */
+    .turno-hero {
+      margin: 12px 14px 0;
+      background: var(--s1);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .turno-hero-head {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--brd);
+      background: rgba(245,158,11,0.04);
+    }
+    .turno-hero-ico {
+      width: 40px; height: 40px;
+      border-radius: 11px;
+      background: var(--a-dim);
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .turno-hero-title {
+      font-family: var(--fcond);
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .turno-hero-sub { font-size: 11.5px; color: var(--text2); margin-top: 1px; }
+    .turno-hero-badge {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: var(--a-dim2);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--amber);
+      white-space: nowrap;
+    }
+    .turno-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 6px var(--amber);
+      animation: pulse-dot 1.8s infinite;
+    }
+
+    .turno-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-bottom: 1px solid var(--brd);
+    }
+    .turno-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 8px;
+      border-right: 1px solid var(--brd);
+    }
+    .turno-stat:last-child { border-right: none; }
+    .turno-stat-val {
+      font-family: var(--fcond);
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .turno-stat-lbl {
+      font-size: 10px;
+      color: var(--text2);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-top: 3px;
+    }
+
+    .turno-info-row {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--brd);
+    }
+    .turno-info-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--text2);
+      flex: 1;
+      border-right: 1px solid var(--brd);
+    }
+    .turno-info-item:last-child { border-right: none; }
+    .turno-info-item strong { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .turno-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px;
+    }
+    .turno-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 11px;
+      min-height: 44px;
+      border-radius: 10px;
+      font-family: var(--fcond);
+      font-size: 13.5px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s;
+    }
+    /* "Ver Turno" — amber outline */
+    .btn-verde {
+      background: var(--a-dim);
+      color: var(--amber);
+      border: 1px solid rgba(245,158,11,0.2);
+    }
+    /* "Encerrar" — danger red */
+    .btn-red {
+      background: var(--d-dim);
+      color: var(--danger);
+      border: 1px solid rgba(220,38,38,0.2);
+    }
+    .turno-btn:active { opacity: 0.75; }
+
+    .sem-turno-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 24px 14px 0;
+      padding: 32px 20px;
+      background: var(--s1);
+      border: 1px solid var(--brd);
+      border-radius: var(--radius);
+      text-align: center;
+      gap: 8px;
+    }
+    .sem-turno-ico {
+      width: 60px; height: 60px;
+      border-radius: 18px;
+      background: var(--a-dim2);
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+    .sem-turno-title { font-family: var(--fcond); font-size: 19px; font-weight: 800; color: var(--text); }
+    .sem-turno-sub   { font-size: 12.5px; color: var(--text2); line-height: 1.5; }
+    /* Iniciar turno — amber bg, black text */
+    .btn-iniciar-turno {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 11px 24px;
+      min-height: 44px;
+      background: var(--amber);
+      border-radius: 10px;
+      color: #000;
+      font-family: var(--fcond);
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(245,158,11,0.3);
+      transition: background 0.15s;
+    }
+    .btn-iniciar-turno:hover { background: var(--amber-dk); }
+
+    /* ── TOAST (error — keep red) ────────────────────────── */
+    .toast-erro {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: rgba(220,38,38,0.15);
+      border: 1px solid rgba(220,38,38,0.4);
+      backdrop-filter: blur(12px);
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      max-width: 90vw;
+    }
+    .toast-erro i { color: var(--danger); }
+
+    /* ── FOOTER ──────────────────────────────────────────── */
+    .footer { display: none; }
   </style>
 </head>
 <body>
-<div class="app-shell">
 
-  <!-- HEADER -->
-  <header class="app-header">
-    <div class="header-left">
-      <div class="header-moto">
-        <i class="fas fa-motorcycle"></i>
-      </div>
-      <div class="header-brand">
-        <h1>System Logística</h1>
-        <p>Super GAVIÃO — Entregador</p>
+{% if erro == 'sem_turno' %}
+<div class="toast-erro" id="toastErro">
+  <i class="fas fa-lock"></i>
+  Inicie o turno antes de aceitar entregas
+  <button onclick="document.getElementById('toastErro').remove()"
+          style="margin-left:auto;background:none;border:none;color:#fecaca;cursor:pointer;font-size:16px;line-height:1;">×</button>
+</div>
+<script>setTimeout(()=>{var t=document.getElementById('toastErro');if(t)t.remove();},4000);</script>
+{% endif %}
+
+<div class="shell">
+
+  <!-- ══ HEADER ════════════════════════════════════════ -->
+  <header class="hdr">
+    <div class="hdr-avatar{% if turno_ativo %} turno-ativo{% endif %}">
+      {{ entregador_nome[0]|upper if entregador_nome else 'E' }}
+    </div>
+    <div class="hdr-info">
+      <div class="hdr-name">{{ entregador_nome }}</div>
+      <div class="hdr-status">
+        {% if em_rota %}
+          <span class="dot dot-amber"></span>
+          Em Rota · {{ em_rota|length }} entrega{% if em_rota|length > 1 %}s{% endif %} ativa{% if em_rota|length > 1 %}s{% endif %}
+        {% else %}
+          <span class="dot dot-green"></span>
+          Disponível para entregas
+        {% endif %}
       </div>
     </div>
-    <div class="header-right">
-      <div class="refresh-pill">
-        <span class="green-dot"></span>
-        <span id="countdown">20s</span>
-      </div>
-      <a href="/logout" class="btn-header-sair">
-        <i class="fas fa-sign-out-alt"></i> Sair
-      </a>
-    </div>
+    <a href="/logout" class="btn-sair" title="Sair">
+      <i class="fas fa-sign-out-alt"></i>
+    </a>
   </header>
 
-  <!-- TABS -->
-  <div class="tab-bar">
-    <button class="tab-btn active" data-tab="disponiveis" id="tab-disponiveis">
-      <i class="fas fa-inbox"></i>
-      Disponíveis
-      <span class="tab-badge" id="badge-disp">{{ disponiveis|length if disponiveis else 0 }}</span>
-    </button>
-    <button class="tab-btn" data-tab="emrota" id="tab-emrota">
-      <i class="fas fa-map-marked-alt"></i>
-      Em Rota
-      <span class="tab-badge" id="badge-rota">{{ em_rota|length if em_rota else 0 }}</span>
-    </button>
+  <!-- ══ STATS ══════════════════════════════════════════ -->
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-num num-blue">{{ disponiveis|length }}</span>
+      <span class="stat-lbl">Disponíveis</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num num-amber">{{ em_rota|length }}</span>
+      <span class="stat-lbl">Em Rota</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num num-green">{{ finalizadas_hoje|length }}</span>
+      <span class="stat-lbl">Hoje</span>
+    </div>
   </div>
 
-  <!-- SCROLL AREA -->
-  <div class="scroll-area">
+  <!-- ══ BANNER DE TURNO ════════════════════════════════ -->
+  {% if veiculo_motorista %}
+    {% if turno_ativo %}
+    <div class="turno-banner com-turno">
+      <div class="tbanner-ico"><i class="fas fa-play-circle"></i></div>
+      <div class="tbanner-info">
+        <div class="tbanner-title">Turno ativo · {{ veiculo_motorista.placa }}</div>
+        <div class="tbanner-sub">{{ veiculo_motorista.modelo }} · {{ veiculo_motorista.tipo }} — iniciado hoje</div>
+      </div>
+      <a href="/frota/checklist?tipo=fim&veiculo_id={{ veiculo_motorista.id }}"
+         class="tbanner-btn vermelho">
+        <i class="fas fa-lock"></i> Encerrar
+      </a>
+    </div>
+    {% else %}
+    <div class="turno-banner sem-turno">
+      <div class="tbanner-ico"><i class="fas fa-clipboard-check"></i></div>
+      <div class="tbanner-info">
+        <div class="tbanner-title">Turno não iniciado</div>
+        <div class="tbanner-sub">{{ veiculo_motorista.placa }} · {{ veiculo_motorista.tipo }} — faça o checklist para começar</div>
+      </div>
+      <a href="/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}"
+         class="tbanner-btn azul">
+        <i class="fas fa-play"></i> Iniciar
+      </a>
+    </div>
+    {% endif %}
+  {% else %}
+  <div class="turno-banner sem-veiculo">
+    <div class="tbanner-ico"><i class="fas fa-exclamation-triangle"></i></div>
+    <div class="tbanner-info">
+      <div class="tbanner-title">Nenhum veículo vinculado</div>
+      <div class="tbanner-sub">Fale com o gestor para vincular um veículo ao seu perfil</div>
+    </div>
+  </div>
+  {% endif %}
 
-    <!-- DISPONÍVEIS PANEL -->
-    <div class="tab-panel active" id="panel-disponiveis">
-      <p class="section-label"><i class="fas fa-box-open"></i> ENTREGAS DISPONÍVEIS</p>
+  <!-- ══ SCROLL ══════════════════════════════════════════ -->
+  <div class="scroll">
 
-      {% for e in disponiveis %}
-      <div class="delivery-card">
-        <div class="card-top">
-          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">
-            {% if e.nro_checkout is not none %}
-            <span class="cupom-badge" style="background:rgba(59,130,246,.13);border-color:rgba(59,130,246,.3);color:#60a5fa;">
-              <i class="fas fa-cash-register"></i> Caixa {{ e.nro_checkout }}
-            </span>
-            {% endif %}
-            {% if e.seq_docto is not none %}
-            <span class="cupom-badge" style="background:rgba(124,58,237,.13);border-color:rgba(124,58,237,.3);color:#a78bfa;">
-              <i class="fas fa-file-alt"></i> Doc {{ e.seq_docto }}
-            </span>
-            {% endif %}
-            {% if e.filial_id and filiais_map.get(e.filial_id) %}
-            <span class="cupom-badge" style="background:rgba(34,197,94,.11);border-color:rgba(34,197,94,.28);color:#4ade80;">
-              <i class="fas fa-store"></i> {{ filiais_map[e.filial_id].nome }}
-            </span>
-            {% endif %}
-          </div>
+    <!-- ── DISPONÍVEIS ──────────────────────────────────── -->
+    <div class="panel active" id="panel-disponiveis">
+
+      {% if not turno_ativo %}
+      <div class="panel-lock-banner">
+        <div class="plb-ico"><i class="fas fa-lock"></i></div>
+        <div class="plb-info">
+          <div class="plb-title">Turno não iniciado</div>
+          <div class="plb-sub">Faça o checklist de início para poder aceitar entregas.</div>
         </div>
-        <div class="card-body-pad">
-          <div class="address-row">
-            <i class="fas fa-map-marker-alt pin-icon"></i>
-            <div class="address-text">
-              <strong>{{ e.rua }}, {{ e.numero }}</strong>
-              <span>{{ e.bairro }}</span>
+        {% if veiculo_motorista %}
+        <a href="/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}" class="plb-btn">
+          <i class="fas fa-play"></i> Iniciar
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <p class="sec-lbl"><i class="fas fa-store"></i> Por Filial</p>
+
+      {% if disponiveis %}
+        {% for fid, grupo in disponiveis | groupby('filial_id') %}
+        {% set filial = filiais_map.get(fid) %}
+        {% set nome_fil = filial.nome if filial else 'Sem Filial' %}
+        {% set grp = grupo | list %}
+
+        <div class="filial">
+          <button class="filial-btn" type="button" onclick="toggleFilial(this)">
+            <span class="filial-ico"><i class="fas fa-store"></i></span>
+            <span class="filial-info">
+              <span class="filial-nome">{{ nome_fil }}</span>
+              <span class="filial-hint">{{ grp|length }} entrega{% if grp|length > 1 %}s{% endif %} aguardando</span>
+            </span>
+            <span class="filial-count">{{ grp|length }}</span>
+            <i class="fas fa-chevron-down filial-chev"></i>
+          </button>
+
+          <div class="filial-body">
+            <div class="filial-inner">
+              {% for e in grp %}
+              <div class="dcard">
+                <div class="dcard-top">
+                  <div class="dcard-addr">{{ e.rua }}, {{ e.numero }}</div>
+                  <div class="dcard-bairro">
+                    <i class="fas fa-map-marker-alt"></i>
+                    {{ e.bairro }}
+                  </div>
+                  {% if e.nro_checkout is not none or e.seq_docto is not none %}
+                  <div class="dcard-tags">
+                    {% if e.nro_checkout is not none %}
+                    <span class="tag tag-blue"><i class="fas fa-cash-register"></i> Caixa {{ e.nro_checkout }}</span>
+                    {% endif %}
+                    {% if e.seq_docto is not none %}
+                    <span class="tag tag-purple"><i class="fas fa-file-alt"></i> Doc {{ e.seq_docto }}</span>
+                    {% endif %}
+                  </div>
+                  {% endif %}
+                </div>
+                {% if e.observacao %}
+                <div class="dcard-obs">
+                  <i class="fas fa-exclamation-circle"></i>
+                  <p>{{ e.observacao }}</p>
+                </div>
+                {% endif %}
+                <div class="dcard-action">
+                  {% if turno_ativo %}
+                  <form action="/entregador/aceitar/{{ e.id }}" method="POST">
+                    <button type="submit" class="btn-accept">
+                      <i class="fas fa-check-circle"></i> Aceitar Entrega
+                    </button>
+                  </form>
+                  {% else %}
+                  <div class="btn-locked" title="Inicie o turno para aceitar entregas">
+                    <i class="fas fa-lock"></i> Inicie o turno para aceitar
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
             </div>
           </div>
-          {% if e.observacao %}
-          <div class="obs-box">
-            <i class="fas fa-exclamation-circle"></i>
-            <p>{{ e.observacao }}</p>
-          </div>
-          {% endif %}
         </div>
-        <div class="card-actions">
-          <form action="/entregador/aceitar/{{ e.id }}" method="POST">
-            <button type="submit" class="btn-aceitar">
-              <i class="fas fa-check-circle"></i> Aceitar Entrega
-            </button>
-          </form>
-        </div>
-      </div>
-      {% else %}
-      <div class="empty-state">
-        <i class="fas fa-box-open"></i>
-        <p>Nenhuma entrega disponível no momento.</p>
-      </div>
-      {% endfor %}
-    </div>
+        {% endfor %}
 
-    <!-- EM ROTA PANEL -->
-    <div class="tab-panel" id="panel-emrota">
-      <p class="section-label"><i class="fas fa-route"></i> SUAS ENTREGAS ATIVAS</p>
+      {% else %}
+      <div class="empty">
+        <div class="empty-box"><i class="fas fa-box-open"></i></div>
+        <h3>Tudo limpo por aqui!</h3>
+        <p>Nenhuma entrega disponível no momento. Você será notificado quando aparecer.</p>
+      </div>
+      {% endif %}
+    </div><!-- /panel-disponiveis -->
+
+    <!-- ── EM ROTA ──────────────────────────────────────── -->
+    <div class="panel" id="panel-emrota">
+      <p class="sec-lbl"><i class="fas fa-route"></i> Suas Entregas Ativas</p>
 
       {% if em_rota and link_rota %}
-      <a href="{{ link_rota }}" target="_blank" class="btn-iniciar-rota">
+      <a href="{{ link_rota }}" target="_blank" class="btn-maps-full">
         <i class="fas fa-map-marked-alt"></i>
-        Iniciar Rota no Maps ({{ em_rota|length }} entrega{% if em_rota|length > 1 %}s{% endif %})
+        Rota Completa · {{ em_rota|length }} parada{% if em_rota|length > 1 %}s{% endif %}
       </a>
       {% endif %}
 
       {% for e in em_rota %}
-      <div class="rota-card">
-        <div class="rota-card-header">
-          <span class="pill-em-rota">
-            <i class="fas fa-circle"></i> Em Rota
-          </span>
-          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;justify-content:flex-end;">
+      <div class="rcard">
+        <div class="rcard-head">
+          <span class="pill-rota"><i class="fas fa-circle"></i> Em Rota</span>
+          <div class="rcard-tags">
             {% if e.nro_checkout is not none %}
-            <span class="cupom-badge" style="background:rgba(59,130,246,.13);border-color:rgba(59,130,246,.3);color:#60a5fa;font-size:11px;padding:3px 8px;">
-              <i class="fas fa-cash-register"></i> Cx {{ e.nro_checkout }}
-            </span>
+            <span class="tag tag-blue"><i class="fas fa-cash-register"></i> Cx {{ e.nro_checkout }}</span>
             {% endif %}
             {% if e.seq_docto is not none %}
-            <span class="cupom-badge" style="background:rgba(124,58,237,.13);border-color:rgba(124,58,237,.3);color:#a78bfa;font-size:11px;padding:3px 8px;">
-              <i class="fas fa-file-alt"></i> {{ e.seq_docto }}
-            </span>
+            <span class="tag tag-purple"><i class="fas fa-file-alt"></i> {{ e.seq_docto }}</span>
             {% endif %}
           </div>
         </div>
-        <div class="rota-card-body">
-          <div class="info-row">
-            <span class="lbl">Endereço</span>
-            <span class="val">{{ e.rua }}, {{ e.numero }}</span>
+        <div class="rcard-body">
+          <div class="rcard-addr">{{ e.rua }}, {{ e.numero }}</div>
+          <div class="rcard-bairro">
+            <i class="fas fa-map-marker-alt" style="color:var(--amber);"></i>
+            {{ e.bairro }}
+            {% if e.filial_id and filiais_map.get(e.filial_id) %}
+            <span class="rcard-sep"></span>
+            <i class="fas fa-store"></i>
+            {{ filiais_map[e.filial_id].nome }}
+            {% endif %}
           </div>
-          <div class="info-row">
-            <span class="lbl">Bairro</span>
-            <span class="val">{{ e.bairro }}</span>
-          </div>
-          {% if e.filial_id and filiais_map.get(e.filial_id) %}
-          <div class="info-row">
-            <span class="lbl">Filial</span>
-            <span class="val" style="color:#4ade80;"><i class="fas fa-store" style="font-size:11px;margin-right:4px;"></i>{{ filiais_map[e.filial_id].nome }}</span>
-          </div>
-          {% endif %}
           {% if e.observacao %}
-          <div class="obs-box">
+          <div class="rcard-obs">
             <i class="fas fa-exclamation-circle"></i>
             <p>{{ e.observacao }}</p>
           </div>
           {% endif %}
-          <div class="divider-line"></div>
         </div>
-        <div class="rota-actions">
-          <a href="/entregador/entrega/{{ e.id }}" class="btn-gray">
-            <i class="fas fa-info-circle"></i> Detalhes / Maps / WhatsApp
-          </a>
-          <form action="/entregador/finalizar/{{ e.id }}" method="POST" style="width:100%">
-            <button type="submit" class="btn-finalizar">
+        <div class="rcard-actions">
+          <div class="rcard-row">
+            <a href="/entregador/entrega/{{ e.id }}" class="btn-ico">
+              <i class="fas fa-map-marked-alt" style="color:var(--green);"></i> Maps
+            </a>
+            <a href="/entregador/entrega/{{ e.id }}" class="btn-ico">
+              <i class="fab fa-whatsapp" style="color:var(--whatsapp);"></i> WhatsApp
+            </a>
+          </div>
+          <form action="/entregador/finalizar/{{ e.id }}" method="POST">
+            <button type="submit" class="btn-finish">
               <i class="fas fa-check-double"></i> Finalizar Entrega
             </button>
           </form>
         </div>
       </div>
       {% else %}
-      <div class="empty-state">
-        <i class="fas fa-shipping-fast"></i>
-        <p>Nenhuma entrega em rota.</p>
+      <div class="empty">
+        <div class="empty-box"><i class="fas fa-motorcycle"></i></div>
+        <h3>Nenhuma entrega ativa</h3>
+        <p>Aceite uma entrega disponível para ela aparecer aqui.</p>
       </div>
       {% endfor %}
-    </div>
+    </div><!-- /panel-emrota -->
 
-    <div class="app-footer">
-      ⚡ Criado por <span>Dyonathan Henrique</span> — Auxiliar T.I Gavião
-    </div>
+    <!-- ── HOJE ─────────────────────────────────────────── -->
+    <div class="panel" id="panel-hoje">
+      <p class="sec-lbl"><i class="fas fa-calendar-check"></i> Finalizadas Hoje</p>
 
+      {% if finalizadas_hoje %}
+      <div class="timeline">
+        {% for e in finalizadas_hoje %}
+        <div class="tcard">
+          <div class="tcard-row">
+            <div class="tcard-addr">{{ e.rua }}, {{ e.numero }}</div>
+            {% if e.data_finalizacao %}
+            <span class="tcard-hora">{{ e.data_finalizacao.strftime('%H:%M') }}</span>
+            {% endif %}
+          </div>
+          <div class="tcard-bairro">
+            <i class="fas fa-map-marker-alt" style="color:var(--green);font-size:10px;"></i>
+            {{ e.bairro }}
+            {% if e.filial_id and filiais_map.get(e.filial_id) %}
+            <span class="tdot"></span>
+            <i class="fas fa-store" style="font-size:10px;"></i>
+            {{ filiais_map[e.filial_id].nome }}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% else %}
+      <div class="empty">
+        <div class="empty-box"><i class="fas fa-moon"></i></div>
+        <h3>Nenhuma entrega hoje ainda</h3>
+        <p>Suas entregas finalizadas no dia de hoje aparecem aqui.</p>
+      </div>
+      {% endif %}
+    </div><!-- /panel-hoje -->
+
+    <!-- ── COMBUSTÍVEL ──────────────────────────────────── -->
+    <div class="panel" id="panel-combustivel">
+
+      {% if veiculo_motorista %}
+
+        <div class="fuel-form-card" id="fuelFormCard">
+          <p class="fuel-form-title"><i class="fas fa-plus-circle" style="color:var(--amber);"></i> Registrar Abastecimento</p>
+
+          <div class="fuel-grid">
+            <div class="fuel-field">
+              <label class="fuel-label" for="fuelOdo">KM Atual</label>
+              <input id="fuelOdo" class="fuel-input" type="number" inputmode="numeric"
+                     placeholder="{{ veiculo_motorista.odometro_atual or '0' }}"
+                     oninput="atualizarPreview()">
+            </div>
+            <div class="fuel-field">
+              <label class="fuel-label" for="fuelLitros">Litros</label>
+              <input id="fuelLitros" class="fuel-input" type="number" inputmode="decimal"
+                     step="0.01" placeholder="0,00"
+                     oninput="atualizarPreview()">
+            </div>
+            <div class="fuel-field full">
+              <label class="fuel-label" for="fuelValor">Valor Total (R$)</label>
+              <input id="fuelValor" class="fuel-input" type="number" inputmode="decimal"
+                     step="0.01" placeholder="0,00"
+                     oninput="atualizarPreview()">
+            </div>
+          </div>
+
+          <div class="fuel-preview" id="fuelPreview">
+            Preço estimado: <span id="fuelPrecoL">—</span>/L
+          </div>
+
+          <button class="btn-fuel-submit" id="btnFuel" onclick="registrarAbastecimento()" disabled>
+            <i class="fas fa-gas-pump"></i> Confirmar Abastecimento
+          </button>
+        </div>
+
+        {% if abastecimentos_hoje %}
+        <div class="fuel-total-bar">
+          <span class="label"><i class="fas fa-receipt" style="margin-right:6px;"></i>Total gasto hoje</span>
+          <span class="valor">R$ {{ ('%.2f' % total_combustivel_hoje) | replace('.', ',') }}</span>
+        </div>
+        {% endif %}
+
+        <p class="sec-lbl"><i class="fas fa-history"></i> Hoje · {{ abastecimentos_hoje|length }} registro{% if abastecimentos_hoje|length != 1 %}s{% endif %}</p>
+
+        {% if abastecimentos_hoje %}
+          {% for a in abastecimentos_hoje %}
+          <div class="abt-card">
+            <div class="abt-ico"><i class="fas fa-gas-pump"></i></div>
+            <div class="abt-info">
+              <div class="abt-title">{{ ('%.2f' % a.litros) | replace('.', ',') }} L · KM {{ a.odometro }}</div>
+              <div class="abt-sub">
+                {{ ('R$ %.3f' % a.preco_l) | replace('.', ',') }}/L
+                &nbsp;·&nbsp;
+                <i class="fas fa-clock" style="font-size:10px;"></i> {{ a.hora }}
+              </div>
+            </div>
+            <div class="abt-valor">R$ {{ ('%.2f' % a.valor_total) | replace('.', ',') }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="empty" style="padding:32px 20px;">
+          <div class="empty-box"><i class="fas fa-gas-pump"></i></div>
+          <h3>Nenhum abastecimento hoje</h3>
+          <p>Use o formulário acima para registrar.</p>
+        </div>
+        {% endif %}
+
+      {% else %}
+      <div class="fuel-sem-veiculo">
+        <i class="fas fa-car-side"></i>
+        <p>Nenhum veículo vinculado ao seu perfil.<br>Fale com o gestor para registrar abastecimentos.</p>
+      </div>
+      {% endif %}
+
+    </div><!-- /panel-combustivel -->
+
+    <!-- ── MANUTENÇÃO ────────────────────────────────────── -->
+    <div class="panel" id="panel-manutencao">
+
+      {% if veiculo_motorista %}
+
+      <div class="fuel-form-card">
+        <p class="fuel-form-title"><i class="fas fa-wrench" style="color:var(--purple);"></i> Solicitar Manutenção</p>
+
+        <div style="padding:12px 14px 0;">
+
+          <div class="fuel-field" style="margin-bottom:10px;">
+            <label class="fuel-label">Tipo</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+              <label style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1.5px solid var(--brd);border-radius:9px;padding:10px 12px;cursor:pointer;min-height:44px;">
+                <input type="radio" name="mntCategoria" value="corretiva" id="mntCorretiva" checked style="accent-color:var(--purple);">
+                <span style="font-size:13px;font-weight:700;color:var(--text);">Corretiva</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1.5px solid var(--brd);border-radius:9px;padding:10px 12px;cursor:pointer;min-height:44px;">
+                <input type="radio" name="mntCategoria" value="preventiva" style="accent-color:var(--purple);">
+                <span style="font-size:13px;font-weight:700;color:var(--text);">Preventiva</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="fuel-field" style="margin-bottom:10px;">
+            <label class="fuel-label" for="mntKm">KM Atual <span style="color:var(--danger);">*</span></label>
+            <input id="mntKm" class="fuel-input" type="number" inputmode="numeric"
+                   placeholder="{{ veiculo_motorista.odometro_atual or '0' }}"
+                   oninput="validarMnt()">
+            <span id="mntKmAviso" style="display:none;font-size:11px;color:var(--danger);margin-top:4px;">
+              ⚠ KM não pode ser menor que o registrado ({{ veiculo_motorista.odometro_atual or 0 }} km)
+            </span>
+          </div>
+
+          <div class="fuel-field" style="margin-bottom:10px;">
+            <label class="fuel-label" for="mntOficina">Oficina / Mecânica</label>
+            <select id="mntOficina" class="fuel-input" onchange="toggleOficinaCustom()"
+              style="appearance:none;-webkit-appearance:none;padding-right:32px;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 viewBox=%220 0 12 8%22><path fill=%22%2394a3b8%22 d=%22M6 8L0 0h12z%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;">
+              <option value="">Carregando...</option>
+            </select>
+            <input id="mntOficinaCustom" class="fuel-input" type="text"
+                   placeholder="Nome da oficina"
+                   style="display:none;margin-top:6px;">
+          </div>
+
+          <div class="fuel-field" style="margin-bottom:10px;">
+            <label class="fuel-label">Peças / Serviços Realizados</label>
+            <select id="mntPecaSelect" class="fuel-input"
+              onchange="_selecionarDelSelect(this)"
+              style="appearance:none;-webkit-appearance:none;padding-right:32px;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 viewBox=%220 0 12 8%22><path fill=%22%2394a3b8%22 d=%22M6 8L0 0h12z%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;">
+              <option value="">Selecione uma peça do catálogo...</option>
+            </select>
+            <div style="margin-top:8px;display:flex;gap:6px;">
+              <input id="mntPecaCustom" class="fuel-input" type="text"
+                     placeholder="Outra peça (não listada)"
+                     style="flex:1;font-size:13px;"
+                     onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarPecaCustom();}">
+              <button onclick="adicionarPecaCustom()" type="button"
+                style="background:var(--s2);border:1.5px solid var(--brd);border-radius:9px;padding:0 14px;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:44px;">
+                + Add
+              </button>
+            </div>
+            <div id="mntPecasSelecionadas" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div class="fuel-field">
+              <label class="fuel-label" for="mntValPecas">Valor Peças (R$)</label>
+              <input id="mntValPecas" class="fuel-input" type="number" inputmode="decimal"
+                     step="0.01" placeholder="0,00">
+            </div>
+            <div class="fuel-field">
+              <label class="fuel-label" for="mntValMao">Mão de Obra (R$)</label>
+              <input id="mntValMao" class="fuel-input" type="number" inputmode="decimal"
+                     step="0.01" placeholder="0,00">
+            </div>
+          </div>
+
+          <div class="fuel-field" style="margin-bottom:4px;">
+            <label class="fuel-label" for="mntDesc">Descreva o Problema <span style="color:var(--danger);">*</span></label>
+            <textarea id="mntDesc" rows="3"
+              style="background:var(--s2);border:1.5px solid var(--brd);border-radius:9px;padding:11px 13px;color:var(--text);font-size:16px;width:100%;font-family:var(--font);resize:vertical;outline:none;transition:border-color .18s,box-shadow .18s;"
+              placeholder="Ex: Freio traseiro com folga, barulho ao frear..."
+              oninput="validarMnt()"
+              onfocus="this.style.borderColor='var(--amber)';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.15)';"
+              onblur="this.style.borderColor='';this.style.boxShadow='';"></textarea>
+          </div>
+        </div>
+
+        <button class="btn-fuel-submit" id="btnMnt" onclick="enviarManutencao()" disabled
+                style="background:linear-gradient(135deg,#5b21b6,#7c3aed);box-shadow:0 4px 16px rgba(124,58,237,.35);">
+          <i class="fas fa-paper-plane"></i> Enviar Solicitação
+        </button>
+      </div>
+
+      <div class="empty" style="padding:24px 20px;">
+        <div class="empty-box" style="background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.2);">
+          <i class="fas fa-info-circle" style="color:var(--purple);"></i>
+        </div>
+        <h3 style="color:var(--text2);">Como funciona?</h3>
+        <p>Preencha os dados da manutenção. Sua solicitação é enviada ao gestor para aprovação e entra no histórico oficial do veículo.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 20px;">
+        <div style="background:rgba(234,88,12,.08);border:1.5px solid rgba(234,88,12,.2);border-radius:12px;padding:14px 12px;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+            <i class="fas fa-tools" style="color:#fb923c;font-size:13px;"></i>
+            <span style="font-size:12px;font-weight:800;color:#fb923c;">Corretiva</span>
+          </div>
+          <p style="font-size:12px;color:var(--text2);line-height:1.5;margin:0;">Algo <strong style="color:var(--text);">quebrou ou está com defeito</strong>. Ex: freio com problema, pneu furado.</p>
+        </div>
+        <div style="background:rgba(37,99,235,.08);border:1.5px solid rgba(37,99,235,.2);border-radius:12px;padding:14px 12px;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+            <i class="fas fa-shield-alt" style="color:var(--blue);font-size:13px;"></i>
+            <span style="font-size:12px;font-weight:800;color:var(--blue);">Preventiva</span>
+          </div>
+          <p style="font-size:12px;color:var(--text2);line-height:1.5;margin:0;">Revisão <strong style="color:var(--text);">antes de quebrar</strong>. Ex: troca de óleo, filtros, correia por km.</p>
+        </div>
+      </div>
+
+      {% else %}
+      <div class="fuel-sem-veiculo">
+        <i class="fas fa-car-side"></i>
+        <p>Nenhum veículo vinculado ao seu perfil.<br>Fale com o gestor.</p>
+      </div>
+      {% endif %}
+
+    </div><!-- /panel-manutencao -->
+
+    <!-- ── TURNO ─────────────────────────────────────────── -->
+    <div class="panel" id="panel-turno">
+
+      {% if turno_ativo and veiculo_motorista %}
+      <div class="turno-hero">
+
+        <div class="turno-hero-head">
+          <div class="turno-hero-ico">
+            <i class="fas fa-{% if veiculo_motorista.tipo == 'Moto' %}motorcycle{% else %}car{% endif %}"></i>
+          </div>
+          <div>
+            <div class="turno-hero-title">{{ veiculo_motorista.placa }} · {{ veiculo_motorista.modelo }}</div>
+            <div class="turno-hero-sub">
+              {{ veiculo_motorista.tipo }}
+              {% if turno_ativo.checklist_inicio %}
+               · Iniciado às {{ turno_ativo.checklist_inicio.data_hora.strftime('%H:%M') }}
+              {% endif %}
+            </div>
+          </div>
+          <div class="turno-hero-badge">
+            <span class="turno-dot"></span> Ativo
+          </div>
+        </div>
+
+        <div class="turno-stats">
+          <div class="turno-stat">
+            <div class="turno-stat-val" style="color:var(--green);">{{ turno_ativo.total_cupons_dia }}</div>
+            <div class="turno-stat-lbl">Entregas</div>
+          </div>
+          <div class="turno-stat">
+            <div class="turno-stat-val" style="color:var(--blue);">
+              R$ {{ '%.2f'|format(turno_ativo.custo_combustivel_total or 0)|replace('.', ',') }}
+            </div>
+            <div class="turno-stat-lbl">Combustível</div>
+          </div>
+          <div class="turno-stat">
+            <div class="turno-stat-val" style="color:var(--amber);">
+              R$ {{ '%.2f'|format(turno_ativo.custo_manutencao_total or 0)|replace('.', ',') }}
+            </div>
+            <div class="turno-stat-lbl">Manutenção</div>
+          </div>
+        </div>
+
+        <div class="turno-info-row">
+          {% if turno_ativo.checklist_inicio %}
+          <div class="turno-info-item">
+            <i class="fas fa-gauge" style="font-size:12px;color:var(--text3);"></i>
+            KM início: <strong>{{ '{:,}'.format(turno_ativo.checklist_inicio.odometro_registrado).replace(',', '.') }}</strong>
+          </div>
+          {% endif %}
+          <div class="turno-info-item" id="turno-tempo">
+            <i class="fas fa-clock" style="font-size:12px;color:var(--text3);"></i>
+            <span id="turno-duracao">calculando...</span>
+          </div>
+        </div>
+
+        <div class="turno-actions">
+          <a href="/frota/turno" class="turno-btn btn-verde">
+            <i class="fas fa-eye"></i> Ver Turno
+          </a>
+          <a href="/frota/checklist?tipo=fim&veiculo_id={{ veiculo_motorista.id }}"
+             class="turno-btn btn-red"
+             onclick="return confirm('Encerrar turno e fazer checklist de fim?')">
+            <i class="fas fa-stop-circle"></i> Encerrar
+          </a>
+        </div>
+      </div>
+
+      {% elif veiculo_motorista %}
+      <div class="sem-turno-panel">
+        <div class="sem-turno-ico"><i class="fas fa-clipboard-check"></i></div>
+        <div class="sem-turno-title">Turno não iniciado</div>
+        <div class="sem-turno-sub">
+          Faça o checklist de início no veículo <strong style="color:var(--text);">{{ veiculo_motorista.placa }}</strong>
+          para liberar as entregas e iniciar seu turno.
+        </div>
+        <a href="/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}"
+           class="btn-iniciar-turno">
+          <i class="fas fa-play"></i> Iniciar Checklist
+        </a>
+      </div>
+
+      {% else %}
+      <div class="sem-turno-panel">
+        <div class="sem-turno-ico" style="color:var(--danger);background:var(--d-dim);">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="sem-turno-title">Nenhum veículo vinculado</div>
+        <div class="sem-turno-sub">Fale com o gestor para vincular um veículo ao seu perfil.</div>
+      </div>
+      {% endif %}
+
+    </div><!-- /panel-turno -->
+
+  </div><!-- /scroll -->
+
+  <!-- ══ TABS (bottom nav) ══════════════════════════════ -->
+  <div class="tabs">
+    <button class="tab active" data-tab="disponiveis">
+      <i class="fas fa-box-open"></i>
+      Disp.
+      <span class="tbadge">{{ disponiveis|length }}</span>
+    </button>
+    <button class="tab" data-tab="emrota">
+      <i class="fas fa-route"></i>
+      Rota
+      <span class="tbadge">{{ em_rota|length }}</span>
+    </button>
+    <button class="tab hoje-tab" data-tab="hoje">
+      <i class="fas fa-check-double"></i>
+      Hoje
+    </button>
+    <button class="tab fuel-tab" data-tab="combustivel">
+      <i class="fas fa-gas-pump"></i>
+      Abast.
+    </button>
+    <button class="tab mnt-tab" data-tab="manutencao">
+      <i class="fas fa-wrench"></i>
+      Mnt.
+    </button>
+    <button class="tab" data-tab="turno">
+      <i class="fas fa-play-circle"></i>
+      Turno
+      {% if turno_ativo %}
+      <span class="tbadge" style="background:rgba(245,158,11,0.2);color:var(--amber);">●</span>
+      {% endif %}
+    </button>
   </div>
-  <!-- /scroll-area -->
 
+  <div class="footer">⚡ Criado por <b>Dyonathan Henrique</b></div>
 </div>
-<!-- /app-shell -->
 
 <script>
-  // ── Tab switching ──────────────────────────────────────────────
-  var tabBtns = document.querySelectorAll('.tab-btn');
-  var tabPanels = document.querySelectorAll('.tab-panel');
+  /* ── Acordeão ───────────────────────────────────────── */
+  function toggleFilial(btn) {
+    var body   = btn.nextElementSibling;
+    var isOpen = btn.classList.contains('open');
 
-  function activateTab(tabName) {
-    tabBtns.forEach(function(btn) {
-      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    // Fecha todos
+    document.querySelectorAll('.filial-btn').forEach(function(b) {
+      b.classList.remove('open');
+      b.nextElementSibling.style.maxHeight = '0';
     });
-    tabPanels.forEach(function(panel) {
-      panel.classList.toggle('active', panel.id === 'panel-' + tabName);
-    });
-    localStorage.setItem('abaAtiva', tabName);
+
+    // Abre o clicado (se estava fechado)
+    if (!isOpen) {
+      btn.classList.add('open');
+      body.style.maxHeight = body.scrollHeight + 'px';
+    }
   }
 
-  tabBtns.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      activateTab(btn.dataset.tab);
-    });
+  /* ── Tabs ───────────────────────────────────────────── */
+  var tabs   = document.querySelectorAll('.tab');
+  var panels = document.querySelectorAll('.panel');
+
+  function ativarTab(nome) {
+    tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.tab === nome); });
+    panels.forEach(function(p) { p.classList.toggle('active', p.id === 'panel-' + nome); });
+    localStorage.setItem('abaAtiva', nome);
+  }
+
+  tabs.forEach(function(t) {
+    t.addEventListener('click', function() { ativarTab(t.dataset.tab); });
   });
 
-  // ── Restore tab on load ────────────────────────────────────────
+  /* ── Restaurar aba ──────────────────────────────────── */
   (function() {
-    // 1. Parâmetro ?aba= na URL tem prioridade (ex: após aceitar entrega)
-    var urlParams = new URLSearchParams(window.location.search);
-    var abaUrl = urlParams.get('aba');
+    var params = new URLSearchParams(window.location.search);
+    var abaUrl = params.get('aba');
     if (abaUrl) {
-      activateTab(abaUrl);
-      // Limpa o parâmetro da URL sem recarregar a página
+      ativarTab(abaUrl);
       history.replaceState(null, '', window.location.pathname);
       return;
     }
-    // 2. Aba salva no localStorage
-    var saved = localStorage.getItem('abaAtiva');
-    if (saved) {
-      activateTab(saved);
-      return;
-    }
-    // 3. Padrão: se tem em rota mas não tem disponíveis, abre em rota
-    {% if em_rota and not disponiveis %}
-    activateTab('emrota');
-    {% endif %}
+    var salva = localStorage.getItem('abaAtiva');
+    if (salva) { ativarTab(salva); return; }
+    {% if em_rota and not disponiveis %}ativarTab('emrota');{% endif %}
   })();
 
-  // ── Auto-refresh countdown ─────────────────────────────────────
-  var seconds = 20;
-  var countdownEl = document.getElementById('countdown');
+  /* ── Manutenção ────────────────────────────────────── */
+  var _mntOficinas = [];
+  var _mntPecas    = [];
+  var _mntPecasSel = [];  // [{nome, quantidade, unidade}]
+  var _mntCarregado = false;
 
-  var timer = setInterval(function() {
-    seconds -= 1;
-    if (seconds > 0) {
-      countdownEl.textContent = seconds + 's';
-    } else {
-      countdownEl.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>';
-      clearInterval(timer);
-      location.reload();
+  function validarMnt() {
+    var desc  = (document.getElementById('mntDesc') || {}).value || '';
+    var km    = parseInt((document.getElementById('mntKm') || {}).value) || 0;
+    var aviso = document.getElementById('mntKmAviso');
+    var inp   = document.getElementById('mntKm');
+    var btn   = document.getElementById('btnMnt');
+
+    var kmInvalido = km > 0 && KM_ATUAL > 0 && km < KM_ATUAL;
+
+    if (aviso) aviso.style.display = kmInvalido ? 'block' : 'none';
+    if (inp)   inp.style.borderColor = kmInvalido ? '#f87171' : '';
+
+    if (btn) btn.disabled = desc.trim().length < 5 || km <= 0 || kmInvalido;
+  }
+
+  function toggleOficinaCustom() {
+    var sel    = document.getElementById('mntOficina');
+    var custom = document.getElementById('mntOficinaCustom');
+    if (!sel || !custom) return;
+    custom.style.display = sel.value === '__outra' ? 'block' : 'none';
+  }
+
+  function _renderPecasSel() {
+    var cont = document.getElementById('mntPecasSelecionadas');
+    if (!cont) return;
+    cont.innerHTML = _mntPecasSel.map(function(p, i) {
+      return '<span style="display:inline-flex;align-items:center;gap:5px;background:#2a1f4e;border:1px solid #5b21b6;border-radius:20px;padding:4px 10px;font-size:12px;color:#c4b5fd;">'
+        + '<span>' + p.nome + '</span>'
+        + '<button onclick="_removerPeca(' + i + ')" type="button" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px;">×</button>'
+        + '</span>';
+    }).join('');
+  }
+
+  function _removerPeca(idx) {
+    _mntPecasSel.splice(idx, 1);
+    _renderPecasSel();
+  }
+
+  function adicionarPecaCustom() {
+    var inp = document.getElementById('mntPecaCustom');
+    if (!inp || !inp.value.trim()) return;
+    _mntPecasSel.push({ nome: inp.value.trim(), quantidade: 1, unidade: 'un' });
+    inp.value = '';
+    _renderPecasSel();
+  }
+
+  function _carregarMntDados() {
+    if (_mntCarregado) return;
+    _mntCarregado = true;
+
+    // Oficinas
+    fetch('/frota/oficinas/lista').then(function(r){ return r.json(); }).then(function(data) {
+      _mntOficinas = data;
+      var sel = document.getElementById('mntOficina');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Selecionar oficina...</option>'
+        + data.map(function(o){ return '<option value="' + o.nome + '">' + o.nome + (o.telefone ? ' — ' + o.telefone : '') + '</option>'; }).join('')
+        + '<option value="__outra">Outra (digitar)</option>';
+    }).catch(function() {
+      var sel = document.getElementById('mntOficina');
+      if (sel) sel.innerHTML = '<option value="__outra">Digitar nome da oficina</option>';
+      toggleOficinaCustom();
+    });
+
+    // Peças — popula o select nativo
+    fetch('/frota/pecas/lista').then(function(r){ return r.json(); }).then(function(data) {
+      _mntPecas = data;
+      var sel = document.getElementById('mntPecaSelect');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Selecione uma peça do catálogo...</option>';
+      if (!data.length) {
+        sel.innerHTML += '<option disabled>Nenhuma peça cadastrada — use o campo abaixo</option>';
+        return;
+      }
+      // Agrupar por categoria para <optgroup>
+      var grupos = {};
+      var labels = { motor:'Motor', freios:'Freios', pneus:'Pneus', eletrica:'Elétrica',
+                     suspensao:'Suspensão', transmissao:'Transmissão', funilaria:'Funilaria',
+                     revisao:'Revisão Geral', outros:'Outros' };
+      data.forEach(function(p) {
+        var cat = p.categoria || 'outros';
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push(p);
+      });
+      Object.keys(grupos).forEach(function(cat) {
+        var grp = document.createElement('optgroup');
+        grp.label = labels[cat] || cat;
+        grupos[cat].forEach(function(p) {
+          var opt = document.createElement('option');
+          opt.value = JSON.stringify(p);
+          opt.textContent = p.nome + (p.unidade && p.unidade !== 'un' ? ' (' + p.unidade + ')' : '');
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      });
+    }).catch(function() { /* silencioso — campo livre ainda disponível */ });
+  }
+
+  function _selecionarDelSelect(sel) {
+    if (!sel.value) return;
+    var peca;
+    try { peca = JSON.parse(sel.value); } catch(e) { return; }
+    // Evitar duplicatas
+    if (!_mntPecasSel.find(function(p){ return p.nome === peca.nome; })) {
+      _mntPecasSel.push({ nome: peca.nome, quantidade: 1, unidade: peca.unidade || 'un' });
+      _renderPecasSel();
     }
-  }, 1000);
+    sel.value = '';  // reset para placeholder
+  }
+
+  // Carrega dados quando a aba manutenção é ativada
+  tabs.forEach(function(t) {
+    if (t.dataset.tab === 'manutencao') {
+      t.addEventListener('click', _carregarMntDados);
+    }
+  });
+  // Carrega imediatamente se a aba já está ativa ao abrir a página
+  if (document.getElementById('panel-manutencao') &&
+      document.getElementById('panel-manutencao').classList.contains('active')) {
+    _carregarMntDados();
+  }
+
+  async function enviarManutencao() {
+    var btn  = document.getElementById('btnMnt');
+    var desc = (document.getElementById('mntDesc') || {}).value || '';
+    var km   = parseInt((document.getElementById('mntKm') || {}).value) || null;
+    var cat  = document.querySelector('input[name="mntCategoria"]:checked');
+    var categoria  = cat ? cat.value : 'corretiva';
+    var selOficina = document.getElementById('mntOficina');
+    var oficinaNome = '';
+    if (selOficina) {
+      oficinaNome = selOficina.value === '__outra'
+        ? ((document.getElementById('mntOficinaCustom') || {}).value || '').trim()
+        : selOficina.value;
+    }
+    var valPecas = parseFloat((document.getElementById('mntValPecas') || {}).value) || null;
+    var valMao   = parseFloat((document.getElementById('mntValMao')   || {}).value) || null;
+
+    if (!VEICULO_ID || desc.trim().length < 5 || !km) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+    try {
+      var res = await fetch('/frota/manutencao/solicitar', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          veiculo_id:         VEICULO_ID,
+          categoria:          categoria,
+          odometro:           km,
+          descricao_problema: desc.trim(),
+          oficina:            oficinaNome || null,
+          pecas:              _mntPecasSel.length ? _mntPecasSel : null,
+          valor_pecas:        valPecas,
+          valor_mao_obra:     valMao,
+        }),
+      });
+      var data = await res.json();
+      if (res.ok) {
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> Solicitação Enviada!';
+        btn.style.background = 'linear-gradient(135deg,#14532d,#16a34a)';
+        document.getElementById('mntDesc').value = '';
+        if (document.getElementById('mntKm')) document.getElementById('mntKm').value = '';
+        if (document.getElementById('mntValPecas')) document.getElementById('mntValPecas').value = '';
+        if (document.getElementById('mntValMao'))   document.getElementById('mntValMao').value   = '';
+        if (selOficina) selOficina.selectedIndex = 0;
+        _mntPecasSel = [];
+        _renderPecasSel();
+        var pecaSel = document.getElementById('mntPecaSelect');
+        if (pecaSel) pecaSel.value = '';
+        setTimeout(function() {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Solicitação';
+          btn.style.background = '';
+        }, 3000);
+      } else {
+        alert('Erro: ' + (data.detail || 'Falha ao enviar'));
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Solicitação';
+      }
+    } catch (e) {
+      alert('Erro de conexão. Tente novamente.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Solicitação';
+    }
+  }
+
+  /* ── Abastecimento ─────────────────────────────────── */
+  var VEICULO_ID = {{ veiculo_motorista.id if veiculo_motorista else 'null' }};
+  var KM_ATUAL   = {{ veiculo_motorista.odometro_atual if veiculo_motorista and veiculo_motorista.odometro_atual else 0 }};
+
+  function atualizarPreview() {
+    var odo    = parseFloat(document.getElementById('fuelOdo').value)    || 0;
+    var litros = parseFloat(document.getElementById('fuelLitros').value) || 0;
+    var valor  = parseFloat(document.getElementById('fuelValor').value)  || 0;
+    var btn    = document.getElementById('btnFuel');
+    var prev   = document.getElementById('fuelPreview');
+    var precoL = document.getElementById('fuelPrecoL');
+
+    // Validação mínima
+    var ok = odo > 0 && litros > 0 && valor > 0;
+    btn.disabled = !ok;
+
+    if (ok && litros > 0) {
+      prev.style.display = 'block';
+      precoL.textContent = 'R$ ' + (valor / litros).toFixed(3).replace('.', ',');
+    } else {
+      prev.style.display = 'none';
+    }
+  }
+
+  async function registrarAbastecimento() {
+    var btn    = document.getElementById('btnFuel');
+    var odo    = parseInt(document.getElementById('fuelOdo').value)      || 0;
+    var litros = parseFloat(document.getElementById('fuelLitros').value) || 0;
+    var valor  = parseFloat(document.getElementById('fuelValor').value)  || 0;
+
+    if (!VEICULO_ID || odo <= 0 || litros <= 0 || valor <= 0) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
+
+    try {
+      var res = await fetch('/frota/abastecimento', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          veiculo_id:  VEICULO_ID,
+          odometro:    odo,
+          litros:      litros,
+          valor_total: valor,
+        }),
+      });
+      var data = await res.json();
+      if (res.ok) {
+        // Recarrega na aba de combustível
+        window.location.href = window.location.pathname + '?aba=combustivel';
+      } else {
+        alert('Erro: ' + (data.detail || 'Falha ao registrar'));
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-gas-pump"></i> Confirmar Abastecimento';
+      }
+    } catch (e) {
+      alert('Erro de conexão. Tente novamente.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-gas-pump"></i> Confirmar Abastecimento';
+    }
+  }
+
+  /* ── Timer de duração do turno ───────────────────────── */
+  {% if turno_ativo and turno_ativo.checklist_inicio %}
+  (function() {
+    var inicio = new Date('{{ turno_ativo.checklist_inicio.data_hora.strftime('%Y-%m-%dT%H:%M:%S') }}');
+    function atualizarTempo() {
+      var el = document.getElementById('turno-duracao');
+      if (!el) return;
+      var diff = Math.floor((Date.now() - inicio.getTime()) / 1000);
+      if (diff < 0) diff = 0;
+      var h = Math.floor(diff / 3600);
+      var m = Math.floor((diff % 3600) / 60);
+      el.textContent = (h > 0 ? h + 'h ' : '') + m + 'min em turno';
+    }
+    atualizarTempo();
+    setInterval(atualizarTempo, 60000);
+  })();
+  {% endif %}
 </script>
 </body>
 </html>

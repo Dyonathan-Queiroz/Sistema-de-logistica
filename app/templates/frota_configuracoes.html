@@ -1,0 +1,281 @@
+{% extends "frota_base.html" %}
+
+{% block title %}Configurações{% endblock %}
+{% block page_title %}Configurações da Frota{% endblock %}
+{% block nav_config %}active{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --amber:       #f59e0b;
+    --amber-dk:    #d97706;
+    --amber-light: #fffbeb;
+    --amber-mid:   #fcd34d;
+    --danger:      #DC2626;
+    --shadow-sm:   0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+    --shadow:      0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+    --shadow-md:   0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+  }
+
+  /* Amber focus for all inputs and selects */
+  input:focus, select:focus {
+    outline: none !important;
+    border-color: var(--amber) !important;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.15) !important;
+  }
+</style>
+
+<div x-data="{
+  aba: 'oficinas',
+  novaOficina: { nome: '', telefone: '', endereco: '' },
+  novaPeca:    { nome: '', categoria: '', unidade: 'un' },
+  salvando: false,
+
+  async criarOficina() {
+    if (!this.novaOficina.nome.trim()) return;
+    this.salvando = true;
+    const res = await fetch('/frota/oficinas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(this.novaOficina),
+    });
+    if (res.ok) { window.location.reload(); }
+    else { alert('Erro ao salvar'); this.salvando = false; }
+  },
+
+  async removerOficina(id) {
+    if (!confirm('Desativar esta oficina?')) return;
+    await fetch('/frota/oficinas/' + id, { method: 'DELETE' });
+    document.getElementById('oficina-' + id).remove();
+  },
+
+  async criarPeca() {
+    if (!this.novaPeca.nome.trim()) return;
+    this.salvando = true;
+    const res = await fetch('/frota/pecas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(this.novaPeca),
+    });
+    if (res.ok) { window.location.reload(); }
+    else { alert('Erro ao salvar'); this.salvando = false; }
+  },
+
+  async removerPeca(id) {
+    if (!confirm('Desativar esta peça?')) return;
+    await fetch('/frota/pecas/' + id, { method: 'DELETE' });
+    document.getElementById('peca-' + id).remove();
+  },
+}">
+
+  {# ── Tabs — amber active state ── #}
+  <div class="flex bg-white border border-slate-200 rounded-2xl p-1 gap-1 mb-5 max-w-sm"
+       style="box-shadow:var(--shadow-sm)">
+    <button @click="aba='oficinas'"
+      :style="aba==='oficinas' ? 'background:var(--amber);color:#000;box-shadow:0 1px 4px rgba(245,158,11,0.25)' : ''"
+      :class="aba==='oficinas' ? '' : 'text-slate-500 hover:bg-slate-100'"
+      class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all">
+      <i data-lucide="building-2" class="w-4 h-4"></i> Oficinas
+      <span class="text-xs font-bold opacity-70">{{ oficinas|length }}</span>
+    </button>
+    <button @click="aba='pecas'"
+      :style="aba==='pecas' ? 'background:var(--amber);color:#000;box-shadow:0 1px 4px rgba(245,158,11,0.25)' : ''"
+      :class="aba==='pecas' ? '' : 'text-slate-500 hover:bg-slate-100'"
+      class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all">
+      <i data-lucide="package" class="w-4 h-4"></i> Peças
+      <span class="text-xs font-bold opacity-70">{{ pecas|length }}</span>
+    </button>
+  </div>
+
+  {# ════════════ ABA OFICINAS ════════════ #}
+  <div x-show="aba==='oficinas'">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+      {# Formulário novo #}
+      <div class="bg-white rounded-2xl border border-slate-200 p-5"
+           style="box-shadow:var(--shadow-sm)">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <i data-lucide="plus-circle" class="w-4 h-4" style="color:var(--amber)"></i> Nova Oficina
+        </h2>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome *</label>
+            <input x-model="novaOficina.nome" type="text" placeholder="Ex: Auto Center Silva"
+              class="mt-1 w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 transition">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Telefone</label>
+            <input x-model="novaOficina.telefone" type="text" placeholder="(95) 99999-0000"
+              class="mt-1 w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 transition">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Endereço</label>
+            <input x-model="novaOficina.endereco" type="text" placeholder="Rua, número, bairro"
+              class="mt-1 w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 transition">
+          </div>
+          {# Adicionar button — amber, black text #}
+          <button @click="criarOficina()" :disabled="!novaOficina.nome.trim() || salvando"
+            class="w-full mt-1 py-3 font-bold text-sm rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            :style="!novaOficina.nome.trim() || salvando ? '' : 'background:var(--amber);color:#000'"
+            :class="!novaOficina.nome.trim() || salvando ? 'bg-slate-200 text-slate-400' : ''">
+            <span x-show="!salvando"><i data-lucide="save" class="w-4 h-4 inline-block mr-1.5"></i>Salvar Oficina</span>
+            <span x-show="salvando" style="display:none">Salvando...</span>
+          </button>
+        </div>
+      </div>
+
+      {# Lista #}
+      <div class="xl:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden"
+           style="box-shadow:var(--shadow-sm)">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="building-2" class="w-4 h-4" style="color:var(--amber)"></i> Oficinas Cadastradas
+          </h2>
+          <span class="text-xs text-slate-400">{{ oficinas|length }} ativa{{ 's' if oficinas|length != 1 else '' }}</span>
+        </div>
+        {% if oficinas %}
+        <div class="divide-y divide-slate-100">
+          {% for o in oficinas %}
+          <div id="oficina-{{ o.id }}" class="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                 style="background:var(--amber-light)">
+              <i data-lucide="building-2" class="w-4 h-4" style="color:var(--amber-dk)"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-bold text-slate-800">{{ o.nome }}</p>
+              <p class="text-xs text-slate-400 mt-0.5">
+                {% if o.telefone %}{{ o.telefone }}{% endif %}
+                {% if o.telefone and o.endereco %} · {% endif %}
+                {% if o.endereco %}{{ o.endereco }}{% endif %}
+                {% if not o.telefone and not o.endereco %}Sem informações de contato{% endif %}
+              </p>
+            </div>
+            {# Danger/delete action — keeps red #}
+            <button @click="removerOficina({{ o.id }})"
+              class="p-2 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0"
+              title="Desativar">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-5 py-12 text-center text-slate-400">
+          <i data-lucide="building-2" class="w-8 h-8 mx-auto mb-3 text-slate-300"></i>
+          <p class="text-sm">Nenhuma oficina cadastrada ainda.</p>
+          <p class="text-xs mt-1">Use o formulário ao lado para adicionar.</p>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  {# ════════════ ABA PEÇAS ════════════ #}
+  <div x-show="aba==='pecas'" style="display:none">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+      {# Formulário novo #}
+      <div class="bg-white rounded-2xl border border-slate-200 p-5"
+           style="box-shadow:var(--shadow-sm)">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <i data-lucide="plus-circle" class="w-4 h-4" style="color:var(--amber)"></i> Nova Peça / Serviço
+        </h2>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome *</label>
+            <input x-model="novaPeca.nome" type="text" placeholder="Ex: Óleo Motor 5W30"
+              class="mt-1 w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 transition">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Categoria</label>
+            <select x-model="novaPeca.categoria"
+              class="mt-1 w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 transition">
+              <option value="">Selecionar...</option>
+              <option value="motor">Motor</option>
+              <option value="freios">Freios</option>
+              <option value="pneus">Pneus</option>
+              <option value="eletrica">Elétrica</option>
+              <option value="suspensao">Suspensão</option>
+              <option value="transmissao">Transmissão</option>
+              <option value="funilaria">Funilaria</option>
+              <option value="revisao">Revisão Geral</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Unidade</label>
+            <select x-model="novaPeca.unidade"
+              class="mt-1 w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 transition">
+              <option value="un">Unidade (un)</option>
+              <option value="L">Litro (L)</option>
+              <option value="kg">Kg</option>
+              <option value="par">Par</option>
+              <option value="jogo">Jogo</option>
+              <option value="serv">Serviço</option>
+            </select>
+          </div>
+          {# Adicionar button — amber, black text #}
+          <button @click="criarPeca()" :disabled="!novaPeca.nome.trim() || salvando"
+            class="w-full mt-1 py-3 font-bold text-sm rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            :style="!novaPeca.nome.trim() || salvando ? '' : 'background:var(--amber);color:#000'"
+            :class="!novaPeca.nome.trim() || salvando ? 'bg-slate-200 text-slate-400' : ''">
+            <span x-show="!salvando"><i data-lucide="save" class="w-4 h-4 inline-block mr-1.5"></i>Salvar Peça</span>
+            <span x-show="salvando" style="display:none">Salvando...</span>
+          </button>
+        </div>
+      </div>
+
+      {# Lista #}
+      <div class="xl:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden"
+           style="box-shadow:var(--shadow-sm)">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="package" class="w-4 h-4" style="color:var(--amber)"></i> Peças / Serviços Cadastrados
+          </h2>
+          <span class="text-xs text-slate-400">{{ pecas|length }} ativa{{ 's' if pecas|length != 1 else '' }}</span>
+        </div>
+        {% if pecas %}
+        <div class="divide-y divide-slate-100">
+          {% set categorias_label = {
+            'motor': 'Motor', 'freios': 'Freios', 'pneus': 'Pneus',
+            'eletrica': 'Elétrica', 'suspensao': 'Suspensão',
+            'transmissao': 'Transmissão', 'funilaria': 'Funilaria',
+            'revisao': 'Revisão Geral', 'outros': 'Outros'
+          } %}
+          {% for p in pecas %}
+          <div id="peca-{{ p.id }}" class="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                 style="background:var(--amber-light)">
+              <i data-lucide="package" class="w-4 h-4" style="color:var(--amber-dk)"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-bold text-slate-800">{{ p.nome }}</p>
+              <p class="text-xs text-slate-400 mt-0.5">
+                {% if p.categoria %}{{ categorias_label.get(p.categoria, p.categoria) }} · {% endif %}
+                {{ p.unidade or 'un' }}
+              </p>
+            </div>
+            {# Danger/delete action — keeps red #}
+            <button @click="removerPeca({{ p.id }})"
+              class="p-2 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0"
+              title="Desativar">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-5 py-12 text-center text-slate-400">
+          <i data-lucide="package" class="w-8 h-8 mx-auto mb-3 text-slate-300"></i>
+          <p class="text-sm">Nenhuma peça cadastrada ainda.</p>
+          <p class="text-xs mt-1">Use o formulário ao lado para adicionar peças e serviços frequentes.</p>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

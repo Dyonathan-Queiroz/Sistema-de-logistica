@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico — {{ entregador.username }}{% endblock %}
+{% block page_title %}Histórico do Entregador{% endblock %}
+
+{% block topbar_right %}
+<a href="/gestor/desempenho" class="btn btn-sm btn-outline-secondary">
+  <i class="fas fa-arrow-left mr-1"></i> Voltar
+</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Token System ─────────────────────────────────────────── */
+  :root {
+    --amber:       #f59e0b;
+    --amber-dk:    #d97706;
+    --amber-light: #fffbeb;
+    --amber-mid:   #fcd34d;
+    --danger:      #DC2626;
+    --green:       #16A34A;
+    --blue:        #2563EB;
+
+    --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+    --shadow:    0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+    --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+  }
+
+  /* ── Perfil ─────────────────────────────────────────────── */
+  .perfil-card {
+    background: linear-gradient(135deg,#1a1f2e,#2d3748);
+    border-radius: 16px; padding: 24px 28px;
+    display: flex; align-items: center; gap: 20px;
+    color: #fff; margin-bottom: 22px; flex-wrap: wrap;
+    box-shadow: var(--shadow-md);
+  }
+  .perfil-avatar {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, var(--amber), var(--amber-dk));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 800; color: #000; flex-shrink: 0;
+  }
+  .perfil-info { flex: 1; min-width: 0; }
+  .perfil-name { font-size: 22px; font-weight: 800; line-height: 1.2; }
+  .perfil-meta { font-size: 13px; opacity: .7; margin-top: 4px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .perfil-meta span { display: flex; align-items: center; gap: 5px; }
+  .perfil-stats { display: flex; gap: 24px; flex-wrap: wrap; }
+  .ps-item { text-align: center; }
+  .ps-val { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .ps-lbl { font-size: 10px; opacity: .6; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+  @media(max-width:600px){ .perfil-card { flex-direction: column; text-align: center; } .perfil-stats { justify-content: center; } }
+
+  /* ── KPIs ─────────────────────────────────────────────── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+  @media(max-width:900px){ .kpi-row { grid-template-columns: repeat(2,1fr); } }
+
+  .kpi-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px 18px; position:relative; overflow:hidden; box-shadow: var(--shadow-sm); }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; }
+  .kpi-card.green::before  { background: linear-gradient(90deg,#16a34a,#4ade80); }
+  .kpi-card.red::before    { background: linear-gradient(90deg,#dc2626,#f87171); }
+  .kpi-card.blue::before   { background: linear-gradient(90deg,#2563eb,#60a5fa); }
+  .kpi-card.amber::before  { background: linear-gradient(90deg, var(--amber), var(--amber-mid)); }
+  .kpi-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; margin-bottom:10px; }
+  .kpi-icon.green  { background:#f0fdf4; color:#16a34a; }
+  .kpi-icon.red    { background:#fef2f2; color:#dc2626; }
+  .kpi-icon.blue   { background:#eff6ff; color:#2563eb; }
+  .kpi-icon.amber  { background: var(--amber-light); color: var(--amber-dk); }
+  .kpi-val  { font-size:26px; font-weight:800; color:#1a1f2e; line-height:1; margin-bottom:3px; font-variant-numeric: tabular-nums; }
+  .kpi-lbl  { font-size:12px; color:#6b7280; }
+
+  /* ── Tempos ─────────────────────────────────────────────── */
+  .tempos-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+  @media(max-width:600px){ .tempos-row { grid-template-columns: 1fr; } }
+  .tempo-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px 18px; display:flex; align-items:center; gap:12px; box-shadow: var(--shadow-sm); }
+  .tempo-icon { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+  .ti-amber  { background: var(--amber-light); color: var(--amber-dk); }
+  .ti-blue   { background:#eff6ff; color:#2563eb; }
+  .ti-green  { background:#f0fdf4; color:#16a34a; }
+  .tempo-val { font-size:20px; font-weight:800; color:#1a1f2e; line-height:1; font-variant-numeric: tabular-nums; }
+  .tempo-lbl { font-size:11px; color:#9ca3af; margin-top:2px; }
+
+  /* ── Filtros ─────────────────────────────────────────────── */
+  .filter-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px 18px; margin-bottom:18px; display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; box-shadow: var(--shadow-sm); }
+  .fg { display:flex; flex-direction:column; gap:4px; min-width:120px; flex:1; }
+  .fg label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#6b7280; }
+  .fg input, .fg select { border:1px solid #e5e7eb; border-radius:8px; padding:7px 10px; font-size:13px; color:#374151; outline:none; transition:border .15s, box-shadow .15s; }
+  .fg input:focus, .fg select:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+  @media(max-width:600px){ .fg { min-width:100%; } }
+
+  /* ── Tabela de histórico ─────────────────────────────────── */
+  .hist-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; overflow:hidden; margin-bottom:20px; box-shadow: var(--shadow); }
+  .hist-header { padding:14px 20px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .hist-title { font-size:14px; font-weight:700; color:#1a1f2e; display:flex; align-items:center; gap:8px; }
+  .hist-count { font-size:12px; color:#9ca3af; font-variant-numeric: tabular-nums; }
+
+  .hist-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .hist-table th { background:#f9fafb; padding:10px 16px; text-align:left; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#6b7280; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+  .hist-table td { padding:12px 16px; border-bottom:1px solid #f3f4f6; vertical-align:middle; color:#374151; }
+  .hist-table tr:last-child td { border-bottom:none; }
+  .hist-table tr:hover td { background:#fafafa; }
+
+  /* Status badges — semantic colors */
+  .badge-status { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
+  .bs-finalizado { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+  .bs-em_rota    { background: var(--amber-light); color: var(--amber-dk); border:1px solid var(--amber-mid); }
+  .bs-pendente   { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+  .bs-erro       { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+
+  /* Chips */
+  .chip { font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:5px; white-space:nowrap; }
+  .chip-checkout { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+  .chip-seq      { background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; }
+
+  /* Tempo badge */
+  .t-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; font-variant-numeric: tabular-nums; }
+  .tb-fast { background:#d1fae5; color:#065f46; }
+  .tb-med  { background:#fef3c7; color:#92400e; }
+  .tb-slow { background:#fee2e2; color:#991b1b; }
+  .tb-none { color:#9ca3af; font-size:12px; }
+
+  /* Paginação */
+  .paginacao { display:flex; align-items:center; justify-content:center; gap:6px; padding:16px 0 4px; flex-wrap:wrap; }
+  .pag-btn { padding:6px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; font-weight:600; color:#374151; background:#fff; text-decoration:none; transition:all .15s; }
+  .pag-btn:hover { background:#f3f4f6; color:#1a1f2e; text-decoration:none; }
+  .pag-btn.active { background: var(--amber); color:#000; border-color: var(--amber); }
+  .pag-btn.disabled { opacity:.4; pointer-events:none; }
+
+  /* Empty */
+  .empty { text-align:center; padding:48px 20px; color:#9ca3af; }
+  .empty i { font-size:36px; display:block; margin-bottom:12px; opacity:.25; }
+
+  @media(max-width:767px){ .hide-mob { display:none !important; } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── PERFIL DO ENTREGADOR ──────────────────────────────────────────── -->
+<div class="perfil-card">
+  <div class="perfil-avatar">{{ entregador.username[:2].upper() }}</div>
+  <div class="perfil-info">
+    <div class="perfil-name">{{ entregador.username }}</div>
+    <div class="perfil-meta">
+      <span><i class="fas fa-store"></i> {{ filial_nome }}</span>
+      <span><i class="fas fa-id-badge"></i> Entregador</span>
+      {% if taxa_sucesso is not none %}
+      <span><i class="fas fa-percentage"></i> {{ taxa_sucesso }}% de sucesso</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="perfil-stats">
+    <div class="ps-item">
+      <div class="ps-val">{{ total }}</div>
+      <div class="ps-lbl">Total</div>
+    </div>
+    <div class="ps-item">
+      <div class="ps-val" style="color:#4ade80;">{{ finalizadas }}</div>
+      <div class="ps-lbl">Finalizadas</div>
+    </div>
+    <div class="ps-item">
+      <div class="ps-val" style="color:#f87171;">{{ erros }}</div>
+      <div class="ps-lbl">Erros</div>
+    </div>
+    <div class="ps-item">
+      <div class="ps-val" style="color: var(--amber-mid);">{{ em_rota }}</div>
+      <div class="ps-lbl">Em Rota</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── KPIs ─────────────────────────────────────────────────────────── -->
+<div class="kpi-row">
+  <div class="kpi-card green">
+    <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
+    <div class="kpi-val">{{ finalizadas }}</div>
+    <div class="kpi-lbl">Finalizadas</div>
+  </div>
+  <div class="kpi-card red">
+    <div class="kpi-icon red"><i class="fas fa-times-circle"></i></div>
+    <div class="kpi-val">{{ erros }}</div>
+    <div class="kpi-lbl">Com Erro</div>
+  </div>
+  <div class="kpi-card blue">
+    <div class="kpi-icon blue"><i class="fas fa-motorcycle"></i></div>
+    <div class="kpi-val">{{ em_rota }}</div>
+    <div class="kpi-lbl">Em Rota</div>
+  </div>
+  <div class="kpi-card amber">
+    <div class="kpi-icon amber"><i class="fas fa-hourglass-half"></i></div>
+    <div class="kpi-val">{{ pendentes }}</div>
+    <div class="kpi-lbl">Pendentes</div>
+  </div>
+</div>
+
+<!-- ── TEMPOS MÉDIOS ─────────────────────────────────────────────────── -->
+<div class="tempos-row">
+  <div class="tempo-card">
+    <div class="tempo-icon ti-amber"><i class="fas fa-bolt"></i></div>
+    <div>
+      <div class="tempo-val">{% if t_reacao is not none %}{{ t_reacao }} min{% else %}—{% endif %}</div>
+      <div class="tempo-lbl">Tempo médio de reação</div>
+    </div>
+  </div>
+  <div class="tempo-card">
+    <div class="tempo-icon ti-blue"><i class="fas fa-motorcycle"></i></div>
+    <div>
+      <div class="tempo-val">{% if t_entrega is not none %}{{ t_entrega }} min{% else %}—{% endif %}</div>
+      <div class="tempo-lbl">Tempo médio de entrega</div>
+    </div>
+  </div>
+  <div class="tempo-card">
+    <div class="tempo-icon ti-green"><i class="fas fa-stopwatch"></i></div>
+    <div>
+      <div class="tempo-val">{% if t_total is not none %}{{ t_total }} min{% else %}—{% endif %}</div>
+      <div class="tempo-lbl">Tempo total médio</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FILTROS ───────────────────────────────────────────────────────── -->
+<form method="GET" action="/gestor/entregador/{{ entregador.id }}">
+<div class="filter-card">
+  <div class="fg">
+    <label>Início</label>
+    <input type="date" name="inicio" value="{{ filtros.inicio }}">
+  </div>
+  <div class="fg">
+    <label>Fim</label>
+    <input type="date" name="fim" value="{{ filtros.fim }}">
+  </div>
+  <div class="fg">
+    <label>Status</label>
+    <select name="status">
+      <option value="">Todos</option>
+      <option value="finalizado"   {% if filtros.status == 'finalizado'   %}selected{% endif %}>Finalizado</option>
+      <option value="em_rota"      {% if filtros.status == 'em_rota'      %}selected{% endif %}>Em Rota</option>
+      <option value="pendente"     {% if filtros.status == 'pendente'     %}selected{% endif %}>Pendente</option>
+      <option value="erro_entrega" {% if filtros.status == 'erro_entrega' %}selected{% endif %}>Com Erro</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:6px;align-items:flex-end;">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="fas fa-filter mr-1"></i> Filtrar
+    </button>
+    <a href="/gestor/entregador/{{ entregador.id }}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-times"></i>
+    </a>
+  </div>
+</div>
+</form>
+
+<!-- ── TABELA DE HISTÓRICO ───────────────────────────────────────────── -->
+<div class="hist-card">
+  <div class="hist-header">
+    <span class="hist-title">
+      <i class="fas fa-history" style="color: var(--amber);"></i>
+      Histórico de Entregas
+    </span>
+    <span class="hist-count">{{ total_reg }} registro{{ 's' if total_reg != 1 else '' }}</span>
+  </div>
+
+  {% if entregas %}
+  <div style="overflow-x:auto;">
+    <table class="hist-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Identificação</th>
+          <th>Endereço</th>
+          <th>Filial</th>
+          <th>Status</th>
+          <th class="hide-mob">Criado em</th>
+          <th class="hide-mob">T. Reação</th>
+          <th class="hide-mob">T. Entrega</th>
+          <th>T. Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entregas %}
+        {% set t_reac = none %}
+        {% set t_entr = none %}
+        {% set t_tot  = none %}
+        {% if e.data_aceite %}
+          {% set diff_reac = (e.data_aceite - e.data_criacao).total_seconds() // 60 %}
+          {% set t_reac = diff_reac | int %}
+        {% endif %}
+        {% if e.data_aceite and e.data_finalizacao %}
+          {% set diff_entr = (e.data_finalizacao - e.data_aceite).total_seconds() // 60 %}
+          {% set t_entr = diff_entr | int %}
+          {% set diff_tot = (e.data_finalizacao - e.data_criacao).total_seconds() // 60 %}
+          {% set t_tot = diff_tot | int %}
+        {% endif %}
+        <tr>
+          <td style="color:#9ca3af;font-size:12px;font-variant-numeric:tabular-nums;">#{{ e.id }}</td>
+          <td>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+              {% if e.nro_checkout %}<span class="chip chip-checkout">Checkout {{ e.nro_checkout }}</span>{% endif %}
+              {% if e.seq_docto %}<span class="chip chip-seq">Doc {{ e.seq_docto }}</span>{% endif %}
+              {% if not e.nro_checkout and not e.seq_docto %}
+                <span style="color:#9ca3af;font-size:12px;">{{ e.cupom_fiscal or '—' }}</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <div style="font-size:12px;color:#374151;">{{ e.rua }}, {{ e.numero }}</div>
+            <div style="font-size:11px;color:#9ca3af;">{{ e.bairro }}{% if e.municipio %} — {{ e.municipio }}{% endif %}</div>
+            {% if e.motivo_erro %}
+            <div style="font-size:11px;color:#dc2626;margin-top:3px;">
+              <i class="fas fa-comment-alt" style="margin-right:3px;"></i>{{ e.motivo_erro }}
+            </div>
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:#6b7280;">{{ filiais_map.get(e.filial_id, '—') }}</td>
+          <td>
+            {% if e.status == 'finalizado' %}
+              <span class="badge-status bs-finalizado"><i class="fas fa-check"></i> Finalizado</span>
+            {% elif e.status == 'em_rota' %}
+              <span class="badge-status bs-em_rota"><i class="fas fa-motorcycle"></i> Em Rota</span>
+            {% elif e.status == 'pendente' %}
+              <span class="badge-status bs-pendente"><i class="fas fa-clock"></i> Pendente</span>
+            {% else %}
+              <span class="badge-status bs-erro"><i class="fas fa-times"></i> Erro</span>
+            {% endif %}
+          </td>
+          <td class="hide-mob" style="font-size:12px;color:#6b7280;white-space:nowrap;">
+            {{ e.data_criacao.strftime('%d/%m/%Y %H:%M') if e.data_criacao else '—' }}
+          </td>
+          <td class="hide-mob">
+            {% if t_reac is not none and t_reac > 0 %}
+              <span class="t-badge {% if t_reac <= 8 %}tb-fast{% elif t_reac <= 20 %}tb-med{% else %}tb-slow{% endif %}">{{ t_reac }}min</span>
+            {% else %}
+              <span class="tb-none">—</span>
+            {% endif %}
+          </td>
+          <td class="hide-mob">
+            {% if t_entr is not none and t_entr > 0 %}
+              <span class="t-badge {% if t_entr <= 25 %}tb-fast{% elif t_entr <= 40 %}tb-med{% else %}tb-slow{% endif %}">{{ t_entr }}min</span>
+            {% else %}
+              <span class="tb-none">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if t_tot is not none and t_tot > 0 %}
+              <span class="t-badge {% if t_tot <= 30 %}tb-fast{% elif t_tot <= 50 %}tb-med{% else %}tb-slow{% endif %}">{{ t_tot }}min</span>
+            {% else %}
+              <span class="tb-none">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginação -->
+  {% if total_pags > 1 %}
+  <div class="paginacao">
+    <a href="?inicio={{ filtros.inicio }}&fim={{ filtros.fim }}&status={{ filtros.status }}&page={{ page - 1 }}"
+       class="pag-btn {% if page == 1 %}disabled{% endif %}">
+      <i class="fas fa-chevron-left"></i>
+    </a>
+    {% for p in range(1, total_pags + 1) %}
+      {% if p == page or (p >= page - 2 and p <= page + 2) or p == 1 or p == total_pags %}
+        <a href="?inicio={{ filtros.inicio }}&fim={{ filtros.fim }}&status={{ filtros.status }}&page={{ p }}"
+           class="pag-btn {% if p == page %}active{% endif %}">{{ p }}</a>
+      {% elif p == page - 3 or p == page + 3 %}
+        <span style="color:#9ca3af;padding:0 4px;">…</span>
+      {% endif %}
+    {% endfor %}
+    <a href="?inicio={{ filtros.inicio }}&fim={{ filtros.fim }}&status={{ filtros.status }}&page={{ page + 1 }}"
+       class="pag-btn {% if page == total_pags %}disabled{% endif %}">
+      <i class="fas fa-chevron-right"></i>
+    </a>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty">
+    <i class="fas fa-box-open"></i>
+    <p style="font-weight:700;color:#374151;margin-bottom:4px;">Nenhuma entrega encontrada</p>
+    <p style="font-size:13px;margin:0;">Ajuste os filtros para ver o histórico.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

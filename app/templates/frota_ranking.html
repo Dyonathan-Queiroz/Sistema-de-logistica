@@ -1,0 +1,475 @@
+{% extends "frota_base.html" %}
+
+{# ──────────────────────────────────────────────────────────────────────────
+   Contexto esperado do backend:
+     scores   : list[dict] — posicao, username, score_atual, total_entregas,
+                             nivel (ouro/prata/bronze/normal), updated_at_fmt
+     usuario  : Usuario
+   ────────────────────────────────────────────────────────────────────────── #}
+
+{% block title %}Ranking de Motoristas{% endblock %}
+{% block nav_score %}active{% endblock %}
+{% block page_title %}Ranking de Motoristas{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root {
+    --amber:      #f59e0b;
+    --amber-dk:   #d97706;
+    --amber-light:#fffbeb;
+    --amber-mid:  #fcd34d;
+    --danger:     #DC2626;
+    --silver:     #94a3b8;
+    --bronze:     #b45309;
+    --shadow-sm:  0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+    --shadow:     0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+    --shadow-md:  0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+  }
+
+  /* Score values always tabular */
+  .score-value { font-variant-numeric: tabular-nums; }
+
+  /* Score bar colors */
+  .bar-green  { background: #16A34A; }
+  .bar-amber  { background: var(--amber); }
+  .bar-red    { background: var(--danger); }
+
+  /* Score text colors matching bar */
+  .score-green { color: #16A34A; }
+  .score-amber { color: var(--amber-dk); }
+  .score-red   { color: var(--danger); }
+
+  /* Status badges */
+  .badge-em-rota    { background: var(--amber-light); color: var(--amber-dk); border: 1px solid var(--amber-mid); }
+  .badge-disponivel { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .badge-inativo    { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ══════ PÓDIO — TOP 3 ══════ #}
+{% if scores|length >= 3 %}
+<div class="mb-8">
+  <p class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-6">Top 3 Motoristas</p>
+
+  {# Grade do pódio: 2º — 1º — 3º #}
+  <div class="grid grid-cols-3 gap-4 max-w-2xl mx-auto items-end">
+
+    {# 2º Lugar — silver #}
+    {% set s2 = scores[1] %}
+    <div class="text-center">
+      <div class="relative inline-block mb-3">
+        <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
+             style="background: linear-gradient(135deg, #cbd5e1, var(--silver)); box-shadow: var(--shadow-md);">
+          <span class="text-2xl font-black text-white">{{ s2.username[:2].upper() }}</span>
+        </div>
+        <span class="absolute -top-2 -right-2 w-6 h-6 text-xs font-black rounded-full flex items-center justify-center border-2 border-white"
+              style="background: var(--silver); color: #fff;">2</span>
+      </div>
+      <p class="text-sm font-bold text-slate-800 truncate">{{ s2.username }}</p>
+      <p class="text-xs text-slate-500">{{ s2.total_entregas }} entregas</p>
+      <div class="bg-slate-100 rounded-full h-1.5 mt-2 mx-2">
+        <div class="h-1.5 rounded-full transition-all duration-700"
+             style="width: {{ s2.score_atual }}%; background: var(--silver);"></div>
+      </div>
+      <p class="text-lg font-black mt-1 score-value" style="color: var(--silver);">
+        {{ s2.score_atual }}<span class="text-xs font-normal text-slate-400"> pts</span>
+      </p>
+      {# Coluna de pódio #}
+      <div class="h-16 rounded-t-xl mt-2 flex items-center justify-center"
+           style="background: #e2e8f0;">
+        <span class="text-3xl font-black" style="color: var(--silver);">2</span>
+      </div>
+    </div>
+
+    {# 1º Lugar — gold/amber medal #}
+    {% set s1 = scores[0] %}
+    <div class="text-center -mt-4">
+      <div class="text-2xl mb-1">🥇</div>
+      <div class="relative inline-block mb-3">
+        <div class="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto"
+             style="background: linear-gradient(135deg, var(--amber-mid), var(--amber)); box-shadow: var(--shadow-md); outline: 4px solid #fef3c7; outline-offset: 0;">
+          <span class="text-3xl font-black text-white">{{ s1.username[:2].upper() }}</span>
+        </div>
+        <span class="absolute -top-2 -right-2 w-7 h-7 text-sm font-black rounded-full flex items-center justify-center border-2 border-white"
+              style="background: var(--amber); color: #000;">1</span>
+      </div>
+      <p class="text-base font-black text-slate-800 truncate">{{ s1.username }}</p>
+      <p class="text-xs text-slate-500">{{ s1.total_entregas }} entregas</p>
+      <div class="rounded-full h-2 mt-2 mx-1" style="background: var(--amber-light);">
+        <div class="h-2 rounded-full transition-all duration-700"
+             style="width: {{ s1.score_atual }}%; background: linear-gradient(90deg, var(--amber-mid), var(--amber));"></div>
+      </div>
+      <p class="text-2xl font-black mt-1 score-value" style="color: var(--amber-dk);">
+        {{ s1.score_atual }}<span class="text-sm font-normal text-slate-400"> pts</span>
+      </p>
+      {# Coluna de pódio — mais alta #}
+      <div class="h-24 rounded-t-xl mt-2 flex items-center justify-center"
+           style="background: linear-gradient(to top, var(--amber-light), #fffbeb); border: 1px solid var(--amber-mid);">
+        <span class="text-4xl font-black" style="color: var(--amber);">1</span>
+      </div>
+    </div>
+
+    {# 3º Lugar — bronze #}
+    {% set s3 = scores[2] %}
+    <div class="text-center mt-4">
+      <div class="relative inline-block mb-3">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto"
+             style="background: linear-gradient(135deg, #d97706, var(--bronze)); box-shadow: var(--shadow);">
+          <span class="text-xl font-black text-white">{{ s3.username[:2].upper() }}</span>
+        </div>
+        <span class="absolute -top-2 -right-2 w-5 h-5 text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white"
+              style="background: var(--bronze); color: #fff;">3</span>
+      </div>
+      <p class="text-sm font-bold text-slate-800 truncate">{{ s3.username }}</p>
+      <p class="text-xs text-slate-500">{{ s3.total_entregas }} entregas</p>
+      <div class="rounded-full h-1.5 mt-2 mx-3" style="background: #fef3c7;">
+        <div class="h-1.5 rounded-full transition-all duration-700"
+             style="width: {{ s3.score_atual }}%; background: var(--bronze);"></div>
+      </div>
+      <p class="text-base font-black mt-1 score-value" style="color: var(--bronze);">
+        {{ s3.score_atual }}<span class="text-xs font-normal text-slate-400"> pts</span>
+      </p>
+      {# Coluna de pódio #}
+      <div class="h-10 rounded-t-xl mt-2 flex items-center justify-center"
+           style="background: #fef3c7;">
+        <span class="text-2xl font-black" style="color: var(--bronze);">3</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ══════ TABELA COMPLETA ══════ #}
+<div class="bg-white border border-slate-200 rounded-2xl overflow-hidden" style="box-shadow: var(--shadow);">
+
+  <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <i data-lucide="list-ordered" class="w-4 h-4 text-slate-500"></i>
+      <span class="text-sm font-bold text-slate-700">Ranking Completo</span>
+    </div>
+    <span class="text-xs text-slate-400">{{ scores|length }} motorista{{ 's' if scores|length != 1 else '' }}</span>
+  </div>
+
+  {% if scores %}
+  <div class="divide-y divide-slate-100">
+    {% for s in scores %}
+    <div class="flex items-center gap-4 px-5 py-4 transition-colors
+      {% if loop.index == 1 %}{% elif loop.index == 2 %}bg-slate-50/40{% elif loop.index == 3 %}{% else %}hover:bg-slate-50/50{% endif %}">
+
+      {# Posição #}
+      <div class="w-8 text-center flex-shrink-0">
+        {% if loop.index == 1 %}
+          <span class="text-lg">🥇</span>
+        {% elif loop.index == 2 %}
+          <span class="text-lg">🥈</span>
+        {% elif loop.index == 3 %}
+          <span class="text-lg">🥉</span>
+        {% else %}
+          <span class="text-sm font-bold text-slate-400">{{ loop.index }}°</span>
+        {% endif %}
+      </div>
+
+      {# Avatar #}
+      <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-black text-sm"
+        {% if s.nivel == 'ouro' %}
+          style="background: linear-gradient(135deg, var(--amber-mid), var(--amber)); color: #fff;"
+        {% elif s.nivel == 'prata' %}
+          style="background: linear-gradient(135deg, #cbd5e1, var(--silver)); color: #fff;"
+        {% elif s.nivel == 'bronze' %}
+          style="background: linear-gradient(135deg, #d97706, var(--bronze)); color: #fff;"
+        {% else %}
+          style="background: #f1f5f9; color: #334155;"
+        {% endif %}>
+        {{ s.username[:2].upper() }}
+      </div>
+
+      {# Nome e entregas #}
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-bold text-slate-800 truncate">{{ s.username }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">
+          {{ s.total_entregas }} entrega{{ 's' if s.total_entregas != 1 else '' }}
+          {% if s.updated_at_fmt %} · Atualizado {{ s.updated_at_fmt }}{% endif %}
+        </p>
+      </div>
+
+      {# Status badge — semantic colors #}
+      {% if s.status is defined %}
+      <div class="flex-shrink-0 hidden sm:block">
+        {% if s.status == 'Em Rota' or s.status == 'em_rota' %}
+        <span class="text-xs font-bold px-2.5 py-1 rounded-full badge-em-rota">Em Rota</span>
+        {% elif s.status == 'Disponível' or s.status == 'disponivel' %}
+        <span class="text-xs font-bold px-2.5 py-1 rounded-full badge-disponivel">Disponível</span>
+        {% else %}
+        <span class="text-xs font-bold px-2.5 py-1 rounded-full badge-inativo">Inativo</span>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {# Barra de score + pontuação #}
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="w-24 sm:w-36 hidden sm:block">
+          <div class="bg-slate-100 rounded-full h-2">
+            <div class="h-2 rounded-full transition-all duration-700
+              {% if s.score_atual >= 80 %}bar-green
+              {% elif s.score_atual >= 60 %}bar-amber
+              {% else %}bar-red{% endif %}"
+              style="width: {{ s.score_atual }}%"></div>
+          </div>
+        </div>
+        <div class="text-right w-16">
+          <p class="text-sm font-black score-value
+            {% if s.score_atual >= 80 %}score-green
+            {% elif s.score_atual >= 60 %}score-amber
+            {% else %}score-red{% endif %}">
+            {{ s.score_atual }}
+          </p>
+          <p class="text-[10px] text-slate-400">pontos</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="p-12 text-center">
+    <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <i data-lucide="trophy" class="w-8 h-8 text-slate-400"></i>
+    </div>
+    <h3 class="text-lg font-bold text-slate-700 mb-1">Nenhum score registrado</h3>
+    <p class="text-sm text-slate-400">Os scores são criados automaticamente quando o primeiro turno é encerrado.</p>
+  </div>
+  {% endif %}
+</div>
+
+{# Legenda de níveis #}
+<div class="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+  <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Legenda de Níveis</p>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="flex items-center gap-2">
+      <div class="w-3 h-3 rounded-full bar-green flex-shrink-0"></div>
+      <span class="text-xs text-slate-600"><strong>80–100</strong> pts — Excelente</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="w-3 h-3 rounded-full flex-shrink-0" style="background: var(--amber);"></div>
+      <span class="text-xs text-slate-600"><strong>60–79</strong> pts — Bom</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></div>
+      <span class="text-xs text-slate-600"><strong>0–59</strong> pts — Atenção</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
+      <span class="text-xs text-slate-500">Score inicial: <strong>100</strong></span>
+    </div>
+  </div>
+</div>
+
+
+{# ══════ COMO O RANKING FUNCIONA ══════ #}
+<div class="mt-6">
+
+  {# Cabeçalho da seção #}
+  <div class="flex items-center gap-3 mb-4">
+    <div class="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+      <i data-lucide="help-circle" class="w-4 h-4 text-blue-600"></i>
+    </div>
+    <div>
+      <h2 class="text-sm font-bold text-slate-800">Como o Ranking é calculado?</h2>
+      <p class="text-xs text-slate-500">Explique para os motoristas o que faz a pontuação subir ou descer</p>
+    </div>
+  </div>
+
+  {# Linha do tempo: Score inicial — O que mantém — O que reduz #}
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+
+    {# Score inicial #}
+    <div class="bg-white border border-slate-200 rounded-2xl p-4" style="box-shadow: var(--shadow-sm);">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+          <i data-lucide="zap" class="w-4 h-4 text-blue-600"></i>
+        </div>
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ponto de Partida</span>
+      </div>
+      <div class="text-4xl font-black text-blue-600 mb-1 score-value">100</div>
+      <p class="text-xs text-slate-500 leading-relaxed">
+        Todo motorista começa com <strong class="text-slate-700">100 pontos</strong>.
+        Quanto mais alto o score, melhor a posição no ranking.
+      </p>
+    </div>
+
+    {# O que MANTÉM o score #}
+    <div class="bg-white border border-emerald-200 rounded-2xl p-4" style="box-shadow: var(--shadow-sm);">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+          <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+        </div>
+        <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">O que MANTÉM</span>
+      </div>
+      <ul class="space-y-2">
+        <li class="flex items-start gap-2">
+          <div class="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="check" class="w-2.5 h-2.5 text-emerald-600"></i>
+          </div>
+          <span class="text-xs text-slate-600">Fazer o checklist de início <strong>sem reprova crítica</strong></span>
+        </li>
+        <li class="flex items-start gap-2">
+          <div class="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="check" class="w-2.5 h-2.5 text-emerald-600"></i>
+          </div>
+          <span class="text-xs text-slate-600">Registrar o <strong>abastecimento</strong> com odômetro correto</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <div class="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="check" class="w-2.5 h-2.5 text-emerald-600"></i>
+          </div>
+          <span class="text-xs text-slate-600">Fazer o checklist de encerramento</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <div class="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="check" class="w-2.5 h-2.5 text-emerald-600"></i>
+          </div>
+          <span class="text-xs text-slate-600">Entregar as rotas dentro do prazo</span>
+        </li>
+      </ul>
+    </div>
+
+    {# O que REDUZ o score #}
+    <div class="bg-white border border-red-200 rounded-2xl p-4" style="box-shadow: var(--shadow-sm);">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
+          <i data-lucide="triangle-alert" class="w-4 h-4 text-red-500"></i>
+        </div>
+        <span class="text-xs font-bold text-red-500 uppercase tracking-wider">O que REDUZ</span>
+      </div>
+      <ul class="space-y-2">
+        <li class="flex items-start gap-2">
+          <div class="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="minus" class="w-2.5 h-2.5 text-red-500"></i>
+          </div>
+          <span class="text-xs text-slate-600"><strong>Reprovar item crítico</strong> no checklist (freio, pneu, luz)</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <div class="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="minus" class="w-2.5 h-2.5 text-red-500"></i>
+          </div>
+          <span class="text-xs text-slate-600">Não registrar <strong>manutenção necessária</strong> ao identificar defeito</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <div class="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="minus" class="w-2.5 h-2.5 text-red-500"></i>
+          </div>
+          <span class="text-xs text-slate-600">Veículo <strong>bloqueado por segurança</strong> (crítico reprovado)</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <div class="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="minus" class="w-2.5 h-2.5 text-red-500"></i>
+          </div>
+          <span class="text-xs text-slate-600">Não fazer o <strong>checklist de fim</strong> de turno</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  {# Tabela de níveis detalhada #}
+  <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden mb-4" style="box-shadow: var(--shadow-sm);">
+    <div class="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+      <i data-lucide="layers" class="w-4 h-4 text-slate-500"></i>
+      <span class="text-sm font-bold text-slate-700">Tabela de Medalhas</span>
+    </div>
+    <div class="divide-y divide-slate-100">
+      <div class="grid grid-cols-4 px-5 py-2 bg-slate-50">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Medalha</span>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pontuação</span>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Classificação</span>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">O que significa</span>
+      </div>
+      <div class="grid grid-cols-4 items-center px-5 py-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🥇</span>
+          <span class="text-xs font-bold" style="color: var(--amber-dk);">Ouro</span>
+        </div>
+        <span class="text-sm font-black score-value" style="color: var(--amber-dk);">90 – 100 pts</span>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+          <span class="text-xs text-slate-600 font-semibold">Excelente</span>
+        </div>
+        <span class="text-xs text-slate-500">Motorista referência — zero ocorrências críticas</span>
+      </div>
+      <div class="grid grid-cols-4 items-center px-5 py-3 bg-slate-50/50">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🥈</span>
+          <span class="text-xs font-bold" style="color: var(--silver);">Prata</span>
+        </div>
+        <span class="text-sm font-black score-value" style="color: var(--silver);">70 – 89 pts</span>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+          <span class="text-xs text-slate-600 font-semibold">Excelente</span>
+        </div>
+        <span class="text-xs text-slate-500">Bom desempenho — pouquíssimas ocorrências</span>
+      </div>
+      <div class="grid grid-cols-4 items-center px-5 py-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🥉</span>
+          <span class="text-xs font-bold" style="color: var(--bronze);">Bronze</span>
+        </div>
+        <span class="text-sm font-black score-value" style="color: var(--bronze);">50 – 69 pts</span>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-full" style="background: var(--amber);"></div>
+          <span class="text-xs text-slate-600 font-semibold">Bom</span>
+        </div>
+        <span class="text-xs text-slate-500">Precisa de atenção — algumas ocorrências registradas</span>
+      </div>
+      <div class="grid grid-cols-4 items-center px-5 py-3 bg-slate-50/50">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-md bg-slate-200 flex items-center justify-center">
+            <i data-lucide="circle-alert" class="w-3.5 h-3.5 text-red-500"></i>
+          </div>
+          <span class="text-xs font-bold text-red-500">Atenção</span>
+        </div>
+        <span class="text-sm font-black text-red-500 score-value">0 – 49 pts</span>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+          <span class="text-xs text-red-500 font-semibold">Atenção</span>
+        </div>
+        <span class="text-xs text-slate-500">Requer conversa com gestor — riscos de segurança</span>
+      </div>
+    </div>
+  </div>
+
+  {# Card resumo para imprimir / compartilhar com motoristas #}
+  <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 text-white">
+    <div class="flex items-center gap-2 mb-4">
+      <i data-lucide="message-square" class="w-4 h-4 text-slate-400"></i>
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Mensagem para os Motoristas</span>
+    </div>
+    <p class="text-sm font-semibold text-white leading-relaxed mb-4">
+      "Seu score começa em <strong style="color: var(--amber);">100 pontos</strong> e reflete o cuidado que você tem com o veículo e com as entregas.
+      Cada checklist feito corretamente, cada abastecimento registrado e cada entrega concluída no prazo
+      <strong class="text-emerald-400">mantém sua pontuação alta</strong>.
+      Itens críticos reprovados (freio, pneu, luz) e veículo bloqueado por segurança
+      <strong class="text-red-400">reduzem o score</strong>."
+    </p>
+    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+      <div class="bg-white/5 rounded-xl p-3">
+        <div class="text-2xl mb-1">✅</div>
+        <div class="font-bold text-emerald-400">Faça o checklist</div>
+        <div class="text-slate-400 mt-0.5">Início e fim do turno</div>
+      </div>
+      <div class="bg-white/5 rounded-xl p-3">
+        <div class="text-2xl mb-1">⛽</div>
+        <div class="font-bold text-blue-400">Registre o abast.</div>
+        <div class="text-slate-400 mt-0.5">Com KM exato</div>
+      </div>
+      <div class="bg-white/5 rounded-xl p-3">
+        <div class="text-2xl mb-1">📦</div>
+        <div class="font-bold" style="color: var(--amber);">Entregue no prazo</div>
+        <div class="text-slate-400 mt-0.5">Finalize as rotas</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

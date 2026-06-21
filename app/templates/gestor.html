@@ -4,288 +4,954 @@
 {% block page_title %}Dashboard{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 
+{% block topbar_right %}
+<form method="GET" action="/gestor" style="display:flex;align-items:center;gap:6px;">
+  <input type="date" name="data" value="{{ data_filtro }}"
+    style="padding:6px 11px;font-size:13px;">
+  <button type="submit" class="btn btn-sm btn-primary" style="padding:6px 14px;">
+    <i class="fas fa-filter mr-1"></i> Filtrar
+  </button>
+  <a href="/gestor" class="btn btn-sm btn-outline-secondary" title="Hoje" style="padding:6px 12px;">
+    <i class="fas fa-calendar-day"></i>
+  </a>
+</form>
+{% endblock %}
+
 {% block extra_head %}
 <style>
-/* Dashboard: ocultar colunas secundárias no mobile */
-@media (max-width: 767px) {
-  .dash-hide { display: none !important; }
-  /* Resumo por filial: colunas compactas */
-  .filial-table th, .filial-table td { padding: 8px 10px !important; font-size: 12px; }
-}
+  /* ── KPIs ─────────────────────────────────────────────────── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:900px) { .kpi-row { grid-template-columns: repeat(2,1fr); } }
+  @media(max-width:480px) { .kpi-row { grid-template-columns: repeat(2,1fr); gap:8px; } }
+
+  .kpi {
+    background: var(--card-bg);
+    border: 1px solid var(--brd);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform .2s, box-shadow .2s;
+    animation: fadeSlideUp .4s ease both;
+  }
+  .kpi:nth-child(1) { animation-delay: .03s; }
+  .kpi:nth-child(2) { animation-delay: .07s; }
+  .kpi:nth-child(3) { animation-delay: .11s; }
+  .kpi:nth-child(4) { animation-delay: .15s; }
+  .kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+  .kpi::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 4px;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  }
+  .kpi.amber::after  { background: linear-gradient(180deg, var(--amber), #fcd34d); }
+  .kpi.orange::after { background: linear-gradient(180deg, var(--orange), #FCD34D); }
+  .kpi.gray::after   { background: linear-gradient(180deg, #6B7280, #9CA3AF); }
+  .kpi.green::after  { background: linear-gradient(180deg, var(--green), #4ADE80); }
+
+  .kpi-icon {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+  }
+  .kpi-icon.amber  { background: var(--amber-light); color: var(--amber); }
+  .kpi-icon.orange { background: var(--orange-lt);   color: var(--orange); }
+  .kpi-icon.gray   { background: #F3F4F6; color: #6B7280; }
+  .kpi-icon.green  { background: var(--green-lt);    color: var(--green); }
+
+  .kpi-body { flex: 1; min-width: 0; }
+  .kpi-val {
+    font-family: var(--font);
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-lbl { font-size: 11.5px; color: var(--text2); margin-top: 3px; font-weight: 500; }
+  .kpi-pct {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Alerta de erros ──────────────────────────────────────── */
+  @keyframes pulse-red {
+    0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.2); }
+    50%      { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+  }
+  .erro-banner {
+    background: #FFF5F5;
+    border: 1px solid #FECACA;
+    border-radius: var(--radius-lg);
+    margin-bottom: 18px;
+    overflow: hidden;
+    animation: pulse-red 2.5s infinite;
+  }
+  .erro-banner-top {
+    padding: 13px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .erro-banner-top:hover { background: #FEE2E2; }
+  .erro-banner-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--danger);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .erro-badge {
+    background: var(--danger);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .erro-list  { border-top: 1px solid #FECACA; }
+  .erro-row   {
+    padding: 11px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    transition: background .1s;
+  }
+  .erro-row:hover { background: #FEF2F2; }
+  .erro-row + .erro-row { border-top: 1px solid #FEE2E2; }
+  .erro-id2   {
+    font-size: 10px;
+    font-weight: 700;
+    background: #FEE2E2;
+    color: #991B1B;
+    padding: 2px 8px;
+    border-radius: 5px;
+    flex-shrink: 0;
+    font-family: monospace;
+  }
+  .erro-info  { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text); }
+  .erro-mot   { font-size: 11px; color: var(--danger); margin-top: 2px; }
+
+  /* ── Layout principal ─────────────────────────────────────── */
+  .dash-layout {
+    display: grid;
+    grid-template-columns: 1fr 296px;
+    gap: 16px;
+    align-items: start;
+  }
+  @media(max-width:1100px) { .dash-layout { grid-template-columns: 1fr; } }
+
+  /* ── Painel com abas ──────────────────────────────────────── */
+  .tab-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--brd);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .tab-header {
+    display: flex;
+    border-bottom: 1px solid var(--brd);
+    background: #FAFBFC;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 13px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: color .15s, background .15s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    font-family: var(--font);
+  }
+  .tab-btn:hover { color: var(--text); background: rgba(0,0,0,.02); }
+  .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); background: var(--card-bg); }
+  .tab-count {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .tab-btn.active .tc-orange { background: var(--orange-lt); color: var(--orange); border: 1px solid #FED7AA; }
+  .tab-btn.active .tc-gray   { background: #F3F4F6; color: #374151; border: 1px solid var(--brd2); }
+  .tab-btn .tc-orange, .tab-btn .tc-gray { background: #F3F4F6; color: var(--text2); border: 1px solid var(--brd); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── Lista de entregas ────────────────────────────────────── */
+  .e-list { max-height: 380px; overflow-y: auto; }
+  .e-list::-webkit-scrollbar { width: 3px; }
+  .e-list::-webkit-scrollbar-thumb { background: var(--brd2); border-radius: 3px; }
+
+  .e-row {
+    padding: 11px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background .1s;
+  }
+  .e-row:hover { background: #F8F9FA; }
+  .e-row + .e-row { border-top: 1px solid #F3F4F6; }
+  .e-num { font-size: 10px; font-weight: 700; color: var(--text3); width: 30px; flex-shrink: 0; font-family: monospace; }
+  .e-body { flex: 1; min-width: 0; }
+  .e-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 3px; }
+  .chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
+  .chip-co  { background: var(--blue-light); color: #1D4ED8; border: 1px solid #BFDBFE; }
+  .chip-doc { background: var(--purple-lt);  color: #5B21B6; border: 1px solid #DDD6FE; }
+  .chip-fil { background: var(--green-lt);   color: #15803D; border: 1px solid #BBF7D0; }
+  .e-addr { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .empty-tab { padding: 36px 20px; text-align: center; color: var(--text3); }
+  .empty-tab i { font-size: 22px; display: block; margin-bottom: 8px; }
+  .empty-tab p { font-size: 12.5px; margin: 0; color: var(--text2); }
+
+  /* ── Filiais ──────────────────────────────────────────────── */
+  .fil-card {
+    background: var(--card-bg);
+    border: 1px solid var(--brd);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-top: 14px;
+    box-shadow: var(--shadow);
+  }
+  .fil-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--brd);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #FAFBFC;
+  }
+  .fil-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fil-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .fil-table th {
+    background: #FAFBFC;
+    padding: 9px 16px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--text3);
+    border-bottom: 1px solid var(--brd);
+  }
+  .fil-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid #F3F4F6;
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .fil-table tr:last-child td { border-bottom: none; }
+  .fil-table tr:hover td { background: #F8F9FA; }
+  .nb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .nb-g  { background: #F3F4F6; color: var(--text); }
+  .nb-o  { background: var(--orange-lt); color: var(--orange); }
+  .nb-b  { background: #F3F4F6; color: #374151; }
+  .nb-gr { background: var(--green-lt); color: var(--green); }
+  .fil-bar { height: 5px; background: var(--brd); border-radius: 5px; overflow: hidden; margin-top: 4px; }
+  .fil-bar-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--amber), #fcd34d); }
+
+  @media(max-width:600px) { .hide-m { display: none !important; } }
+
+  /* ── Calendário ───────────────────────────────────────────── */
+  .cal-card {
+    background: var(--card-bg);
+    border: 1px solid var(--brd);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .cal-head { padding: 14px 16px 0; }
+  .cal-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-meta-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .cal-total-pill {
+    font-size: 11px;
+    background: var(--amber-light);
+    color: var(--amber);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    border: 1px solid #fde68a;
+    font-variant-numeric: tabular-nums;
+  }
+  .cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #FAFBFC;
+    border: 1px solid var(--brd);
+    border-radius: 9px;
+    padding: 7px 12px;
+    margin-bottom: 12px;
+  }
+  .cal-nav-btn {
+    width: 26px; height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid var(--brd);
+    background: var(--card-bg);
+    color: var(--text2);
+    text-decoration: none;
+    font-size: 10px;
+    transition: background .12s, color .12s;
+  }
+  .cal-nav-btn:hover { background: var(--amber); color: #000; border-color: var(--amber); text-decoration: none; }
+  .cal-nav-month {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 38px;
+    gap: 3px;
+  }
+  .cal-cell { height: 38px; }
+  .cal-empty-cell { background: #FAFBFC; border-radius: 6px; height: 38px; }
+  .cal-hoje .cal-day-link { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .cal-day-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%; height: 100%;
+    border-radius: 7px;
+    border: 1.5px solid transparent;
+    text-decoration: none;
+    transition: transform .12s, box-shadow .12s;
+  }
+  .cal-day-link:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 10px rgba(0,0,0,.12);
+    text-decoration: none;
+    z-index: 1;
+    position: relative;
+  }
+  .cal-num { font-size: 11.5px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .cal-cnt { font-size: 9px; font-weight: 700; line-height: 1; margin-top: 2px; opacity: .9; font-variant-numeric: tabular-nums; }
+  .cal-legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-top: 1px solid #F3F4F6;
+    flex-wrap: wrap;
+  }
+  .cal-legend-lbl { font-size: 10px; color: var(--text3); font-weight: 600; }
+  .cal-swatch { width: 11px; height: 11px; border-radius: 3px; }
+  .cal-legend-txt { font-size: 10px; color: var(--text2); }
+
+  /* ── Portal de Frotas ─────────────────────────────────────── */
+  .frota-portal {
+    margin-top: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--brd);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .frota-portal-head {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: linear-gradient(135deg, #1A1A1A 0%, #2C2C2C 100%);
+  }
+  .frota-portal-left { display: flex; align-items: center; gap: 12px; }
+  .frota-portal-ico {
+    width: 38px; height: 38px;
+    background: var(--amber);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(245,158,11,.4);
+  }
+  .frota-portal-ico i { color: #000; font-size: 15px; }
+  .frota-portal-ttl {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    letter-spacing: -.2px;
+  }
+  .frota-portal-sub { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 2px; }
+  .frota-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .frota-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 11px;
+    border-radius: 20px;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: opacity .15s;
+    font-family: var(--font);
+    font-variant-numeric: tabular-nums;
+  }
+  .frota-badge:hover { opacity: .85; text-decoration: none; }
+  .frota-badge-danger  { background: rgba(220,38,38,.2); color: #FCA5A5; border: 1px solid rgba(220,38,38,.35); }
+  .frota-badge-warning { background: rgba(217,119,6,.15); color: #FCD34D; border: 1px solid rgba(217,119,6,.3); }
+  .frota-badge-ok      { background: rgba(22,163,74,.15); color: #86EFAC; border: 1px solid rgba(22,163,74,.3); }
+  .frota-badge-blue    { background: rgba(107,114,128,.2); color: #D1D5DB; border: 1px solid rgba(107,114,128,.3); }
+  .frota-badge-cta     { background: var(--amber); color: #000; font-weight: 700; border: 1px solid transparent; }
+  .frota-badge-cta:hover { background: var(--amber-dk); color: #000; }
+
+  .frota-modules {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--brd);
+  }
+  @media(max-width:900px) { .frota-modules { grid-template-columns: repeat(2,1fr); } }
+  @media(max-width:480px) { .frota-modules { grid-template-columns: repeat(2,1fr); } }
+
+  .frota-module-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card-bg);
+    padding: 16px 18px;
+    text-decoration: none !important;
+    transition: background .15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .frota-module-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent, var(--amber));
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .frota-module-card:hover { background: #F8F9FA; }
+  .frota-module-card:hover::before { opacity: 1; }
+  .frota-module-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: var(--accent-bg, var(--amber-light));
+    color: var(--accent, var(--amber));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    transition: background .15s, color .15s;
+  }
+  .frota-module-card:hover .frota-module-icon {
+    background: var(--accent, var(--amber));
+    color: #fff;
+  }
+  .frota-module-body { flex: 1; min-width: 0; }
+  .frota-module-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .frota-module-sub {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .frota-module-arrow {
+    color: var(--brd2);
+    font-size: 10px;
+    flex-shrink: 0;
+    transition: color .15s, transform .15s;
+  }
+  .frota-module-card:hover .frota-module-arrow {
+    color: var(--accent, var(--amber));
+    transform: translateX(3px);
+  }
+  .frota-module-danger { animation: pulse-red 2.5s infinite; }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 </style>
 {% endblock %}
 
-{# ── Topbar: apenas countdown ─────────────────────────────────────── #}
-{% block topbar_right %}
-<span style="font-size:12px;color:#6b7280;display:flex;align-items:center;gap:5px;">
-    <i class="fas fa-sync-alt" id="refresh-icon"></i>
-    <span id="refresh-countdown" style="background:#f3f4f6;border-radius:20px;padding:2px 8px;font-weight:600;">30s</span>
-</span>
-{% endblock %}
-
-{# ── Main content ─────────────────────────────────────────────────── #}
 {% block content %}
 
-<!-- Filtro de data (responsivo em todas as telas) -->
-<div class="d-flex flex-wrap align-items-center justify-content-between mb-3" style="gap:8px;">
-    <form method="GET" action="/gestor" class="d-flex align-items-center flex-wrap" style="gap:6px;">
-        <label class="mb-0 text-muted small font-weight-bold" style="white-space:nowrap;">
-            <i class="fas fa-calendar-alt mr-1"></i> Data:
-        </label>
-        <input type="date" name="data" value="{{ data_filtro }}"
-               class="form-control form-control-sm" style="width:150px;">
-        <button type="submit" class="btn btn-sm btn-primary">
-            <i class="fas fa-filter mr-1"></i> Filtrar
-        </button>
-        <a href="/gestor" class="btn btn-sm btn-outline-secondary" title="Hoje">
-            <i class="fas fa-calendar-day"></i> Hoje
-        </a>
-    </form>
-    <small class="text-muted">Atualiza automaticamente a cada 30s</small>
+{% set pct_fin = ((finalizadas / total_dia * 100) | int) if total_dia > 0 else 0 %}
+{% set pct_rot = ((rota       / total_dia * 100) | int) if total_dia > 0 else 0 %}
+{% set pct_loj = ((loja       / total_dia * 100) | int) if total_dia > 0 else 0 %}
+
+<!-- ── KPIs ───────────────────────────────────────────────── -->
+<div class="kpi-row">
+  <div class="kpi gray">
+    <div class="kpi-icon gray"><i class="fas fa-box"></i></div>
+    <div class="kpi-body">
+      <div class="kpi-val">{{ total_dia }}</div>
+      <div class="kpi-lbl">Total do dia</div>
+    </div>
+  </div>
+  <div class="kpi orange">
+    <div class="kpi-icon orange"><i class="fas fa-hourglass-half"></i></div>
+    <div class="kpi-body">
+      <div class="kpi-val">{{ loja }}</div>
+      <div class="kpi-lbl">Aguardando</div>
+    </div>
+    <span class="kpi-pct" style="background:var(--orange-lt);color:var(--orange);">{{ pct_loj }}%</span>
+  </div>
+  <div class="kpi amber">
+    <div class="kpi-icon amber"><i class="fas fa-motorcycle"></i></div>
+    <div class="kpi-body">
+      <div class="kpi-val">{{ rota }}</div>
+      <div class="kpi-lbl">Em rota</div>
+    </div>
+    <span class="kpi-pct" style="background:var(--amber-light);color:var(--amber-dk);">{{ pct_rot }}%</span>
+  </div>
+  <div class="kpi green">
+    <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
+    <div class="kpi-body">
+      <div class="kpi-val">{{ finalizadas }}</div>
+      <div class="kpi-lbl">Finalizadas</div>
+    </div>
+    <span class="kpi-pct" style="background:var(--green-lt);color:var(--green);">{{ pct_fin }}%</span>
+  </div>
 </div>
 
-<!-- Stats Grid -->
-<div class="stats-grid">
-
-    <div class="stat-card blue">
-        <div class="stat-icon blue"><i class="fas fa-box"></i></div>
-        <div class="stat-value">{{ total_dia }}</div>
-        <div class="stat-label">Entregas do Dia</div>
-    </div>
-
-    <div class="stat-card orange">
-        <div class="stat-icon orange"><i class="fas fa-hourglass-half"></i></div>
-        <div class="stat-value">{{ loja }}</div>
-        <div class="stat-label">Aguardando Entregador</div>
-    </div>
-
-    <div class="stat-card purple">
-        <div class="stat-icon purple"><i class="fas fa-motorcycle"></i></div>
-        <div class="stat-value">{{ rota }}</div>
-        <div class="stat-label">Em Rota Agora</div>
-    </div>
-
-    <div class="stat-card green">
-        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
-        <div class="stat-value">{{ finalizadas }}</div>
-        <div class="stat-label">Finalizadas no Dia</div>
-    </div>
-
-</div>
-
-<!-- ===== ALERTA CRÍTICO: ERROS DE ENTREGA ===== -->
+<!-- ── ALERTA DE ERROS ──────────────────────────────────────── -->
 {% if entregas_erro %}
-<style>
-    @keyframes pulse-danger {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,.5); }
-        50%       { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
-    }
-    .card-erro-critico { animation: pulse-danger 1.5s infinite; }
-</style>
-<div class="card card-erro-critico mb-4" style="border-left: 3px solid #dc2626 !important;">
-    <div class="card-header d-flex align-items-center justify-content-between" style="background:#fff8f8 !important;">
-        <h6 class="mb-0 font-weight-bold text-danger">
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            ATENÇÃO — Entregas com Erro
-        </h6>
-        <span class="badge badge-danger" style="font-size:13px;">
-            {{ erros }} ocorrência{{ 's' if erros > 1 else '' }}
-        </span>
-    </div>
-    <div class="card-body p-0">
-        {% for e in entregas_erro %}
-        <div class="p-3 {% if not loop.last %}border-bottom{% endif %}">
-            <div class="d-flex justify-content-between align-items-start flex-wrap" style="gap:8px;">
-                <div>
-                    <strong class="text-danger">#{{ e.id }}</strong>
-                    <span class="ml-2 text-muted">Cupom: {{ e.cupom_fiscal }}</span><br>
-                    <small class="text-secondary">
-                        <i class="fas fa-map-marker-alt mr-1"></i>
-                        {{ e.rua }}, {{ e.numero }} — {{ e.bairro }}
-                    </small>
-                    {% if e.motivo_erro %}
-                    <div class="mt-1">
-                        <span class="badge badge-danger">Motivo:</span>
-                        <small class="text-danger ml-1">{{ e.motivo_erro }}</small>
-                    </div>
-                    {% endif %}
-                </div>
-                <a href="/gestor/ajustar-entrega/{{ e.id }}" class="btn btn-sm btn-danger">
-                    <i class="fas fa-tools mr-1"></i> Ajustar
-                </a>
-            </div>
+<div class="erro-banner">
+  <div class="erro-banner-top" onclick="toggleErros(this)">
+    <span class="erro-banner-title">
+      <i class="fas fa-exclamation-triangle"></i>
+      Entregas com erro — ação necessária
+    </span>
+    <span style="display:flex;align-items:center;gap:8px;">
+      <span class="erro-badge">{{ erros }}</span>
+      <i id="erro-chevron" class="fas fa-chevron-down" style="font-size:11px;color:var(--danger);transition:transform .2s;"></i>
+    </span>
+  </div>
+  <div class="erro-list" id="erro-lista" style="display:none;">
+    {% for e in entregas_erro %}
+    <div class="erro-row">
+      <span class="erro-id2">#{{ e.id }}</span>
+      <div class="erro-info">
+        <div>
+          {% if e.nro_checkout %}<span class="chip chip-co">Checkout {{ e.nro_checkout }}</span> {% endif %}
+          {% if e.seq_docto %}<span class="chip chip-doc">Doc {{ e.seq_docto }}</span>{% endif %}
         </div>
-        {% endfor %}
+        <div style="margin-top:3px;">{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</div>
+        {% if e.motivo_erro %}<div class="erro-mot"><i class="fas fa-comment-alt mr-1"></i>{{ e.motivo_erro }}</div>{% endif %}
+      </div>
+      <a href="/gestor/ajustar-entrega/{{ e.id }}" class="btn btn-sm btn-danger" style="font-size:11px;padding:5px 11px;white-space:nowrap;">
+        <i class="fas fa-tools"></i> Ajustar
+      </a>
     </div>
+    {% endfor %}
+  </div>
 </div>
 {% endif %}
-<!-- ===== FIM ALERTA CRÍTICO ===== -->
 
-<!-- Two-column tables -->
-<div class="row mb-4">
+<!-- ── LAYOUT PRINCIPAL ──────────────────────────────────────── -->
+<div class="dash-layout">
 
-    <!-- Aguardando Entregador -->
-    <div class="col-12 col-md-6 mb-4 mb-md-0">
-        <div class="card h-100">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h6 class="mb-0 font-weight-bold">
-                    <i class="fas fa-clock mr-1 text-warning"></i> Aguardando Entregador
-                </h6>
-                <span class="badge badge-warning">{{ loja }}</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead class="thead-light">
-                            <tr>
-                                <th class="dash-hide">#</th>
-                                <th>Cupom</th>
-                                <th class="dash-hide">Filial</th>
-                                <th>Endereço</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for e in entregas_loja %}
-                            <tr>
-                                <td class="dash-hide">{{ e.id }}</td>
-                                <td>{{ e.cupom_fiscal }}</td>
-                                <td class="dash-hide">
-                                    <span class="badge badge-secondary">
-                                        {{ filiais_map.get(e.filial_id, '—') }}
-                                    </span>
-                                </td>
-                                <td>{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="4" class="text-center text-muted py-3">
-                                    Nenhuma entrega pendente.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+  <div>
+    <div class="tab-panel">
+      <div class="tab-header">
+        <button class="tab-btn active" onclick="switchTab('pendente',this)">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--orange);display:inline-block;flex-shrink:0;"></span>
+          Aguardando
+          <span class="tab-count tc-orange">{{ loja }}</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('rota',this)">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;flex-shrink:0;animation:blink 1.2s infinite;"></span>
+          Em Rota
+          <span class="tab-count tc-gray">{{ rota }}</span>
+        </button>
+      </div>
+
+      <div class="tab-content active" id="tab-pendente">
+        <div class="e-list">
+          {% if entregas_loja %}
+            {% for e in entregas_loja %}
+            <div class="e-row">
+              <span class="e-num">#{{ e.id }}</span>
+              <div class="e-body">
+                <div class="e-chips">
+                  {% if e.nro_checkout %}<span class="chip chip-co">Checkout {{ e.nro_checkout }}</span>{% endif %}
+                  {% if e.seq_docto %}<span class="chip chip-doc">Doc {{ e.seq_docto }}</span>{% endif %}
+                  {% if e.filial_id %}<span class="chip chip-fil">{{ filiais_map.get(e.filial_id, '—') }}</span>{% endif %}
                 </div>
+                <div class="e-addr"><i class="fas fa-map-marker-alt" style="margin-right:4px;color:var(--amber);"></i>{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</div>
+              </div>
             </div>
+            {% endfor %}
+          {% else %}
+          <div class="empty-tab">
+            <i class="fas fa-check-double" style="color:var(--green);"></i>
+            <p>Nenhuma entrega aguardando.</p>
+          </div>
+          {% endif %}
         </div>
+      </div>
+
+      <div class="tab-content" id="tab-rota">
+        <div class="e-list">
+          {% if entregas_rota %}
+            {% for e in entregas_rota %}
+            <div class="e-row">
+              <span class="e-num">#{{ e.id }}</span>
+              <div class="e-body">
+                <div class="e-chips">
+                  {% if e.nro_checkout %}<span class="chip chip-co">Checkout {{ e.nro_checkout }}</span>{% endif %}
+                  {% if e.seq_docto %}<span class="chip chip-doc">Doc {{ e.seq_docto }}</span>{% endif %}
+                  {% if e.filial_id %}<span class="chip chip-fil">{{ filiais_map.get(e.filial_id, '—') }}</span>{% endif %}
+                </div>
+                <div class="e-addr"><i class="fas fa-map-marker-alt" style="margin-right:4px;color:var(--amber);"></i>{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="empty-tab">
+            <i class="fas fa-motorcycle" style="color:var(--amber);"></i>
+            <p>Nenhuma entrega em rota.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
 
-    <!-- Em Rota -->
-    <div class="col-12 col-md-6">
-        <div class="card h-100">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h6 class="mb-0 font-weight-bold">
-                    <i class="fas fa-motorcycle mr-1 text-primary"></i> Em Rota
-                </h6>
-                <span class="badge badge-primary">{{ rota }}</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead class="thead-light">
-                            <tr>
-                                <th class="dash-hide">#</th>
-                                <th>Cupom</th>
-                                <th>Endereço</th>
-                                <th class="dash-hide">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for e in entregas_rota %}
-                            <tr>
-                                <td class="dash-hide">{{ e.id }}</td>
-                                <td>{{ e.cupom_fiscal }}</td>
-                                <td>{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</td>
-                                <td class="dash-hide"><span class="badge badge-primary">Em Rota</span></td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="4" class="text-center text-muted py-3">
-                                    Nenhuma entrega em rota.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-<!-- Stats por Filial -->
-<div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
-        <h6 class="mb-0 font-weight-bold">
-            <i class="fas fa-store mr-1 text-secondary"></i> Resumo por Filial
-            <small class="text-muted ml-2">— {{ data_filtro }}</small>
-        </h6>
-        <a href="/gestao-filial" class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-cog mr-1"></i> Gerenciar Filiais
+    <div class="fil-card">
+      <div class="fil-header">
+        <span class="fil-title">
+          <i class="fas fa-store" style="color:var(--amber);"></i>
+          Resumo por Filial
+          <span style="font-size:11px;color:var(--text3);font-weight:500;">{{ data_filtro }}</span>
+        </span>
+        <a href="/gestao-filial" class="btn btn-sm btn-outline-secondary" style="font-size:11px;padding:4px 10px;">
+          <i class="fas fa-cog mr-1"></i> Gerenciar
         </a>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="fil-table">
+          <thead>
+            <tr>
+              <th>Filial</th>
+              <th style="text-align:center;">Total</th>
+              <th style="text-align:center;" class="hide-m">Pend.</th>
+              <th style="text-align:center;" class="hide-m">Rota</th>
+              <th style="text-align:center;">Final.</th>
+              <th class="hide-m">Progresso</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in stats_filiais %}
+            {% set pct = ((s.finalizadas / s.total * 100) | int) if s.total > 0 else 0 %}
+            <tr>
+              <td style="font-weight:700;">{{ s.nome }}</td>
+              <td style="text-align:center;"><span class="nb nb-g">{{ s.total }}</span></td>
+              <td style="text-align:center;" class="hide-m"><span class="nb nb-o">{{ s.pendentes }}</span></td>
+              <td style="text-align:center;" class="hide-m"><span class="nb nb-b">{{ s.em_rota }}</span></td>
+              <td style="text-align:center;"><span class="nb nb-gr">{{ s.finalizadas }}</span></td>
+              <td class="hide-m" style="min-width:100px;">
+                <div style="display:flex;align-items:center;gap:7px;">
+                  <div style="flex:1;"><div class="fil-bar"><div class="fil-bar-fill" style="width:{{ pct }}%;"></div></div></div>
+                  <span style="font-size:10.5px;font-weight:700;color:var(--text3);min-width:28px;font-variant-numeric:tabular-nums;">{{ pct }}%</span>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" style="text-align:center;padding:24px;color:var(--text3);font-size:12.5px;">
+                Nenhuma filial cadastrada.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0 filial-table">
-                <thead class="thead-light">
-                    <tr>
-                        <th>Filial</th>
-                        <th class="dash-hide">Cidade</th>
-                        <th class="text-center">Total</th>
-                        <th class="text-center dash-hide">Pendentes</th>
-                        <th class="text-center dash-hide">Em Rota</th>
-                        <th class="text-center">Finalizadas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in stats_filiais %}
-                    <tr>
-                        <td><i class="fas fa-store text-secondary mr-1"></i> <strong>{{ s.nome }}</strong></td>
-                        <td class="text-muted dash-hide">{{ s.cidade or '—' }}</td>
-                        <td class="text-center"><span class="badge badge-secondary">{{ s.total }}</span></td>
-                        <td class="text-center dash-hide"><span class="badge badge-warning">{{ s.pendentes }}</span></td>
-                        <td class="text-center dash-hide"><span class="badge badge-primary">{{ s.em_rota }}</span></td>
-                        <td class="text-center"><span class="badge badge-success">{{ s.finalizadas }}</span></td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-3">
-                            Nenhuma filial cadastrada. <a href="/gestao-filial">Criar filial</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+  </div>
+
+  <!-- Calendário -->
+  <div>
+    <div class="cal-card">
+      <div class="cal-head">
+        <div class="cal-meta">
+          <span class="cal-meta-title">
+            <i class="fas fa-fire" style="color:var(--amber);"></i> Mapa de Calor
+          </span>
+          <span class="cal-total-pill">{{ cal_total }} entregas</span>
         </div>
+        <div class="cal-nav">
+          <a href="/gestor?data={{ mes_ant }}" class="cal-nav-btn"><i class="fas fa-chevron-left"></i></a>
+          <span class="cal-nav-month">{{ cal_mes_nome }} {{ cal_ano }}</span>
+          <a href="/gestor?data={{ mes_prox }}" class="cal-nav-btn"><i class="fas fa-chevron-right"></i></a>
+        </div>
+      </div>
+
+      <div style="padding:0 10px 10px;">
+        <div class="cal-grid">
+          {% for d in ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'] %}
+          <div style="text-align:center;font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.2px;padding:3px 0;">{{ d }}</div>
+          {% endfor %}
+        </div>
+
+        {% for semana in cal_semanas %}
+        <div class="cal-grid" style="margin-bottom:3px;">
+          {% for num_dia in semana %}
+            {% if num_dia == 0 %}
+              <div class="cal-cell cal-empty-cell"></div>
+            {% else %}
+              {% set ds       = "%04d-%02d-%02d"|format(cal_ano, cal_mes, num_dia) %}
+              {% set cnt      = cal_contagens.get(ds, 0) %}
+              {% set p        = (cnt / cal_max) if cal_max > 0 else 0 %}
+              {% set is_sel   = (ds == data_filtro) %}
+              {% set is_hoje  = (ds == hoje) %}
+              {% set is_futur = (ds > hoje) %}
+
+              {% set ns = namespace(bg="#F5F5F7", cor="#9BA3B0", brd="#E4E6EA") %}
+              {% if is_sel %}
+                {% set ns.bg = "#1A1A1A" %}{% set ns.cor = "#FFFFFF" %}{% set ns.brd = "#1A1A1A" %}
+              {% elif not is_futur and cnt > 0 and p <= 0.25 %}
+                {% set ns.bg = "#FEF3C7" %}{% set ns.cor = "#92400E" %}{% set ns.brd = "#FDE68A" %}
+              {% elif not is_futur and cnt > 0 and p <= 0.5 %}
+                {% set ns.bg = "#FDE68A" %}{% set ns.cor = "#78350F" %}{% set ns.brd = "#FCD34D" %}
+              {% elif not is_futur and cnt > 0 and p <= 0.75 %}
+                {% set ns.bg = "#FCD34D" %}{% set ns.cor = "#fff" %}{% set ns.brd = "#F59E0B" %}
+              {% elif not is_futur and cnt > 0 %}
+                {% set ns.bg = "#F59E0B" %}{% set ns.cor = "#000" %}{% set ns.brd = "#D97706" %}
+              {% endif %}
+
+              <div class="cal-cell{% if is_hoje and not is_sel %} cal-hoje{% endif %}">
+                <a href="/gestor?data={{ ds }}"
+                   title="{{ cnt }} entregas em {{ ds }}"
+                   class="cal-day-link"
+                   style="background:{{ ns.bg }};border-color:{{ ns.brd }};">
+                  <span class="cal-num" style="color:{{ ns.cor }};">{{ num_dia }}</span>
+                  {% if cnt > 0 and not is_futur %}
+                  <span class="cal-cnt" style="color:{{ ns.cor }};">{{ cnt }}</span>
+                  {% endif %}
+                </a>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="cal-legend">
+        <span class="cal-legend-lbl">Volume:</span>
+        <div class="cal-swatch" style="background:#FEF3C7;border:1px solid #FDE68A;"></div><span class="cal-legend-txt">Baixo</span>
+        <div class="cal-swatch" style="background:#FDE68A;border:1px solid #FCD34D;"></div><span class="cal-legend-txt">Médio</span>
+        <div class="cal-swatch" style="background:#FCD34D;border:1px solid #F59E0B;"></div><span class="cal-legend-txt">Alto</span>
+        <div class="cal-swatch" style="background:#F59E0B;border:1px solid #D97706;"></div><span class="cal-legend-txt">Pico</span>
+      </div>
     </div>
+  </div>
+
+</div><!-- /dash-layout -->
+
+<!-- ── PORTAL DE GESTÃO DE FROTAS ───────────────────────────── -->
+<div class="frota-portal">
+  <div class="frota-portal-head">
+    <div class="frota-portal-left">
+      <div class="frota-portal-ico"><i class="fas fa-truck-moving"></i></div>
+      <div>
+        <div class="frota-portal-ttl">Gestão de Frotas</div>
+        <div class="frota-portal-sub">Veículos · Turnos · Manutenções · Análises</div>
+      </div>
+    </div>
+    <div class="frota-badges">
+      {% if frota_alertas_critico > 0 %}
+      <a href="/frota/dashboard" class="frota-badge frota-badge-danger">
+        <i class="fas fa-exclamation-triangle"></i> {{ frota_alertas_critico }} crítico{{ 's' if frota_alertas_critico > 1 else '' }}
+      </a>
+      {% elif frota_alertas_total > 0 %}
+      <a href="/frota/dashboard" class="frota-badge frota-badge-warning">
+        <i class="fas fa-bell"></i> {{ frota_alertas_total }} alerta{{ 's' if frota_alertas_total > 1 else '' }}
+      </a>
+      {% else %}
+      <span class="frota-badge frota-badge-ok"><i class="fas fa-check-circle"></i> Frota OK</span>
+      {% endif %}
+      {% if frota_turnos_abertos > 0 %}
+      <span class="frota-badge frota-badge-blue">
+        <i class="fas fa-play-circle"></i> {{ frota_turnos_abertos }} turno{{ 's' if frota_turnos_abertos > 1 else '' }} ativo{{ 's' if frota_turnos_abertos > 1 else '' }}
+      </span>
+      {% endif %}
+      <a href="/frota/dashboard" class="frota-badge frota-badge-cta">
+        Abrir painel <i class="fas fa-arrow-right" style="font-size:10px;"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="frota-modules">
+    <a href="/frota/dashboard" class="frota-module-card" style="--accent:var(--amber);--accent-bg:var(--amber-light);">
+      <div class="frota-module-icon"><i class="fas fa-gauge-high"></i></div>
+      <div class="frota-module-body">
+        <div class="frota-module-title">Painel Geral</div>
+        <div class="frota-module-sub">KPIs, turnos e visão geral</div>
+      </div>
+      <i class="fas fa-chevron-right frota-module-arrow"></i>
+    </a>
+
+    <a href="/frota/alertas" class="frota-module-card {% if frota_alertas_critico > 0 %}frota-module-danger{% endif %}"
+       style="--accent:{% if frota_alertas_critico > 0 %}#DC2626{% elif frota_alertas_total > 0 %}#D97706{% else %}#16A34A{% endif %};--accent-bg:{% if frota_alertas_critico > 0 %}#FFF5F5{% elif frota_alertas_total > 0 %}var(--orange-lt){% else %}var(--green-lt){% endif %};">
+      <div class="frota-module-icon">
+        <i class="fas fa-{% if frota_alertas_critico > 0 %}exclamation-triangle{% elif frota_alertas_total > 0 %}bell{% else %}check-circle{% endif %}"></i>
+      </div>
+      <div class="frota-module-body">
+        <div class="frota-module-title">Alertas</div>
+        <div class="frota-module-sub">{% if frota_alertas_total > 0 %}{{ frota_alertas_total }} veículo{{ 's' if frota_alertas_total > 1 else '' }} com alerta{% else %}Frota em dia{% endif %}</div>
+      </div>
+      {% if frota_alertas_total > 0 %}
+      <span style="background:var(--accent);color:#fff;font-size:11px;font-weight:800;min-width:22px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;padding:0 5px;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ frota_alertas_total }}</span>
+      {% else %}
+      <i class="fas fa-chevron-right frota-module-arrow"></i>
+      {% endif %}
+    </a>
+
+    <a href="/frota/manutencao" class="frota-module-card" style="--accent:#D97706;--accent-bg:var(--orange-lt);">
+      <div class="frota-module-icon"><i class="fas fa-wrench"></i></div>
+      <div class="frota-module-body">
+        <div class="frota-module-title">Manutenções</div>
+        <div class="frota-module-sub">Preventiva · Corretiva</div>
+      </div>
+      <i class="fas fa-chevron-right frota-module-arrow"></i>
+    </a>
+
+    <a href="/frota/ranking" class="frota-module-card" style="--accent:#6B7280;--accent-bg:#F3F4F6;">
+      <div class="frota-module-icon"><i class="fas fa-trophy"></i></div>
+      <div class="frota-module-body">
+        <div class="frota-module-title">Ranking</div>
+        <div class="frota-module-sub">Score por motorista</div>
+      </div>
+      <i class="fas fa-chevron-right frota-module-arrow"></i>
+    </a>
+
+    <a href="/gestao-veiculo" class="frota-module-card" style="--accent:#374151;--accent-bg:#F9FAFB;">
+      <div class="frota-module-icon"><i class="fas fa-truck"></i></div>
+      <div class="frota-module-body">
+        <div class="frota-module-title">Veículos</div>
+        <div class="frota-module-sub">{{ frota_total_veiculos }} cadastrado{{ 's' if frota_total_veiculos != 1 else '' }}</div>
+      </div>
+      <i class="fas fa-chevron-right frota-module-arrow"></i>
+    </a>
+
+    <a href="/frota/dashboard" class="frota-module-card" style="--accent:var(--green);--accent-bg:var(--green-lt);">
+      <div class="frota-module-icon"><i class="fas fa-play-circle"></i></div>
+      <div class="frota-module-body">
+        <div class="frota-module-title">Turnos Hoje</div>
+        <div class="frota-module-sub">{% if frota_turnos_abertos > 0 %}{{ frota_turnos_abertos }} em andamento{% else %}Nenhum turno ativo{% endif %}</div>
+      </div>
+      <i class="fas fa-chevron-right frota-module-arrow"></i>
+    </a>
+
+    <a href="/frota/historico/1" class="frota-module-card" style="--accent:#6B7280;--accent-bg:#F3F4F6;">
+      <div class="frota-module-icon"><i class="fas fa-route"></i></div>
+      <div class="frota-module-body">
+        <div class="frota-module-title">Histórico</div>
+        <div class="frota-module-sub">Timeline por veículo</div>
+      </div>
+      <i class="fas fa-chevron-right frota-module-arrow"></i>
+    </a>
+
+    <a href="/frota/historico/1" class="frota-module-card" style="--accent:#374151;--accent-bg:#F9FAFB;">
+      <div class="frota-module-icon"><i class="fas fa-gas-pump"></i></div>
+      <div class="frota-module-body">
+        <div class="frota-module-title">Abastecimentos</div>
+        <div class="frota-module-sub">Histórico por veículo</div>
+      </div>
+      <i class="fas fa-chevron-right frota-module-arrow"></i>
+    </a>
+  </div>
 </div>
 
 {% endblock %}
 
-{# ── Auto-refresh script ───────────────────────────────────────────── #}
 {% block extra_scripts %}
 <script>
-(function () {
-    const INTERVALO = 30;
-    let restante = INTERVALO;
-    const badge = document.getElementById('refresh-countdown');
-    const icon  = document.getElementById('refresh-icon');
-
-    setInterval(function () {
-        restante--;
-        if (badge) badge.textContent = restante + 's';
-
-        if (restante <= 5 && badge) {
-            badge.style.background = '#f97316';
-            badge.style.color = '#fff';
-        }
-        if (restante <= 0) {
-            if (icon)  icon.classList.add('fa-spin');
-            if (badge) badge.textContent = '…';
-            location.reload();
-        }
-    }, 1000);
-})();
+function toggleErros(btn) {
+  const lista   = document.getElementById('erro-lista');
+  const chevron = document.getElementById('erro-chevron');
+  const aberto  = lista.style.display !== 'none';
+  lista.style.display    = aberto ? 'none' : 'block';
+  chevron.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
 </script>
 {% endblock %}

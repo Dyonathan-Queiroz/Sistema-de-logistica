@@ -58,21 +58,23 @@ def filial_id_para(nroempresa) -> int:
     except (TypeError, ValueError):
         return FILIAL_PADRAO
 
-TRACKING_DB = Path(__file__).parent / "sync_tracking.db"
+# SYNC_DATA_DIR permite redirecionar SQLite e logs para um volume Docker
+_DATA_DIR   = Path(os.getenv("SYNC_DATA_DIR", str(Path(__file__).parent)))
+TRACKING_DB = _DATA_DIR / "sync_tracking.db"
 
 # ─── LOGGING TÉCNICO (sync_agent.log) ────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler(Path(__file__).parent / "sync_agent.log", encoding="utf-8"),
+        logging.FileHandler(_DATA_DIR / "sync_agent.log", encoding="utf-8"),
         logging.StreamHandler(sys.stdout),
     ],
 )
 log = logging.getLogger("consinco_sync")
 
 # ─── LOG LEGÍVEL (registro_entregas.txt) ─────────────────────────────────────
-_REGISTRO_PATH = Path(__file__).parent / "registro_entregas.txt"
+_REGISTRO_PATH = _DATA_DIR / "registro_entregas.txt"
 
 def _escrever_registro(linha: str):
     """Adiciona uma linha ao registro_entregas.txt com timestamp."""

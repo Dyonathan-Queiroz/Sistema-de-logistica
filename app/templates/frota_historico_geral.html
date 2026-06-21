@@ -1,0 +1,386 @@
+{% extends "frota_base.html" %}
+
+{% block title %}Histórico Geral{% endblock %}
+{% block page_title %}Histórico Geral da Frota{% endblock %}
+{% block nav_hist_geral %}active{% endblock %}
+
+{% block topbar_actions %}
+<select
+  onchange="window.location.href='/frota/historico-geral' + (this.value ? '?veiculo_id=' + this.value : '')"
+  class="text-xs font-semibold bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 cursor-pointer">
+  <option value="">Todos os veículos</option>
+  {% for v in veiculos %}
+  <option value="{{ v.id }}" {% if v.id == veiculo_id %}selected{% endif %}>
+    {{ v.placa }} · {{ v.modelo[:14] }}
+  </option>
+  {% endfor %}
+</select>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root {
+    --amber: #f59e0b;
+    --amber-dk: #d97706;
+    --amber-light: #fffbeb;
+    --amber-mid: #fcd34d;
+    --danger: #DC2626;
+    --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+    --shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+    --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+  }
+
+  .tab-btn { transition: all .15s; }
+  .tab-btn.active-mnt  { background: var(--amber-light); color: var(--amber-dk); border-color: var(--amber-mid); }
+  .tab-btn.active-abt  { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
+  .tab-btn.active-chk  { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+  .tab-btn.active-all  { background:#f1f5f9; color:#1e293b; border-color:#cbd5e1; }
+
+  .scrollbar-thin::-webkit-scrollbar { height:4px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
+
+  /* Input / select focus: amber ring */
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--amber) !important;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.15) !important;
+    outline: none !important;
+  }
+
+  /* Filter submit button: amber, black text */
+  .btn-filter-submit {
+    background: var(--amber);
+    color: #000;
+    font-weight: 700;
+    transition: background .15s;
+  }
+  .btn-filter-submit:hover {
+    background: var(--amber-dk);
+  }
+
+  /* KPI and cost numbers */
+  .kpi-value, .cost-value {
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ aba: 'todos' }">
+
+  {# ══ KPI CARDS ══ #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+
+    <div @click="aba='mnt'"
+      :class="aba==='mnt' ? 'ring-2 ring-amber-400' : 'hover:border-amber-200 cursor-pointer'"
+      class="bg-white rounded-2xl border border-slate-200 p-4 transition-all"
+      style="box-shadow: var(--shadow);">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background: var(--amber-light);">
+          <i data-lucide="wrench" class="w-4 h-4" style="color: var(--amber-dk);"></i>
+        </div>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Manutenção</span>
+      </div>
+      <p class="text-2xl font-black text-slate-800 leading-none kpi-value">{{ total_mnt }}</p>
+      <p class="text-xs font-semibold mt-1 kpi-value" style="color: var(--amber-dk);">R$&nbsp;{{ '%.0f'|format(custo_mnt) }} em custos</p>
+    </div>
+
+    <div @click="aba='abt'"
+      :class="aba==='abt' ? 'ring-2 ring-emerald-400' : 'hover:border-emerald-200 cursor-pointer'"
+      class="bg-white rounded-2xl border border-slate-200 p-4 transition-all"
+      style="box-shadow: var(--shadow);">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+          <i data-lucide="fuel" class="w-4 h-4 text-emerald-600"></i>
+        </div>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Abastecimento</span>
+      </div>
+      <p class="text-2xl font-black text-slate-800 leading-none kpi-value">{{ total_abt }}</p>
+      <p class="text-xs text-emerald-600 font-semibold mt-1 kpi-value">R$&nbsp;{{ '%.0f'|format(custo_abt) }} em combustível</p>
+    </div>
+
+    <div @click="aba='chk'"
+      :class="aba==='chk' ? 'ring-2 ring-blue-400' : 'hover:border-blue-200 cursor-pointer'"
+      class="bg-white rounded-2xl border border-slate-200 p-4 transition-all"
+      style="box-shadow: var(--shadow);">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+          <i data-lucide="clipboard-check" class="w-4 h-4 text-blue-600"></i>
+        </div>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Checklist</span>
+      </div>
+      <p class="text-2xl font-black text-slate-800 leading-none kpi-value">{{ total_chk }}</p>
+      <p class="text-xs text-slate-400 mt-1">
+        <span class="text-emerald-600 font-bold">{{ chk_ok }} ok</span>
+        · <span class="text-red-500 font-bold">{{ chk_nok }} reprovados</span>
+      </p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-4" style="box-shadow: var(--shadow);">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+          <i data-lucide="banknote" class="w-4 h-4 text-violet-600"></i>
+        </div>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custo Total</span>
+      </div>
+      <p class="text-2xl font-black text-slate-800 leading-none kpi-value">
+        R$&nbsp;{{ '%.0f'|format(custo_mnt + custo_abt) }}
+      </p>
+      <p class="text-xs text-slate-400 mt-1">manutenção + combustível</p>
+    </div>
+  </div>
+
+  {# ══ TABS ══ #}
+  <div class="flex gap-2 mb-4 overflow-x-auto scrollbar-thin pb-1">
+    <button @click="aba='todos'"
+      :class="aba==='todos' ? 'active-all bg-slate-100 border-slate-300 text-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'"
+      class="tab-btn flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold whitespace-nowrap flex-shrink-0">
+      <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+      Todos <span class="text-xs opacity-60">{{ total_mnt + total_abt + total_chk }}</span>
+    </button>
+    <button @click="aba='mnt'"
+      :class="aba==='mnt' ? 'active-mnt' : 'bg-white text-slate-500 border-slate-200'"
+      class="tab-btn flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold whitespace-nowrap flex-shrink-0"
+      style="transition: all .15s;">
+      <i data-lucide="wrench" class="w-3.5 h-3.5"></i>
+      Manutenção <span class="text-xs opacity-60">{{ total_mnt }}</span>
+    </button>
+    <button @click="aba='abt'"
+      :class="aba==='abt' ? 'active-abt' : 'bg-white text-slate-500 border-slate-200 hover:border-emerald-200'"
+      class="tab-btn flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold whitespace-nowrap flex-shrink-0">
+      <i data-lucide="fuel" class="w-3.5 h-3.5"></i>
+      Abastecimento <span class="text-xs opacity-60">{{ total_abt }}</span>
+    </button>
+    <button @click="aba='chk'"
+      :class="aba==='chk' ? 'active-chk' : 'bg-white text-slate-500 border-slate-200 hover:border-blue-200'"
+      class="tab-btn flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold whitespace-nowrap flex-shrink-0">
+      <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i>
+      Checklist <span class="text-xs opacity-60">{{ total_chk }}</span>
+    </button>
+  </div>
+
+  {# ══ TABELA MANUTENÇÃO ══ #}
+  <div x-show="aba === 'todos' || aba === 'mnt'" style="display:none" class="mb-5">
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden" style="box-shadow: var(--shadow);">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: var(--amber-light);">
+          <i data-lucide="wrench" class="w-3.5 h-3.5" style="color: var(--amber-dk);"></i>
+        </div>
+        <span class="text-sm font-bold text-slate-800">Manutenções</span>
+        <span class="ml-auto text-xs text-slate-400">{{ total_mnt }} registro{{ 's' if total_mnt != 1 else '' }}</span>
+      </div>
+      {% if rows_mnt %}
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[640px]">
+          <thead>
+            <tr class="bg-slate-50/70 border-b border-slate-100">
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Veículo</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Oficina</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Itens</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">KM</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            {% for m in rows_mnt %}
+            <tr class="hover:bg-slate-50/60 transition-colors">
+              <td class="px-4 py-3">
+                <span class="font-bold text-slate-800">{{ m.placa }}</span>
+                <span class="text-xs text-slate-400 block">{{ m.modelo[:16] }}</span>
+              </td>
+              <td class="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{{ m.data }}</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full
+                  {% if m.categoria == 'corretiva' %}bg-orange-50 text-orange-700{% else %}bg-blue-50 text-blue-700{% endif %}">
+                  {{ m.categoria|title }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-sm text-slate-600 max-w-[120px] truncate">{{ m.oficina }}</td>
+              <td class="px-4 py-3 text-xs text-slate-500 max-w-[180px] truncate hidden lg:table-cell">{{ m.itens_str }}</td>
+              <td class="px-4 py-3 text-sm text-slate-600 cost-value hidden md:table-cell">
+                {% if m.odometro %}{{ '{:,}'.format(m.odometro).replace(',', '.') }} km{% else %}—{% endif %}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <span class="text-sm font-black cost-value {% if m.total > 0 %}text-slate-800{% else %}text-slate-400{% endif %}">
+                  {% if m.total > 0 %}R$&nbsp;{{ '%.2f'|format(m.total) }}{% else %}—{% endif %}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% if total_mnt > 0 %}
+          <tfoot>
+            <tr style="background: var(--amber-light); border-top: 1px solid var(--amber-mid);">
+              <td colspan="6" class="px-4 py-3 text-xs font-bold uppercase tracking-wider" style="color: var(--amber-dk);">Total em manutenção</td>
+              <td class="px-4 py-3 text-right text-sm font-black cost-value" style="color: var(--amber-dk);">R$&nbsp;{{ '%.2f'|format(custo_mnt) }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+      {% else %}
+      <div class="px-5 py-10 text-center text-slate-400">
+        <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+        <p class="text-sm">Nenhuma manutenção registrada{% if veiculo_id %} para este veículo{% endif %}.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ══ TABELA ABASTECIMENTO ══ #}
+  <div x-show="aba === 'todos' || aba === 'abt'" style="display:none" class="mb-5">
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden" style="box-shadow: var(--shadow);">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center">
+          <i data-lucide="fuel" class="w-3.5 h-3.5 text-emerald-600"></i>
+        </div>
+        <span class="text-sm font-bold text-slate-800">Abastecimentos</span>
+        <span class="ml-auto text-xs text-slate-400">{{ total_abt }} registro{{ 's' if total_abt != 1 else '' }}</span>
+      </div>
+      {% if rows_abt %}
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[560px]">
+          <thead>
+            <tr class="bg-slate-50/70 border-b border-slate-100">
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Veículo</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Litros</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Preço/L</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">KM</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            {% for a in rows_abt %}
+            <tr class="hover:bg-slate-50/60 transition-colors">
+              <td class="px-4 py-3">
+                <span class="font-bold text-slate-800">{{ a.placa }}</span>
+                <span class="text-xs text-slate-400 block">{{ a.modelo[:16] }}</span>
+              </td>
+              <td class="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{{ a.data }}</td>
+              <td class="px-4 py-3 text-right text-sm font-semibold text-emerald-700 cost-value">{{ '%.1f'|format(a.litros) }} L</td>
+              <td class="px-4 py-3 text-right text-xs text-slate-500 cost-value hidden md:table-cell">
+                {% if a.preco_l %}R$&nbsp;{{ '%.3f'|format(a.preco_l) }}{% else %}—{% endif %}
+              </td>
+              <td class="px-4 py-3 text-right text-sm text-slate-600 cost-value hidden md:table-cell">
+                {% if a.odometro %}{{ '{:,}'.format(a.odometro).replace(',', '.') }} km{% else %}—{% endif %}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <span class="text-sm font-black cost-value {% if a.total > 0 %}text-slate-800{% else %}text-slate-400{% endif %}">
+                  {% if a.total > 0 %}R$&nbsp;{{ '%.2f'|format(a.total) }}{% else %}—{% endif %}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% if total_abt > 0 %}
+          <tfoot>
+            <tr class="bg-emerald-50/60 border-t border-emerald-100">
+              <td colspan="5" class="px-4 py-3 text-xs font-bold text-emerald-700 uppercase tracking-wider">Total em combustível</td>
+              <td class="px-4 py-3 text-right text-sm font-black text-emerald-700 cost-value">R$&nbsp;{{ '%.2f'|format(custo_abt) }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+      {% else %}
+      <div class="px-5 py-10 text-center text-slate-400">
+        <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+        <p class="text-sm">Nenhum abastecimento registrado{% if veiculo_id %} para este veículo{% endif %}.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ══ TABELA CHECKLIST ══ #}
+  <div x-show="aba === 'todos' || aba === 'chk'" style="display:none" class="mb-5">
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden" style="box-shadow: var(--shadow);">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+          <i data-lucide="clipboard-check" class="w-3.5 h-3.5 text-blue-600"></i>
+        </div>
+        <span class="text-sm font-bold text-slate-800">Checklists</span>
+        <span class="ml-auto text-xs text-slate-400">{{ total_chk }} registro{{ 's' if total_chk != 1 else '' }}</span>
+      </div>
+      {% if rows_chk %}
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[520px]">
+          <thead>
+            <tr class="bg-slate-50/70 border-b border-slate-100">
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Veículo</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data/Hora</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Situação</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">KM</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Reprovados</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            {% for c in rows_chk %}
+            <tr class="hover:bg-slate-50/60 transition-colors">
+              <td class="px-4 py-3">
+                <span class="font-bold text-slate-800">{{ c.placa }}</span>
+                <span class="text-xs text-slate-400 block">{{ c.modelo[:16] }}</span>
+              </td>
+              <td class="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{{ c.data }}</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full
+                  {% if c.tipo == 'inicio' %}bg-violet-50 text-violet-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                  {{ 'Início' if c.tipo == 'inicio' else 'Fim' }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                {# Completed/Aprovado: green | Error/Reprovado: red — semantic status colors #}
+                {% if c.aprovado %}
+                <span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">
+                  <i data-lucide="check-circle" class="w-3 h-3"></i> Aprovado
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-700">
+                  <i data-lucide="x-circle" class="w-3 h-3"></i> Reprovado
+                </span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 text-sm text-slate-600 cost-value hidden md:table-cell">
+                {% if c.odometro %}{{ '{:,}'.format(c.odometro).replace(',', '.') }} km{% else %}—{% endif %}
+              </td>
+              <td class="px-4 py-3 text-xs text-red-600 hidden lg:table-cell">
+                {{ c.rep_str or '—' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="px-5 py-10 text-center text-slate-400">
+        <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+        <p class="text-sm">Nenhum checklist registrado{% if veiculo_id %} para este veículo{% endif %}.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Estado vazio geral #}
+  <div x-show="aba === 'todos' && {{ total_mnt }} === 0 && {{ total_abt }} === 0 && {{ total_chk }} === 0"
+       style="display:none"
+       class="bg-white rounded-2xl border border-slate-200 p-12 text-center"
+       style="box-shadow: var(--shadow);">
+    <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <i data-lucide="inbox" class="w-8 h-8 text-slate-400"></i>
+    </div>
+    <h3 class="text-base font-bold text-slate-700 mb-1">Nenhum registro encontrado</h3>
+    <p class="text-sm text-slate-400">Selecione outro veículo ou aguarde o registro de eventos.</p>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Ícones estão no HTML desde o início (x-show não adiciona novos elementos),
+  // portanto uma única chamada após o Alpine inicializar é suficiente.
+  document.addEventListener('alpine:initialized', () => lucide.createIcons());
+</script>
+{% endblock %}
