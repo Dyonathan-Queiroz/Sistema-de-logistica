@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Logística Gavião — Manual & Apresentação Comercial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+<style>
+  :root{
+    --red:#CC1F1A; --red-dk:#A5110D; --red-hover:#E0231E; --red-lt:#FFF0EF;
+    --ink:#0F1117; --ink2:#1A1D27;
+    --page:#F4F5F7; --card:#FFFFFF; --brd:#E4E6EA;
+    --text:#111318; --text2:#5A5F70; --text3:#9BA3B0;
+    --blue:#2563EB; --green:#16A34A; --orange:#D97706; --purple:#7C3AED; --amber:#F59E0B;
+    --font:'Figtree',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:var(--font); color:var(--text); background:#fff; line-height:1.5; font-size:14px; }
+
+  @page{ size:A4; margin:0; }
+
+  .page{
+    width:210mm; min-height:297mm; position:relative; overflow:hidden;
+    page-break-after:always; background:#fff;
+  }
+  .page:last-child{ page-break-after:auto; }
+
+  .pad{ padding:22mm 20mm; }
+  .pad-sm{ padding:16mm 20mm; }
+
+  h1,h2,h3,h4{ font-weight:800; letter-spacing:-.02em; line-height:1.12; color:var(--text); }
+  .eyebrow{ font-size:11px; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--red); margin-bottom:14px; }
+  .lead{ font-size:15px; color:var(--text2); line-height:1.65; }
+  .muted{ color:var(--text2); }
+  .small{ font-size:12px; }
+
+  /* ============ COVER ============ */
+  .cover{ background:var(--ink); color:#fff; display:flex; flex-direction:column; }
+  .cover *{ color:#fff; }
+  .cover-grid{
+    position:absolute; inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:34px 34px;
+  }
+  .cover-glow{ position:absolute; width:560px; height:560px; border-radius:50%;
+    background:radial-gradient(circle,rgba(204,31,26,.42) 0%,rgba(204,31,26,0) 68%);
+    top:-160px; right:-140px; filter:blur(6px); }
+  .cover-glow2{ position:absolute; width:420px; height:420px; border-radius:50%;
+    background:radial-gradient(circle,rgba(204,31,26,.20) 0%,rgba(204,31,26,0) 70%);
+    bottom:-120px; left:-120px; }
+  .cover-inner{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; padding:24mm 20mm; }
+
+  .brandbar{ display:flex; align-items:center; gap:14px; }
+  .brand-ico{ width:54px; height:54px; border-radius:15px; background:var(--red);
+    display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(204,31,26,.45); }
+  .brand-name{ font-size:19px; font-weight:800; letter-spacing:-.01em; }
+  .brand-sub{ font-size:12px; color:rgba(255,255,255,.5)!important; font-weight:600; letter-spacing:.04em; }
+
+  .cover-title{ font-size:62px; font-weight:900; letter-spacing:-.035em; line-height:.98; margin-top:auto; }
+  .cover-title .accent{ color:var(--red)!important; }
+  .cover-desc{ font-size:16px; color:rgba(255,255,255,.72)!important; max-width:560px; margin-top:22px; line-height:1.6; }
+
+  .cover-tags{ display:flex; flex-wrap:wrap; gap:9px; margin-top:30px; }
+  .tag{ font-size:11.5px; font-weight:700; padding:7px 14px; border-radius:99px;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.13); color:rgba(255,255,255,.85)!important; }
+
+  .cover-foot{ margin-top:34px; padding-top:22px; border-top:1px solid rgba(255,255,255,.1);
+    display:flex; justify-content:space-between; align-items:flex-end; }
+  .cover-foot .who{ font-size:13px; font-weight:700; }
+  .cover-foot .role{ font-size:11.5px; color:rgba(255,255,255,.5)!important; margin-top:3px; }
+
+  /* ============ SECTION HEADERS ============ */
+  .sec-head{ display:flex; align-items:flex-start; gap:18px; margin-bottom:30px; }
+  .sec-num{ font-size:13px; font-weight:900; color:#fff; background:var(--red);
+    width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .sec-head h2{ font-size:30px; }
+  .sec-head .lead{ margin-top:8px; }
+
+  /* page header strip on content pages */
+  .phead{ display:flex; justify-content:space-between; align-items:center; padding:10mm 20mm 0; }
+  .phead .pl{ display:flex; align-items:center; gap:9px; font-weight:800; font-size:12px; color:var(--text2); }
+  .phead .pl .dot{ width:22px;height:22px;border-radius:6px;background:var(--red);display:flex;align-items:center;justify-content:center; }
+  .phead .pr{ font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.04em; }
+
+  /* ============ CARDS / GRID ============ */
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+
+  .fcard{ background:var(--card); border:1px solid var(--brd); border-radius:14px; padding:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .fcard .ico{ width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; }
+  .fcard h4{ font-size:15.5px; margin-bottom:6px; }
+  .fcard p{ font-size:12.5px; color:var(--text2); line-height:1.55; }
+
+  .ico-red{ background:var(--red-lt); } .ico-red svg{ stroke:var(--red); }
+  .ico-blue{ background:#EFF4FF; } .ico-blue svg{ stroke:var(--blue); }
+  .ico-green{ background:#ECFDF3; } .ico-green svg{ stroke:var(--green); }
+  .ico-orange{ background:#FFF4E5; } .ico-orange svg{ stroke:var(--orange); }
+  .ico-purple{ background:#F3EEFF; } .ico-purple svg{ stroke:var(--purple); }
+  .ico-ink{ background:#EEF0F4; } .ico-ink svg{ stroke:var(--ink); }
+  svg.i{ width:22px; height:22px; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+  ul.checks{ list-style:none; margin-top:6px; }
+  ul.checks li{ font-size:13px; color:var(--text2); padding:6px 0 6px 26px; position:relative; line-height:1.45; }
+  ul.checks li::before{ content:''; position:absolute; left:0; top:8px; width:16px; height:16px; border-radius:5px;
+    background:var(--red-lt); }
+  ul.checks li::after{ content:''; position:absolute; left:5px; top:11px; width:6px; height:3px;
+    border-left:2px solid var(--red); border-bottom:2px solid var(--red); transform:rotate(-45deg); }
+
+  /* ============ MOCK UI ============ */
+  .device{ border-radius:16px; overflow:hidden; box-shadow:0 18px 50px rgba(15,17,23,.16); border:1px solid var(--brd); }
+  .browser-bar{ background:#fff; border-bottom:1px solid var(--brd); padding:9px 14px; display:flex; align-items:center; gap:7px; }
+  .browser-bar .dots{ display:flex; gap:5px; }
+  .browser-bar .dots span{ width:9px; height:9px; border-radius:50%; }
+  .browser-bar .url{ flex:1; background:var(--page); border-radius:6px; padding:4px 12px; font-size:10.5px; color:var(--text3); font-weight:600; }
+
+  .app{ display:flex; min-height:330px; background:var(--page); }
+  .app-side{ width:150px; background:var(--ink); padding:14px 10px; flex-shrink:0; }
+  .app-side .logo{ display:flex; align-items:center; gap:8px; padding:4px 6px 14px; border-bottom:1px solid rgba(255,255,255,.08); margin-bottom:10px; }
+  .app-side .logo .b{ width:26px; height:26px; border-radius:7px; background:var(--red); display:flex; align-items:center; justify-content:center; }
+  .app-side .logo .t{ font-size:11px; font-weight:800; color:#fff; }
+  .nav-i{ display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:7px; font-size:10.5px; font-weight:600; color:rgba(255,255,255,.5); margin-bottom:2px; }
+  .nav-i svg{ width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:2; }
+  .nav-i.on{ background:rgba(204,31,26,.16); color:#FF6B66; position:relative; }
+  .nav-i.on::before{ content:''; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:16px; background:var(--red); border-radius:0 3px 3px 0; }
+  .app-main{ flex:1; padding:16px; }
+  .app-topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .app-topbar h5{ font-size:14px; font-weight:800; }
+  .av{ width:26px; height:26px; border-radius:50%; background:var(--red); color:#fff; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+
+  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-bottom:13px; }
+  .kpi{ background:#fff; border:1px solid var(--brd); border-radius:10px; padding:11px; }
+  .kpi .lab{ font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text3); }
+  .kpi .val{ font-size:23px; font-weight:800; letter-spacing:-.02em; margin-top:3px; }
+  .kpi .val.r{ color:var(--red); } .kpi .val.g{ color:var(--green); } .kpi .val.b{ color:var(--blue); } .kpi .val.o{ color:var(--orange); }
+
+  .panel{ background:#fff; border:1px solid var(--brd); border-radius:10px; padding:13px; }
+  .panel h6{ font-size:11px; font-weight:800; margin-bottom:11px; display:flex; justify-content:space-between; align-items:center; }
+  .panel h6 .pill{ font-size:8px; font-weight:700; padding:3px 8px; border-radius:99px; background:var(--red-lt); color:var(--red); }
+  .row-i{ display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid #F1F2F5; }
+  .row-i:last-child{ border-bottom:none; }
+  .row-i .rank{ width:20px; height:20px; border-radius:6px; font-size:9px; font-weight:800; color:#fff; display:flex; align-items:center; justify-content:center; }
+  .row-i .nm{ font-size:10.5px; font-weight:700; flex:1; }
+  .row-i .sc{ font-size:10.5px; font-weight:800; color:var(--text2); }
+  .bar{ height:5px; border-radius:3px; background:#EFF0F3; overflow:hidden; flex:1; }
+  .bar i{ display:block; height:100%; border-radius:3px; background:var(--red); }
+
+  /* phone */
+  .phone{ width:215px; border-radius:30px; background:var(--ink); padding:9px; box-shadow:0 22px 55px rgba(15,17,23,.30); }
+  .phone-scr{ background:#070A10; border-radius:23px; overflow:hidden; height:430px; position:relative; }
+  .ph-top{ padding:16px 15px 12px; }
+  .ph-hi{ font-size:9px; color:rgba(255,255,255,.45); font-weight:600; }
+  .ph-nm{ font-size:15px; color:#fff; font-weight:800; margin-top:2px; }
+  .ph-shift{ margin:0 15px 12px; background:linear-gradient(135deg,#0DF5C0,#08c79c); border-radius:13px; padding:11px 13px; }
+  .ph-shift .l{ font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:rgba(0,30,24,.6); }
+  .ph-shift .v{ font-size:13px; font-weight:800; color:#04201a; margin-top:2px; }
+  .ph-card{ margin:0 15px 9px; background:#11161F; border:1px solid rgba(255,255,255,.06); border-radius:13px; padding:11px 13px; }
+  .ph-card .t{ font-size:11px; color:#fff; font-weight:700; }
+  .ph-card .s{ font-size:9px; color:rgba(255,255,255,.4); margin-top:3px; }
+  .ph-card .badge{ float:right; font-size:7.5px; font-weight:800; padding:3px 8px; border-radius:99px; }
+  .b-av{ background:rgba(13,245,192,.15); color:#0DF5C0; }
+  .b-rt{ background:rgba(255,98,41,.16); color:#FF6229; }
+  .ph-tabs{ position:absolute; bottom:0; left:0; right:0; height:50px; background:#0B0F16; border-top:1px solid rgba(255,255,255,.07); display:flex; }
+  .ph-tab{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:7px; font-weight:700; color:rgba(255,255,255,.4); }
+  .ph-tab svg{ width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:2; }
+  .ph-tab.on{ color:#0DF5C0; }
+
+  /* ============ FLOW DIAGRAM ============ */
+  .flow{ display:flex; align-items:stretch; gap:0; margin-top:8px; }
+  .flow-step{ flex:1; background:var(--card); border:1px solid var(--brd); border-radius:13px; padding:16px; text-align:center; position:relative; }
+  .flow-step .n{ width:30px; height:30px; border-radius:9px; background:var(--ink); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; }
+  .flow-step h5{ font-size:12.5px; margin-bottom:5px; }
+  .flow-step p{ font-size:10.5px; color:var(--text2); line-height:1.4; }
+  .flow-arrow{ display:flex; align-items:center; padding:0 7px; color:var(--red); font-size:18px; font-weight:800; }
+
+  /* ============ STAT STRIP ============ */
+  .stat-strip{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .stat-box{ text-align:center; padding:20px 12px; background:var(--ink); border-radius:14px; }
+  .stat-box .big{ font-size:34px; font-weight:900; color:#fff; letter-spacing:-.03em; }
+  .stat-box .big .u{ color:var(--red); }
+  .stat-box .cap{ font-size:10.5px; font-weight:600; color:rgba(255,255,255,.55); margin-top:5px; line-height:1.35; }
+
+  /* table */
+  .rtable{ width:100%; border-collapse:collapse; border:1px solid var(--brd); border-radius:12px; overflow:hidden; }
+  .rtable th{ background:var(--ink); color:#fff; font-size:11px; font-weight:700; text-align:left; padding:11px 13px; }
+  .rtable td{ padding:10px 13px; font-size:12px; border-bottom:1px solid #EEF0F3; color:var(--text2); }
+  .rtable td:first-child{ font-weight:700; color:var(--text); }
+  .rtable tr:last-child td{ border-bottom:none; }
+  .rtable tr:nth-child(even) td{ background:#FAFBFC; }
+  .yes{ color:var(--green); font-weight:800; } .no{ color:var(--text3); }
+
+  .callout{ background:var(--red-lt); border:1px solid #F8D4D2; border-left:4px solid var(--red); border-radius:10px; padding:16px 18px; }
+  .callout h5{ color:var(--red-dk); font-size:13.5px; margin-bottom:5px; }
+  .callout p{ font-size:12.5px; color:#7A1813; line-height:1.55; }
+
+  .pfoot{ position:absolute; bottom:0; left:0; right:0; padding:9mm 20mm; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--brd); }
+  .pfoot .c{ font-size:10px; color:var(--text3); font-weight:600; }
+  .pfoot .pg{ font-size:10px; color:var(--text3); font-weight:700; }
+
+  .divider{ height:1px; background:var(--brd); margin:22px 0; }
+  .tag-row{ display:flex; gap:7px; flex-wrap:wrap; margin-top:14px; }
+  .chip{ font-size:10.5px; font-weight:700; padding:5px 11px; border-radius:7px; background:#EEF0F4; color:var(--text2); }
+  .chip.red{ background:var(--red-lt); color:var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ============================ PAGE 1 — COVER ============================ -->
+<section class="page cover">
+  <div class="cover-grid"></div>
+  <div class="cover-glow"></div>
+  <div class="cover-glow2"></div>
+  <div class="cover-inner">
+    <div class="brandbar">
+      <div class="brand-ico">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">System Logística</div>
+        <div class="brand-sub">SUPER GAVIÃO · GESTÃO DE ENTREGAS & FROTA</div>
+      </div>
+    </div>
+
+    <h1 class="cover-title">Entregas e frota<br>sob <span class="accent">controle total</span>,<br>em tempo real.</h1>
+    <p class="cover-desc">A plataforma completa que conecta o seu PDV às entregas, motoristas e veículos — do pedido emitido no caixa à entrega concluída, com custo por quilômetro, manutenção preventiva e ranking de desempenho calculados automaticamente.</p>
+
+    <div class="cover-tags">
+      <span class="tag">Sincronização automática com o PDV</span>
+      <span class="tag">App do entregador</span>
+      <span class="tag">Gestão de frota</span>
+      <span class="tag">Manutenção preventiva</span>
+      <span class="tag">Ranking & KPIs</span>
+      <span class="tag">Multi-filial</span>
+    </div>
+
+    <div class="cover-foot">
+      <div>
+        <div class="who">Manual & Apresentação Comercial</div>
+        <div class="role">Documento de demonstração do produto · 2026</div>
+      </div>
+      <div style="text-align:right">
+        <div class="who">Criado por Dyonathan Queiroz</div>
+        <div class="role">Auxiliar de T.I — Super Gavião</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 2 — SUMÁRIO + VISÃO GERAL ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">VISÃO GERAL</div>
+  </div>
+  <div class="pad-sm">
+    <div class="eyebrow">O que é a plataforma</div>
+    <h2 style="font-size:30px; max-width:560px;">Um único sistema para tudo que acontece entre o caixa e a porta do cliente.</h2>
+    <p class="lead" style="margin-top:16px; max-width:600px;">O System Logística unifica em uma só plataforma a operação de entregas e a gestão completa da frota. Pedidos entram automaticamente do PDV, os entregadores recebem e executam pelo celular, e os gestores acompanham custos, desempenho e manutenção em painéis em tempo real.</p>
+
+    <div class="stat-strip" style="margin:30px 0;">
+      <div class="stat-box"><div class="big">3<span class="u">+</span></div><div class="cap">módulos integrados:<br>entregas, frota e desempenho</div></div>
+      <div class="stat-box"><div class="big">30<span class="u">s</span></div><div class="cap">sincronização<br>automática com o PDV</div></div>
+      <div class="stat-box"><div class="big">100<span class="u">%</span></div><div class="cap">custos de frota<br>calculados sozinhos</div></div>
+      <div class="stat-box"><div class="big">3</div><div class="cap">perfis de acesso:<br>gestor, operador, entregador</div></div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:8px;">Neste documento</div>
+    <div class="grid2" style="gap:11px;">
+      <div class="fcard" style="padding:14px 16px; display:flex; gap:12px; align-items:center;">
+        <div class="sec-num">01</div><div><h4 style="font-size:14px;">Sincronização com o PDV</h4><p style="font-size:11.5px;">Pedidos do Consinco viram entregas, sem digitação.</p></div>
+      </div>
+      <div class="fcard" style="padding:14px 16px; display:flex; gap:12px; align-items:center;">
+        <div class="sec-num">02</div><div><h4 style="font-size:14px;">Gestão de Entregas</h4><p style="font-size:11.5px;">Painel do gestor, log e correção de endereços.</p></div>
+      </div>
+      <div class="fcard" style="padding:14px 16px; display:flex; gap:12px; align-items:center;">
+        <div class="sec-num">03</div><div><h4 style="font-size:14px;">App do Entregador</h4><p style="font-size:11.5px;">Aceitar, navegar e finalizar pelo celular.</p></div>
+      </div>
+      <div class="fcard" style="padding:14px 16px; display:flex; gap:12px; align-items:center;">
+        <div class="sec-num">04</div><div><h4 style="font-size:14px;">Desempenho & Ranking</h4><p style="font-size:11.5px;">KPIs, taxa de sucesso e tempos por motorista.</p></div>
+      </div>
+      <div class="fcard" style="padding:14px 16px; display:flex; gap:12px; align-items:center;">
+        <div class="sec-num">05</div><div><h4 style="font-size:14px;">Módulo Frota</h4><p style="font-size:11.5px;">Turno, checklist, abastecimento e manutenção.</p></div>
+      </div>
+      <div class="fcard" style="padding:14px 16px; display:flex; gap:12px; align-items:center;">
+        <div class="sec-num">06</div><div><h4 style="font-size:14px;">Inteligência & Custos</h4><p style="font-size:11.5px;">CPK, consumo, alertas e arquitetura técnica.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">02</div></div>
+</section>
+
+<!-- ============================ PAGE 3 — MÓDULO 01: SYNC PDV ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">MÓDULO 01 · INTEGRAÇÃO</div>
+  </div>
+  <div class="pad-sm">
+    <div class="sec-head">
+      <div class="sec-num">01</div>
+      <div><h2>Sincronização automática com o PDV</h2>
+      <p class="lead">A venda registrada no caixa vira uma entrega no sistema em segundos — sem ninguém digitar nada. O agente de sincronização monitora o Consinco (Oracle) e cria pedidos, clientes e endereços automaticamente.</p></div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step"><div class="n">1</div><h5>Venda no caixa</h5><p>Cupom emitido no PDV Consinco com entrega marcada.</p></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="n">2</div><h5>Agente detecta</h5><p>Verificação a cada 30s identifica o novo documento.</p></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="n">3</div><h5>Cria entrega</h5><p>Cliente, endereço e cupom registrados sem duplicar.</p></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="n">4</div><h5>Pronto p/ rota</h5><p>Entrega aparece para o entregador aceitar.</p></div>
+    </div>
+
+    <div class="grid2" style="margin-top:24px;">
+      <div class="fcard">
+        <div class="ico ico-red"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.8 1 6.4 2.6"/><path d="M21 3v6h-6"/></svg></div>
+        <h4>Zero digitação, zero retrabalho</h4>
+        <p>O endereço, o cliente e o número do cupom fiscal chegam prontos do PDV. Acaba a redigitação manual e os erros de transcrição.</p>
+      </div>
+      <div class="fcard">
+        <div class="ico ico-blue"><svg class="i" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/></svg></div>
+        <h4>À prova de duplicidade</h4>
+        <p>Cada documento é controlado por um registro próprio de sincronização. O mesmo pedido nunca entra duas vezes, mesmo após reinícios.</p>
+      </div>
+      <div class="fcard">
+        <div class="ico ico-green"><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <h4>Rastreabilidade total</h4>
+        <p>Guarda os identificadores originais do Consinco (checkout, documento, pessoa) em cada entrega, ligando o sistema ao PDV ponta a ponta.</p>
+      </div>
+      <div class="fcard">
+        <div class="ico ico-orange"><svg class="i" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h4>Resiliente a falhas</h4>
+        <p>Reconexão automática com novas tentativas em caso de instabilidade de rede ou da API — a operação não para por queda momentânea.</p>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:22px;">
+      <h5>Por que isso importa para a venda</h5>
+      <p>É o diferencial que elimina o maior gargalo das operações de entrega: o tempo e o erro humano entre o caixa e a logística. A integração já nasce pronta para o ecossistema Consinco usado no varejo.</p>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">03</div></div>
+</section>
+
+<!-- ============================ PAGE 4 — MÓDULO 02: GESTÃO ENTREGAS ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">MÓDULO 02 · OPERAÇÃO</div>
+  </div>
+  <div class="pad-sm">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <div><h2>Painel de Gestão de Entregas</h2>
+      <p class="lead">O centro de comando do gestor. Métricas do dia, desempenho por filial e um log completo onde cada entrega pode ser editada, reaberta ou corrigida.</p></div>
+    </div>
+
+    <!-- MOCK: gestor dashboard -->
+    <div class="device">
+      <div class="browser-bar">
+        <div class="dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div>
+        <div class="url">systemlogistica.gaviao.com.br/gestor</div>
+      </div>
+      <div class="app">
+        <div class="app-side">
+          <div class="logo"><div class="b"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/></svg></div><div class="t">Logística</div></div>
+          <div class="nav-i on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</div>
+          <div class="nav-i"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg> Log de Entregas</div>
+          <div class="nav-i"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg> Desempenho</div>
+          <div class="nav-i"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2"/></svg> Funcionários</div>
+          <div class="nav-i"><svg viewBox="0 0 24 24"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/></svg> Frota</div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar"><h5>Visão do Dia</h5><div class="av">GA</div></div>
+          <div class="kpis">
+            <div class="kpi"><div class="lab">Criadas</div><div class="val">148</div></div>
+            <div class="kpi"><div class="lab">Em Rota</div><div class="val b">23</div></div>
+            <div class="kpi"><div class="lab">Finalizadas</div><div class="val g">112</div></div>
+            <div class="kpi"><div class="lab">Erros</div><div class="val r">13</div></div>
+          </div>
+          <div style="display:grid; grid-template-columns:1.3fr 1fr; gap:9px;">
+            <div class="panel">
+              <h6>Por Filial <span class="pill">hoje</span></h6>
+              <div class="row-i"><span class="nm">Centro</span><div class="bar"><i style="width:86%"></i></div><span class="sc">58</span></div>
+              <div class="row-i"><span class="nm">Caçari</span><div class="bar"><i style="width:64%"></i></div><span class="sc">41</span></div>
+              <div class="row-i"><span class="nm">Pricumã</span><div class="bar"><i style="width:42%"></i></div><span class="sc">29</span></div>
+              <div class="row-i"><span class="nm">Asa Branca</span><div class="bar"><i style="width:30%"></i></div><span class="sc">20</span></div>
+            </div>
+            <div class="panel">
+              <h6>Calendário</h6>
+              <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:3px;">
+                <div style="aspect-ratio:1; border-radius:3px; background:#FCE3E2"></div><div style="aspect-ratio:1; border-radius:3px; background:#F6B9B6"></div><div style="aspect-ratio:1; border-radius:3px; background:#CC1F1A"></div><div style="aspect-ratio:1; border-radius:3px; background:#EE7B76"></div><div style="aspect-ratio:1; border-radius:3px; background:#FCE3E2"></div><div style="aspect-ratio:1; border-radius:3px; background:#F6B9B6"></div><div style="aspect-ratio:1; border-radius:3px; background:#A5110D"></div>
+                <div style="aspect-ratio:1; border-radius:3px; background:#EE7B76"></div><div style="aspect-ratio:1; border-radius:3px; background:#CC1F1A"></div><div style="aspect-ratio:1; border-radius:3px; background:#FCE3E2"></div><div style="aspect-ratio:1; border-radius:3px; background:#F6B9B6"></div><div style="aspect-ratio:1; border-radius:3px; background:#EE7B76"></div><div style="aspect-ratio:1; border-radius:3px; background:#CC1F1A"></div><div style="aspect-ratio:1; border-radius:3px; background:#FCE3E2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid3" style="margin-top:22px;">
+      <div class="fcard"><div class="ico ico-red"><svg class="i" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg></div><h4>Métricas do dia</h4><p>Criadas, em rota, finalizadas e erros — atualizadas em tempo real, com calendário de volume por dia.</p></div>
+      <div class="fcard"><div class="ico ico-blue"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div><h4>Log filtrável</h4><p>Busca por cupom, status, filial e período. Cada linha mostra o ciclo completo do pedido.</p></div>
+      <div class="fcard"><div class="ico ico-orange"><svg class="i" viewBox="0 0 24 24"><path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></div><h4>Correção de endereço</h4><p>Edite rua, número, bairro e CEP e reabra entregas com erro direto pelo painel.</p></div>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">04</div></div>
+</section>
+
+<!-- ============================ PAGE 5 — MÓDULO 03: APP ENTREGADOR ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">MÓDULO 03 · MOBILE</div>
+  </div>
+  <div class="pad-sm">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <div><h2>App do Entregador</h2>
+      <p class="lead">Feito para a tela do celular e para o sol da rua. O entregador vê o que está disponível, aceita com um toque, navega pelo Google Maps e finaliza — tudo com trava de turno para garantir o checklist.</p></div>
+    </div>
+
+    <div style="display:flex; gap:30px; align-items:center;">
+      <!-- phone mock -->
+      <div class="phone" style="flex-shrink:0;">
+        <div class="phone-scr">
+          <div class="ph-top">
+            <div class="ph-hi">Boa rota,</div>
+            <div class="ph-nm">Carlos Andrade</div>
+          </div>
+          <div class="ph-shift">
+            <div class="l">● Turno ativo</div>
+            <div class="v">Moto HUF-2D19 · 02h14</div>
+          </div>
+          <div class="ph-card"><span class="badge b-av">Disponível</span><div class="t">Pedido #4821 · Centro</div><div class="s">Av. Ataíde Teive, 1290 — 3,2 km</div></div>
+          <div class="ph-card"><span class="badge b-rt">Em rota</span><div class="t">Pedido #4815 · Caçari</div><div class="s">R. Cecília Brasil, 77 — em andamento</div></div>
+          <div class="ph-card"><span class="badge b-av">Disponível</span><div class="t">Pedido #4823 · Pricumã</div><div class="s">R. Bento Brasil, 410 — 5,8 km</div></div>
+          <div class="ph-tabs">
+            <div class="ph-tab on"><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10h14V10"/></svg>Disp.</div>
+            <div class="ph-tab"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M21 12v7H3V5h11"/></svg>Em rota</div>
+            <div class="ph-tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hoje</div>
+            <div class="ph-tab"><svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Turno</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1;">
+        <ul class="checks">
+          <li><b>Aceite com um toque</b> — entregas disponíveis listadas por proximidade, com filial e endereço.</li>
+          <li><b>Navegação integrada</b> — botão direto para o Google Maps com o endereço já formatado.</li>
+          <li><b>Contato com o cliente</b> — link de WhatsApp e telefone direto no detalhe da entrega.</li>
+          <li><b>Trava de turno</b> — só aceita entregas quem iniciou o turno e passou no checklist do veículo.</li>
+          <li><b>Finalização e erro</b> — conclui ou reporta problema com o motivo, que volta para o gestor.</li>
+          <li><b>Resumo do dia</b> — finalizadas, abastecimentos e duração do turno sempre à vista.</li>
+        </ul>
+
+        <div class="callout" style="margin-top:18px;">
+          <h5>Tema escuro, alto contraste</h5>
+          <p>Interface desenhada para leitura rápida sob luz solar, com navegação fixa em abas no rodapé — o padrão dos apps de entrega que os motoristas já conhecem.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid4" style="margin-top:24px;">
+      <div class="fcard" style="padding:15px;"><div class="ico ico-green" style="width:36px;height:36px;margin-bottom:10px;"><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div><h4 style="font-size:13px;">Aceitar</h4><p style="font-size:11px;">Pega a entrega disponível.</p></div>
+      <div class="fcard" style="padding:15px;"><div class="ico ico-blue" style="width:36px;height:36px;margin-bottom:10px;"><svg class="i" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2"/></svg></div><h4 style="font-size:13px;">Navegar</h4><p style="font-size:11px;">Maps com 1 toque.</p></div>
+      <div class="fcard" style="padding:15px;"><div class="ico ico-orange" style="width:36px;height:36px;margin-bottom:10px;"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/></svg></div><h4 style="font-size:13px;">Finalizar</h4><p style="font-size:11px;">Conclui na porta.</p></div>
+      <div class="fcard" style="padding:15px;"><div class="ico ico-red" style="width:36px;height:36px;margin-bottom:10px;"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div><h4 style="font-size:13px;">Reportar</h4><p style="font-size:11px;">Erro com motivo.</p></div>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">05</div></div>
+</section>
+
+<!-- ============================ PAGE 6 — MÓDULO 04: DESEMPENHO ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">MÓDULO 04 · ANALYTICS</div>
+  </div>
+  <div class="pad-sm">
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <div><h2>Desempenho & Ranking de Motoristas</h2>
+      <p class="lead">Cada entrega gera dados. O sistema transforma isso em ranking, taxa de sucesso e tempos médios — para reconhecer os melhores e agir sobre os gargalos.</p></div>
+    </div>
+
+    <div class="device">
+      <div class="browser-bar">
+        <div class="dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div>
+        <div class="url">systemlogistica.gaviao.com.br/gestor/desempenho</div>
+      </div>
+      <div class="app">
+        <div class="app-side">
+          <div class="logo"><div class="b"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/></svg></div><div class="t">Logística</div></div>
+          <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</div>
+          <div class="nav-i on"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg> Desempenho</div>
+          <div class="nav-i"><svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18a3 3 0 0 1-3-3V9h18v6a3 3 0 0 1-3 3"/></svg> Ranking Frota</div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar"><h5>Ranking de Entregadores</h5><div class="av">GA</div></div>
+          <div class="kpis" style="grid-template-columns:repeat(3,1fr);">
+            <div class="kpi"><div class="lab">Taxa de sucesso</div><div class="val g">94%</div></div>
+            <div class="kpi"><div class="lab">Tempo médio</div><div class="val b">38<span style="font-size:12px">min</span></div></div>
+            <div class="kpi"><div class="lab">Ativos agora</div><div class="val o">7</div></div>
+          </div>
+          <div class="panel">
+            <h6>Top motoristas <span class="pill">últimos 7 dias</span></h6>
+            <div class="row-i"><span class="rank" style="background:#D4A017">1</span><span class="nm">Carlos Andrade</span><div class="bar"><i style="width:96%"></i></div><span class="sc">312</span></div>
+            <div class="row-i"><span class="rank" style="background:#9BA3B0">2</span><span class="nm">Marcos Pereira</span><div class="bar"><i style="width:84%"></i></div><span class="sc">271</span></div>
+            <div class="row-i"><span class="rank" style="background:#C77B30">3</span><span class="nm">João Vitor</span><div class="bar"><i style="width:71%"></i></div><span class="sc">228</span></div>
+            <div class="row-i"><span class="rank" style="background:#9BA3B0">4</span><span class="nm">Rafael Lima</span><div class="bar"><i style="width:58%"></i></div><span class="sc">189</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid3" style="margin-top:22px;">
+      <div class="fcard"><div class="ico ico-purple"><svg class="i" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18a3 3 0 0 1-3-3V9h18v6a3 3 0 0 1-3 3"/><path d="M9 22h6M12 18v4"/></svg></div><h4>Ranking com medalhas</h4><p>Níveis ouro, prata e bronze por pontuação acumulada, com total de entregas por motorista.</p></div>
+      <div class="fcard"><div class="ico ico-green"><svg class="i" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><h4>Taxa de sucesso</h4><p>Percentual de entregas finalizadas vs. erros, por motorista e da frota inteira.</p></div>
+      <div class="fcard"><div class="ico ico-blue"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h4>Tempos médios</h4><p>Tempo de reação (aceitar), de entrega e total — para encontrar gargalos na operação.</p></div>
+    </div>
+
+    <div class="callout" style="margin-top:20px;">
+      <h5>Histórico individual e mini-gráficos</h5>
+      <p>Cada motorista tem sua página de histórico paginada e um sparkline de 7 dias. Filtros por período, entregador e filial permitem comparar equipes e identificar tendências rapidamente.</p>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">06</div></div>
+</section>
+
+<!-- ============================ PAGE 7 — MÓDULO 05: FROTA (turno/checklist/abast) ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">MÓDULO 05 · FROTA</div>
+  </div>
+  <div class="pad-sm">
+    <div class="sec-head">
+      <div class="sec-num">05</div>
+      <div><h2>Módulo Frota — o dia a dia do veículo</h2>
+      <p class="lead">Turno, checklist de segurança, abastecimento e manutenção integrados. Cada quilômetro rodado e cada real gasto entram no histórico do veículo automaticamente.</p></div>
+    </div>
+
+    <div class="grid2">
+      <div class="fcard">
+        <div class="ico ico-red"><svg class="i" viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M21 12v7H3V5h11"/></svg></div>
+        <h4>Turno & Checklist obrigatório</h4>
+        <p>O motorista abre o turno preenchendo um checklist de inspeção (freios, pneus, faróis). Itens críticos reprovados <b>bloqueiam</b> a abertura — segurança em primeiro lugar. Um turno por motorista por dia.</p>
+      </div>
+      <div class="fcard">
+        <div class="ico ico-orange"><svg class="i" viewBox="0 0 24 24"><path d="M3 22V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v14"/><path d="M3 12h10M16 8l3 2v8a2 2 0 0 1-4 0"/></svg></div>
+        <h4>Abastecimento</h4>
+        <p>Registro de litros, valor e odômetro. O sistema associa ao turno aberto e atualiza sozinho o hodômetro do veículo e o custo de combustível do dia.</p>
+      </div>
+      <div class="fcard">
+        <div class="ico ico-blue"><svg class="i" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.1 2.1-2.4-2.4 2.1-2.1z"/></svg></div>
+        <h4>Manutenção com aprovação</h4>
+        <p>O motorista solicita manutenção (peças, oficina, problema). O gestor aprova ou rejeita, define valores de peças e mão de obra — fluxo completo com trilha de auditoria.</p>
+      </div>
+      <div class="fcard">
+        <div class="ico ico-ink"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <h4>Controle de pneus</h4>
+        <p>Instalação e descarte por posição (dianteiro, traseiro, estepe). Calcula a vida útil em km rodados de cada pneu — fim do controle em papel.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:22px;">
+      <div class="eyebrow">Linha do tempo do veículo</div>
+      <div class="panel" style="padding:16px;">
+        <div style="display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid #F1F2F5;">
+          <div class="ico ico-orange" style="width:32px;height:32px;margin:0;border-radius:8px;"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M3 22V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v14"/><path d="M16 8l3 2v8a2 2 0 0 1-4 0"/></svg></div>
+          <div style="flex:1;"><div style="font-size:12px; font-weight:700;">Abastecimento · 18,4 L</div><div style="font-size:10.5px; color:var(--text2);">Odômetro 48.210 km · R$ 142,30</div></div>
+          <div style="font-size:10.5px; color:var(--text3); font-weight:600;">Hoje 08:12</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid #F1F2F5;">
+          <div class="ico ico-blue" style="width:32px;height:32px;margin:0;border-radius:8px;"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M9 11l3 3 8-8"/><path d="M21 12v7H3V5h11"/></svg></div>
+          <div style="flex:1;"><div style="font-size:12px; font-weight:700;">Checklist de início aprovado</div><div style="font-size:10.5px; color:var(--text2);">Todos os itens críticos OK</div></div>
+          <div style="font-size:10.5px; color:var(--text3); font-weight:600;">Hoje 07:55</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:9px 0;">
+          <div class="ico ico-red" style="width:32px;height:32px;margin:0;border-radius:8px;"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4z"/></svg></div>
+          <div style="flex:1;"><div style="font-size:12px; font-weight:700;">Manutenção preventiva · troca de óleo</div><div style="font-size:10.5px; color:var(--text2);">Óleo 5W30 + filtro · R$ 210,00</div></div>
+          <div style="font-size:10.5px; color:var(--text3); font-weight:600;">12/06 14:30</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">07</div></div>
+</section>
+
+<!-- ============================ PAGE 8 — MÓDULO 06: INTELIGÊNCIA / CUSTOS ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">MÓDULO 06 · INTELIGÊNCIA</div>
+  </div>
+  <div class="pad-sm">
+    <div class="sec-head">
+      <div class="sec-num">06</div>
+      <div><h2>Inteligência de Custos & Alertas</h2>
+      <p class="lead">O sistema não só registra — ele calcula. Custo por quilômetro, consumo médio e alertas de manutenção preventiva são gerados automaticamente para evitar quebras e surpresas no orçamento.</p></div>
+    </div>
+
+    <div class="grid3" style="margin-bottom:22px;">
+      <div class="fcard" style="text-align:center;">
+        <div style="font-size:36px; font-weight:900; color:var(--red); letter-spacing:-.03em;">R$ 0,84</div>
+        <div style="font-size:11px; font-weight:700; color:var(--text2); margin-top:4px;">CUSTO POR KM (CPK)</div>
+        <p style="margin-top:8px;">Custo de manutenção acumulado dividido pela quilometragem rodada do veículo.</p>
+      </div>
+      <div class="fcard" style="text-align:center;">
+        <div style="font-size:36px; font-weight:900; color:var(--blue); letter-spacing:-.03em;">11,8<span style="font-size:16px"> km/L</span></div>
+        <div style="font-size:11px; font-weight:700; color:var(--text2); margin-top:4px;">CONSUMO MÉDIO</div>
+        <p style="margin-top:8px;">Calculado automaticamente a partir dos últimos abastecimentos registrados.</p>
+      </div>
+      <div class="fcard" style="text-align:center;">
+        <div style="font-size:36px; font-weight:900; color:var(--green); letter-spacing:-.03em;">R$ 2,90</div>
+        <div style="font-size:11px; font-weight:700; color:var(--text2); margin-top:4px;">CUSTO POR ENTREGA</div>
+        <p style="margin-top:8px;">Custo total do turno dividido pelo número de entregas realizadas no dia.</p>
+      </div>
+    </div>
+
+    <div class="eyebrow">Alertas de manutenção preventiva</div>
+    <div class="panel" style="padding:16px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #F1F2F5;">
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0;"></span>
+        <div style="flex:1;"><div style="font-size:12.5px; font-weight:700;">Moto HUF-2D19 — Troca de óleo CRÍTICA</div><div style="font-size:10.5px; color:var(--text2);">10.450 km desde a última troca (limite 10.000 km)</div></div>
+        <span class="chip red">Crítico</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #F1F2F5;">
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--amber);flex-shrink:0;"></span>
+        <div style="flex:1;"><div style="font-size:12.5px; font-weight:700;">Fiorino ABC-1234 — Troca de óleo se aproximando</div><div style="font-size:10.5px; color:var(--text2);">9.320 km desde a última troca</div></div>
+        <span class="chip" style="background:#FFF4E5;color:var(--orange);">Atenção</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 0;">
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;"></span>
+        <div style="flex:1;"><div style="font-size:12.5px; font-weight:700;">HR Baú DEF-5678 — Em dia</div><div style="font-size:10.5px; color:var(--text2);">3.100 km desde a última troca</div></div>
+        <span class="chip" style="background:#ECFDF3;color:var(--green);">OK</span>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:22px;">
+      <div class="fcard">
+        <div class="ico ico-red"><svg class="i" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+        <h4>Custos calculados por gatilhos</h4>
+        <p>Regras no banco de dados atualizam hodômetro e custos em tempo real a cada abastecimento, manutenção ou checklist — sem cálculo manual e com proteção contra hodômetro regressivo.</p>
+      </div>
+      <div class="fcard">
+        <div class="ico ico-green"><svg class="i" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M19 9l-5 5-4-4-3 3"/></svg></div>
+        <h4>Consolidado de turno</h4>
+        <p>Ao fechar o turno, o sistema entrega km percorrido, combustível, manutenção e custo por entrega — um raio-x financeiro de cada jornada de trabalho.</p>
+      </div>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">08</div></div>
+</section>
+
+<!-- ============================ PAGE 9 — PERFIS DE ACESSO ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">CONTROLE DE ACESSO</div>
+  </div>
+  <div class="pad-sm">
+    <div class="eyebrow">Cada um vê o que precisa</div>
+    <h2 style="font-size:28px;">Três perfis, permissões sob medida</h2>
+    <p class="lead" style="margin-top:10px; max-width:580px;">O acesso é controlado por papel. O gestor comanda tudo, o operador cuida da rotina de entregas e o entregador tem uma experiência mobile focada na rua — sem distração e sem risco.</p>
+
+    <table class="rtable" style="margin-top:24px;">
+      <thead><tr><th style="width:46%;">Funcionalidade</th><th style="text-align:center;">Gestor</th><th style="text-align:center;">Operador</th><th style="text-align:center;">Entregador</th></tr></thead>
+      <tbody>
+        <tr><td>Painel e log de entregas</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="no">—</td></tr>
+        <tr><td>Editar / reabrir entregas</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="no">—</td></tr>
+        <tr><td>Ranking e desempenho</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="no">—</td></tr>
+        <tr><td>Gestão de funcionários e veículos</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="no">—</td></tr>
+        <tr><td>Gestão de clientes e filiais</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="no">—</td></tr>
+        <tr><td>Aceitar / finalizar entregas (mobile)</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="yes">✓</td></tr>
+        <tr><td>Iniciar turno e checklist</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="yes">✓</td></tr>
+        <tr><td>Registrar abastecimento</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="yes">✓</td></tr>
+        <tr><td>Solicitar manutenção</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="yes">✓</td></tr>
+        <tr><td>Aprovar manutenção / config. frota</td><td style="text-align:center;" class="yes">✓</td><td style="text-align:center;" class="no">—</td><td style="text-align:center;" class="no">—</td></tr>
+      </tbody>
+    </table>
+
+    <div class="grid3" style="margin-top:24px;">
+      <div class="fcard"><div class="ico ico-red"><svg class="i" viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-4z"/></svg></div><h4>Gestor</h4><p>Acesso total: cadastros, frota, finanças, aprovações e relatórios.</p></div>
+      <div class="fcard"><div class="ico ico-blue"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg></div><h4>Operador</h4><p>Rotina de entregas: log, correções, clientes e acompanhamento.</p></div>
+      <div class="fcard"><div class="ico ico-green"><svg class="i" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg></div><h4>Entregador</h4><p>App mobile: turno, entregas, navegação e abastecimento.</p></div>
+    </div>
+
+    <div class="callout" style="margin-top:22px;">
+      <h5>Segurança de verdade</h5>
+      <p>Senhas protegidas com criptografia bcrypt, sessões por perfil e validações em todas as operações sensíveis. Suporte nativo a multi-filial, isolando dados e KPIs por loja.</p>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">09</div></div>
+</section>
+
+<!-- ============================ PAGE 10 — ARQUITETURA / TÉCNICO ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">ARQUITETURA</div>
+  </div>
+  <div class="pad-sm">
+    <div class="eyebrow">Como foi construído</div>
+    <h2 style="font-size:28px;">Tecnologia moderna, confiável e na nuvem</h2>
+    <p class="lead" style="margin-top:10px; max-width:580px;">Construído sobre uma base sólida e amplamente adotada no mercado, com banco de dados relacional, hospedagem em nuvem e arquitetura preparada para crescer junto com a operação.</p>
+
+    <div style="margin-top:24px; background:var(--ink); border-radius:16px; padding:24px; color:#fff;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="text-align:center; flex:1;">
+          <div style="font-size:11px; font-weight:800; color:var(--red); letter-spacing:.08em;">ORIGEM</div>
+          <div style="margin-top:8px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:11px; padding:14px 8px;">
+            <div style="font-size:13px; font-weight:800;">PDV Consinco</div>
+            <div style="font-size:10px; color:rgba(255,255,255,.5); margin-top:3px;">Oracle</div>
+          </div>
+        </div>
+        <div style="color:var(--red); font-size:22px;">→</div>
+        <div style="text-align:center; flex:1;">
+          <div style="font-size:11px; font-weight:800; color:var(--red); letter-spacing:.08em;">SINCRONIZAÇÃO</div>
+          <div style="margin-top:8px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:11px; padding:14px 8px;">
+            <div style="font-size:13px; font-weight:800;">Sync Agent</div>
+            <div style="font-size:10px; color:rgba(255,255,255,.5); margin-top:3px;">Python · 30s</div>
+          </div>
+        </div>
+        <div style="color:var(--red); font-size:22px;">→</div>
+        <div style="text-align:center; flex:1;">
+          <div style="font-size:11px; font-weight:800; color:var(--red); letter-spacing:.08em;">APLICAÇÃO</div>
+          <div style="margin-top:8px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:11px; padding:14px 8px;">
+            <div style="font-size:13px; font-weight:800;">FastAPI</div>
+            <div style="font-size:10px; color:rgba(255,255,255,.5); margin-top:3px;">API + Web</div>
+          </div>
+        </div>
+        <div style="color:var(--red); font-size:22px;">→</div>
+        <div style="text-align:center; flex:1;">
+          <div style="font-size:11px; font-weight:800; color:var(--red); letter-spacing:.08em;">DADOS</div>
+          <div style="margin-top:8px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:11px; padding:14px 8px;">
+            <div style="font-size:13px; font-weight:800;">MySQL 8</div>
+            <div style="font-size:10px; color:rgba(255,255,255,.5); margin-top:3px;">Railway Cloud</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:24px;">
+      <div class="fcard"><div class="ico ico-ink"><svg class="i" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></svg></div><h4>Backend em FastAPI</h4><p>Framework Python de alta performance, com API REST documentada para integrar com apps e outros sistemas.</p></div>
+      <div class="fcard"><div class="ico ico-blue"><svg class="i" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/></svg></div><h4>Banco MySQL com gatilhos</h4><p>Cálculos de custo e hodômetro automatizados no banco, garantindo consistência e trilha de auditoria.</p></div>
+      <div class="fcard"><div class="ico ico-green"><svg class="i" viewBox="0 0 24 24"><path d="M18 10h-1.3A7 7 0 1 0 5 16h13a4 4 0 0 0 0-8z"/></svg></div><h4>Hospedagem em nuvem</h4><p>Implantado na Railway com migrações Alembic versionadas — atualizações seguras e rastreáveis.</p></div>
+      <div class="fcard"><div class="ico ico-purple"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h4>Interface responsiva</h4><p>Web para gestores e mobile-first para entregadores, com design profissional e consistente.</p></div>
+    </div>
+
+    <div class="tag-row" style="margin-top:20px;">
+      <span class="chip">Python 3</span><span class="chip">FastAPI</span><span class="chip">SQLAlchemy</span><span class="chip">MySQL 8</span><span class="chip">Alembic</span><span class="chip">Jinja2</span><span class="chip">Railway</span><span class="chip red">REST API</span><span class="chip red">bcrypt</span>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">10</div></div>
+</section>
+
+<!-- ============================ PAGE 11 — BENEFÍCIOS / ROI ============================ -->
+<section class="page">
+  <div class="phead">
+    <div class="pl"><span class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> System Logística Gavião</div>
+    <div class="pr">RESULTADOS</div>
+  </div>
+  <div class="pad-sm">
+    <div class="eyebrow">Por que adotar</div>
+    <h2 style="font-size:28px;">O que muda na sua operação</h2>
+
+    <div class="grid2" style="margin-top:22px;">
+      <div class="fcard"><div class="ico ico-red"><svg class="i" viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg></div><h4>Mais velocidade no caixa à rota</h4><p>A entrega aparece para o motorista segundos após a venda. Menos espera, menos ligações, mais entregas por dia.</p></div>
+      <div class="fcard"><div class="ico ico-green"><svg class="i" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><h4>Controle de custo da frota</h4><p>Combustível, manutenção e CPK por veículo permitem cortar desperdício e negociar com base em dados reais.</p></div>
+      <div class="fcard"><div class="ico ico-orange"><svg class="i" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></div><h4>Menos quebras inesperadas</h4><p>Alertas de troca de óleo e checklist obrigatório reduzem panes na rua e prolongam a vida dos veículos.</p></div>
+      <div class="fcard"><div class="ico ico-blue"><svg class="i" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/></svg></div><h4>Equipe mais produtiva</h4><p>Ranking e KPIs trazem transparência, reconhecem os melhores e revelam onde treinar a equipe.</p></div>
+      <div class="fcard"><div class="ico ico-purple"><svg class="i" viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M21 12v7H3V5h11"/></svg></div><h4>Menos erro de endereço</h4><p>Dados vêm do PDV e podem ser corrigidos em segundos, derrubando a taxa de entregas malsucedidas.</p></div>
+      <div class="fcard"><div class="ico ico-ink"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6"/></svg></div><h4>Visão única, multi-filial</h4><p>Todas as lojas em um só painel, com isolamento de dados — pronto para escalar a rede inteira.</p></div>
+    </div>
+
+    <div class="stat-strip" style="margin-top:26px;">
+      <div class="stat-box"><div class="big">−<span class="u">100%</span></div><div class="cap">de digitação manual<br>de pedidos</div></div>
+      <div class="stat-box"><div class="big">24<span class="u">/7</span></div><div class="cap">operação em nuvem<br>sempre disponível</div></div>
+      <div class="stat-box"><div class="big">1</div><div class="cap">plataforma para<br>entregas + frota</div></div>
+      <div class="stat-box"><div class="big">∞</div><div class="cap">filiais e veículos<br>suportados</div></div>
+    </div>
+  </div>
+  <div class="pfoot"><div class="c">Criado por Dyonathan Queiroz — Aux T.I — Super Gavião</div><div class="pg">11</div></div>
+</section>
+
+<!-- ============================ PAGE 12 — FECHAMENTO ============================ -->
+<section class="page cover">
+  <div class="cover-grid"></div>
+  <div class="cover-glow"></div>
+  <div class="cover-inner" style="justify-content:center;">
+    <div class="brandbar" style="margin-bottom:auto;">
+      <div class="brand-ico">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <div><div class="brand-name">System Logística</div><div class="brand-sub">SUPER GAVIÃO</div></div>
+    </div>
+
+    <h1 style="font-size:46px; font-weight:900; letter-spacing:-.03em; line-height:1.05;">Pronto para colocar sua<br>operação <span style="color:var(--red)">no controle</span>?</h1>
+    <p class="cover-desc" style="margin-top:18px;">Uma plataforma, três módulos, resultado imediato. Do pedido no caixa ao custo por quilômetro, o System Logística entrega visibilidade total da sua operação de entregas e frota.</p>
+
+    <div class="grid3" style="margin-top:34px; gap:12px;">
+      <div style="background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:13px; padding:18px;">
+        <div style="font-size:13px; font-weight:800; color:#fff;">Implantação rápida</div>
+        <div style="font-size:11.5px; color:rgba(255,255,255,.55); margin-top:5px;">Nuvem pronta, sem servidor local.</div>
+      </div>
+      <div style="background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:13px; padding:18px;">
+        <div style="font-size:13px; font-weight:800; color:#fff;">Integra com seu PDV</div>
+        <div style="font-size:11.5px; color:rgba(255,255,255,.55); margin-top:5px;">Compatível com Consinco.</div>
+      </div>
+      <div style="background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:13px; padding:18px;">
+        <div style="font-size:13px; font-weight:800; color:#fff;">Escala com a rede</div>
+        <div style="font-size:11.5px; color:rgba(255,255,255,.55); margin-top:5px;">Multi-filial nativo.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:40px; border-top:1px solid rgba(255,255,255,.1);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <div>
+          <div style="font-size:11px; color:rgba(255,255,255,.45); font-weight:700; letter-spacing:.1em;">DESENVOLVIDO POR</div>
+          <div style="font-size:20px; font-weight:800; color:#fff; margin-top:6px;">Dyonathan Queiroz</div>
+          <div style="font-size:13px; color:rgba(255,255,255,.6); margin-top:2px;">Auxiliar de T.I — Super Gavião</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px; color:rgba(255,255,255,.45); font-weight:700; letter-spacing:.1em;">PLATAFORMA</div>
+          <div style="font-size:14px; font-weight:700; color:#fff; margin-top:6px;">System Logística Gavião</div>
+          <div style="font-size:12px; color:rgba(255,255,255,.6); margin-top:2px;">Gestão de Entregas & Frota</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

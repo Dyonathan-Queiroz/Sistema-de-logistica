@@ -1,236 +1,424 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Entrega #{{ entrega.id }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            background: #0d1117;
-            color: #e6edf3;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            min-height: 100vh;
-        }
-        .topbar {
-            background: #161b22;
-            border-bottom: 1px solid #30363d;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            max-width: 560px;
-            margin: 0 auto;
-        }
-        .topbar a { color: #58a6ff; text-decoration: none; font-size: 14px; }
-        .topbar .badge-status {
-            background: #1f6feb;
-            color: #fff;
-            border-radius: 20px;
-            padding: 3px 10px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .main-card {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            margin: 16px auto;
-            padding: 20px;
-            max-width: 560px;
-        }
-        .client-name {
-            font-size: 22px;
-            font-weight: 700;
-            color: #e6edf3;
-            margin-bottom: 4px;
-        }
-        .cupom-label {
-            font-size: 13px;
-            color: #8b949e;
-            margin-bottom: 16px;
-        }
-        .address-block {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 14px 16px;
-            margin-bottom: 16px;
-        }
-        .address-block .label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: #8b949e;
-            margin-bottom: 6px;
-        }
-        .address-block .value {
-            font-size: 16px;
-            font-weight: 500;
-            color: #e6edf3;
-            line-height: 1.5;
-        }
-        .obs-block {
-            background: #1c2128;
-            border-left: 3px solid #d29922;
-            border-radius: 4px;
-            padding: 10px 14px;
-            font-size: 14px;
-            color: #d29922;
-            margin-bottom: 20px;
-        }
-        .btn-action {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            margin-bottom: 12px;
-            text-decoration: none;
-            transition: filter 0.15s;
-        }
-        .btn-action:active { filter: brightness(0.85); }
-        .btn-maps   { background: #1a7f37; color: #fff; }
-        .btn-wpp    { background: #25d366; color: #fff; }
-        .btn-finish { background: #1f6feb; color: #fff; }
-        .btn-erro   { background: #21262d; color: #f85149; border: 1px solid #f85149; }
-        .section-title {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: #8b949e;
-            margin-bottom: 12px;
-        }
-        .erro-panel {
-            background: #1c1015;
-            border: 1px solid #f85149;
-            border-radius: 10px;
-            padding: 16px;
-            margin-top: 16px;
-        }
-        .erro-panel textarea {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            color: #e6edf3;
-            border-radius: 8px;
-            width: 100%;
-            padding: 10px;
-            font-size: 14px;
-            resize: none;
-        }
-        .erro-panel textarea:focus {
-            outline: none;
-            border-color: #f85149;
-        }
-        .btn-confirmar-erro {
-            background: #da3633;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 12px;
-            width: 100%;
-            font-size: 15px;
-            font-weight: 600;
-            margin-top: 10px;
-            cursor: pointer;
-        }
-        .divider {
-            border: none;
-            border-top: 1px solid #30363d;
-            margin: 20px 0;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Entrega #{{ entrega.id }}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a;
+      --card-bg: #111827;
+      --card-border: #1f2d45;
+      --amber: #f59e0b;
+      --amber-dk: #d97706;
+      --amber-light: #fffbeb;
+      --amber-mid: #fcd34d;
+      --green: #22c55e;
+      --green-dark: #16a34a;
+      --danger: #DC2626;
+      --blue: #2563EB;
+      --text: #f1f5f9;
+      --text-muted: #64748b;
+      --text-sub: #94a3b8;
+      --radius: 14px;
+      --max-w: 500px;
+      --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+      --shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+      --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+    }
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      overscroll-behavior-y: none;
+    }
+    .app-shell {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    @media (min-width: 768px) {
+      body { background: #060810; }
+      .app-shell {
+        margin: 24px auto;
+        min-height: calc(100vh - 48px);
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(0,0,0,0.7);
+      }
+    }
+
+    /* ── TOPBAR ───────────────────────────────────────────── */
+    .topbar {
+      background: #0F1117;
+      border-bottom: 1px solid rgba(245,158,11,0.18);
+      padding: 14px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .btn-voltar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 9px;
+      padding: 7px 13px;
+      color: var(--text-sub);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      min-height: 44px;
+      transition: background .15s, color .15s;
+    }
+    .btn-voltar:hover {
+      background: rgba(245,158,11,0.12);
+      color: var(--amber);
+      text-decoration: none;
+    }
+    .pill-emrota {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(245,158,11,0.15);
+      border: 1px solid rgba(245,158,11,0.4);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--amber);
+    }
+    .pill-emrota i { font-size: 7px; }
+
+    /* ── CONTENT ──────────────────────────────────────────── */
+    .content { flex: 1; padding: 16px; overflow-y: auto; }
+
+    /* ── CLIENTE CARD ─────────────────────────────────────── */
+    .cliente-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-left: 3px solid var(--amber);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .cliente-nome {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .cliente-sub {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .cliente-sub span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── ENDEREÇO CARD ────────────────────────────────────── */
+    .endereco-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .card-lbl {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .endereco-main {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      margin-bottom: 2px;
+    }
+    .endereco-sub {
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.5;
+    }
+
+    /* ── OBS BOX ──────────────────────────────────────────── */
+    .obs-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 10px;
+      padding: 11px 13px;
+      margin-bottom: 12px;
+    }
+    .obs-box i { color: var(--amber); font-size: 13px; margin-top: 2px; flex-shrink: 0; }
+    .obs-box p { font-size: 13px; color: #fde68a; line-height: 1.5; margin: 0; }
+
+    /* ── AÇÕES ────────────────────────────────────────────── */
+    .actions-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .btn-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px;
+      border-radius: 11px;
+      font-size: 14.5px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 10px;
+      text-decoration: none;
+      transition: opacity .15s, transform .1s;
+      min-height: 44px;
+    }
+    .btn-action:last-child { margin-bottom: 0; }
+    .btn-action:hover { opacity: 0.9; transform: translateY(-1px); text-decoration: none; }
+    .btn-action:active { transform: translateY(0); }
+
+    /* Maps: amber background, black text */
+    .btn-maps {
+      background: var(--amber);
+      color: #000;
+      box-shadow: 0 4px 14px rgba(245,158,11,0.35);
+      min-height: 44px;
+    }
+    .btn-maps:hover { background: var(--amber-dk); color: #000; }
+
+    /* WhatsApp: keep green */
+    .btn-wpp {
+      background: linear-gradient(135deg, #128c7e, #25d366);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37,211,102,0.3);
+    }
+
+    /* Finalizar: green (success action) */
+    .btn-finish {
+      background: linear-gradient(135deg, var(--green-dark), var(--green));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(34,197,94,0.35);
+      min-height: 48px;
+      font-size: 15.5px;
+    }
+    .btn-finish:hover { opacity: 0.92; }
+
+    /* Reportar Problema: outline/ghost with red text */
+    .btn-erro {
+      background: transparent;
+      border: 1px solid rgba(220,38,38,0.45);
+      color: #f87171;
+    }
+    .btn-erro:hover {
+      background: rgba(220,38,38,0.08);
+      border-color: rgba(220,38,38,0.65);
+    }
+
+    .divider { height: 1px; background: var(--card-border); margin: 12px 0; }
+
+    /* ── ERRO PANEL ────────────────────────────────────────── */
+    .erro-panel {
+      background: rgba(220,38,38,0.07);
+      border: 1px solid rgba(220,38,38,0.35);
+      border-radius: 11px;
+      padding: 14px;
+      margin-top: 10px;
+    }
+    .erro-panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #f87171;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+    }
+    .erro-panel textarea {
+      background: var(--bg);
+      border: 1px solid rgba(220,38,38,0.35);
+      color: var(--text);
+      border-radius: 8px;
+      width: 100%;
+      padding: 11px;
+      font-size: 13.5px;
+      resize: none;
+      font-family: inherit;
+    }
+    .erro-panel textarea:focus {
+      outline: none;
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(220,38,38,0.15);
+    }
+    .btn-enviar-erro {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      padding: 12px;
+      width: 100%;
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+    }
+
+    /* ── FOOTER ───────────────────────────────────────────── */
+    .app-footer {
+      padding: 14px 20px;
+      text-align: center;
+      font-size: 11.5px;
+      color: #2d3a52;
+      border-top: 1px solid #111e30;
+    }
+    .app-footer span { color: var(--amber); font-weight: 600; }
+  </style>
 </head>
 <body>
+<div class="app-shell">
 
-<div class="topbar">
-    <a href="/entregador"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
-    <span class="badge-status"><i class="fas fa-motorcycle mr-1"></i> Em Rota</span>
-</div>
+  <!-- ── TOPBAR ──────────────────────────────────────────────── -->
+  <div class="topbar">
+    <a href="/entregador?aba=emrota" class="btn-voltar">
+      <i class="fas fa-arrow-left"></i> Voltar
+    </a>
+    <span class="pill-emrota">
+      <i class="fas fa-circle"></i> Em Rota
+    </span>
+  </div>
 
-<div class="main-card">
+  <!-- ── CONTENT ─────────────────────────────────────────────── -->
+  <div class="content">
+
     <!-- Cliente -->
-    <div class="client-name">{{ nome_cliente }}</div>
-    <div class="cupom-label"><i class="fas fa-receipt mr-1"></i> Cupom: {{ entrega.cupom_fiscal }} &nbsp;·&nbsp; #{{ entrega.id }}</div>
+    <div class="cliente-card">
+      <div class="cliente-nome">{{ nome_cliente }}</div>
+      <div class="cliente-sub">
+        {% if entrega.cupom_fiscal %}
+        <span><i class="fas fa-receipt"></i> {{ entrega.cupom_fiscal }}</span>
+        {% endif %}
+        <span><i class="fas fa-hashtag"></i> ID {{ entrega.id }}</span>
+      </div>
+    </div>
 
     <!-- Endereço -->
-    <div class="address-block">
-        <div class="label"><i class="fas fa-map-marker-alt mr-1"></i> Endereço</div>
-        <div class="value">
-            {{ entrega.rua }}, {{ entrega.numero }}<br>
-            {{ entrega.bairro }}
-            {% if municipio_cliente %}
-            <br><span style="color:#8b949e;font-size:14px;">{{ municipio_cliente }}{% if estado_cliente %} — {{ estado_cliente }}{% endif %}</span>
-            {% endif %}
-        </div>
+    <div class="endereco-card">
+      <div class="card-lbl"><i class="fas fa-map-marker-alt" style="color:var(--amber);"></i> Endereço de Entrega</div>
+      <div class="endereco-main">{{ entrega.rua }}, {{ entrega.numero }}</div>
+      <div class="endereco-sub">
+        {{ entrega.bairro }}
+        {% if municipio_cliente %} · {{ municipio_cliente }}{% endif %}
+        {% if estado_cliente %}/{{ estado_cliente }}{% endif %}
+      </div>
     </div>
 
+    <!-- Observação -->
     {% if entrega.observacao %}
-    <div class="obs-block">
-        <i class="fas fa-exclamation-triangle mr-1"></i> <strong>OBS:</strong> {{ entrega.observacao }}
+    <div class="obs-box">
+      <i class="fas fa-exclamation-triangle"></i>
+      <p><strong>Observação:</strong> {{ entrega.observacao }}</p>
     </div>
     {% endif %}
-
-    <hr class="divider">
 
     <!-- Ações rápidas -->
-    <div class="section-title">Ações</div>
+    <div class="actions-card">
+      <div class="card-lbl"><i class="fas fa-bolt" style="color:var(--amber);"></i> Ações Rápidas</div>
 
-    <!-- Google Maps -->
-    <a href="https://www.google.com/maps/search/?api=1&query={{ endereco_maps | urlencode }}"
-       target="_blank" class="btn-action btn-maps">
+      <a href="https://www.google.com/maps/search/?api=1&query={{ endereco_maps | urlencode }}"
+         target="_blank" class="btn-action btn-maps">
         <i class="fas fa-map-marked-alt"></i> Abrir no Google Maps
-    </a>
+      </a>
 
-    <!-- WhatsApp -->
-    {% if telefone_wa %}
-    <a href="https://wa.me/{{ telefone_wa }}" target="_blank" class="btn-action btn-wpp">
-        <i class="fab fa-whatsapp"></i> Chamar no WhatsApp
-        <small style="font-size:12px;font-weight:400;">({{ telefone }})</small>
-    </a>
-    {% endif %}
-
-    <hr class="divider">
-
-    <!-- Finalizar -->
-    <div class="section-title">Conclusão</div>
-    <form action="/entregador/finalizar/{{ entrega.id }}" method="POST">
-        <button type="submit" class="btn-action btn-finish">
-            <i class="fas fa-flag-checkered"></i> Finalizar Entrega
-        </button>
-    </form>
-
-    <!-- Reportar Erro -->
-    <button class="btn-action btn-erro" onclick="toggleErro()">
-        <i class="fas fa-exclamation-circle"></i> Informar Erro na Entrega
-    </button>
-
-    <div class="erro-panel" id="erroPanel" style="display:none;">
-        <div class="section-title" style="color:#f85149;">Descreva o problema</div>
-        <form action="/entregas/{{ entrega.id }}/reportar-erro" method="POST">
-            <textarea name="motivo" rows="4"
-                placeholder="Ex: Endereço não encontrado, cliente ausente, número errado..."
-                required></textarea>
-            <button type="submit" class="btn-confirmar-erro">
-                <i class="fas fa-paper-plane mr-1"></i> Enviar Relatório de Erro
-            </button>
-        </form>
+      {% if telefone_wa %}
+      <a href="https://wa.me/{{ telefone_wa }}" target="_blank" class="btn-action btn-wpp">
+        <i class="fab fa-whatsapp"></i> WhatsApp
+        <small style="font-size:12px;font-weight:500;opacity:.85;">({{ telefone }})</small>
+      </a>
+      {% endif %}
     </div>
+
+    <!-- Conclusão -->
+    <div class="actions-card">
+      <div class="card-lbl"><i class="fas fa-flag-checkered" style="color:#4ade80;"></i> Conclusão</div>
+
+      <form action="/entregador/finalizar/{{ entrega.id }}" method="POST">
+        <button type="submit" class="btn-action btn-finish">
+          <i class="fas fa-check-double"></i> Finalizar Entrega
+        </button>
+      </form>
+
+      <div class="divider"></div>
+
+      <button class="btn-action btn-erro" onclick="toggleErro()" type="button">
+        <i class="fas fa-exclamation-circle"></i> Informar Problema
+      </button>
+
+      <div class="erro-panel" id="erroPanel" style="display:none;">
+        <div class="erro-panel-title"><i class="fas fa-bug"></i> Descreva o Problema</div>
+        <form action="/entregas/{{ entrega.id }}/reportar-erro" method="POST">
+          <textarea name="motivo" rows="4"
+            placeholder="Ex: Endereço não encontrado, cliente ausente, número incorreto..."
+            required></textarea>
+          <button type="submit" class="btn-enviar-erro">
+            <i class="fas fa-paper-plane"></i> Enviar Relatório
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+  <!-- /content -->
+
+  <div class="app-footer">
+    Criado por <span>Dyonathan Henrique</span> — Auxiliar T.I Gaviao
+  </div>
+
 </div>
+<!-- /app-shell -->
 
 <script>
 function toggleErro() {
-    const p = document.getElementById('erroPanel');
-    p.style.display = p.style.display === 'none' ? 'block' : 'none';
-    if (p.style.display === 'block') p.querySelector('textarea').focus();
+  var p = document.getElementById('erroPanel');
+  var isHidden = p.style.display === 'none';
+  p.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) { p.querySelector('textarea').focus(); }
 }
 </script>
 </body>

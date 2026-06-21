@@ -10,6 +10,54 @@
 <a href="/gestao-clientes" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
+{% block extra_styles %}
+<style>
+  /* ── Amber token overrides (page-specific) ── */
+  .btn-primary {
+    background: var(--amber, #f59e0b);
+    border-color: var(--amber, #f59e0b);
+    color: #000 !important;
+    font-weight: 600;
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background: var(--amber-dk, #d97706);
+    border-color: var(--amber-dk, #d97706);
+    color: #000 !important;
+  }
+
+  .form-control:focus {
+    border-color: var(--amber, #f59e0b);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    outline: none;
+  }
+
+  /* Danger zone card — keep red */
+  .card-danger {
+    border-left: 3px solid #dc2626;
+  }
+
+  /* btn-danger stays red (no override needed — Bootstrap default) */
+
+  /* Summary ID value */
+  .summary-id {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Flash messages */
+  .alert-success {
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+  }
+  .alert-danger {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Flash messages -->
 {% if msg == 'atualizado' %}
@@ -107,7 +155,7 @@
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-info-circle mr-2"></i>Resumo</h6>
             </div>
             <div class="card-body">
-                <p class="mb-1"><strong>ID:</strong> #{{ cliente.id }}</p>
+                <p class="mb-1"><strong>ID:</strong> <span class="summary-id">#{{ cliente.id }}</span></p>
                 <p class="mb-1">
                     <strong>Documento:</strong>
                     <code>{{ cliente.documento or '—' }}</code>
@@ -138,7 +186,8 @@
             </div>
         </div>
 
-        <div class="card mb-4" style="border-left: 3px solid #dc3545;">
+        <!-- Danger zone — keep red intentionally -->
+        <div class="card card-danger mb-4">
             <div class="card-header">
                 <h6 class="mb-0 font-weight-bold text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Zona de Perigo</h6>
             </div>

@@ -10,12 +10,76 @@
 <a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
+{% block extra_styles %}
+<style>
+    :root {
+        --amber: #f59e0b;
+        --amber-dk: #d97706;
+        --amber-light: #fffbeb;
+        --amber-mid: #fcd34d;
+        --danger: #DC2626;
+        --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+        --shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+        --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+    }
+
+    /* Problem details card: KEEP RED (error indicator) */
+    .card-problema {
+        border-left: 3px solid var(--danger);
+        box-shadow: var(--shadow);
+    }
+    .card-problema .card-header h6 {
+        color: var(--danger);
+    }
+
+    /* Correction form card */
+    .card-corrigir {
+        box-shadow: var(--shadow);
+    }
+
+    /* Motivo erro display: keep yellow/warning tone (it's a quoted reason, not an error state) */
+    .motivo-erro-box {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        border-radius: 4px;
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+
+    /* Input/textarea focus: amber */
+    .form-control:focus {
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+        outline: none;
+    }
+
+    /* Save & reactivate button: amber, black text (action, not danger) */
+    .btn-reativar {
+        background: var(--amber);
+        color: #000;
+        border: none;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 0.5rem 1.4rem;
+        transition: background 0.15s;
+    }
+    .btn-reativar:hover {
+        background: var(--amber-dk);
+        color: #000;
+    }
+    .btn-reativar:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(245,158,11,0.3);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-12 col-lg-8">
 
-        <!-- Card 1: Detalhes do Problema -->
-        <div class="card mb-4" style="border-left: 3px solid #dc3545;">
+        <!-- Card 1: Detalhes do Problema — KEEP RED (error display) -->
+        <div class="card card-problema mb-4">
             <div class="card-header">
                 <h6 class="mb-0 font-weight-bold text-danger">
                     <i class="fas fa-exclamation-circle mr-2"></i>Detalhes do Problema
@@ -39,7 +103,7 @@
                 </div>
                 {% if entrega.motivo_erro %}
                 <p class="text-muted small text-uppercase font-weight-bold mb-1 mt-2">Motivo relatado pelo entregador</p>
-                <div style="background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; padding: 10px 14px; font-size: 14px;">
+                <div class="motivo-erro-box">
                     <i class="fas fa-comment-dots mr-1 text-warning"></i>
                     {{ entrega.motivo_erro }}
                 </div>
@@ -48,7 +112,7 @@
         </div>
 
         <!-- Card 2: Corrigir e Reativar -->
-        <div class="card mb-4">
+        <div class="card card-corrigir mb-4">
             <div class="card-header">
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-edit mr-2"></i>Corrigir e Reativar</h6>
             </div>
@@ -87,7 +151,7 @@
                         <a href="/gestor" class="btn btn-outline-secondary">
                             <i class="fas fa-times mr-1"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn btn-success">
+                        <button type="submit" class="btn-reativar">
                             <i class="fas fa-redo mr-2"></i> Salvar e Disponibilizar para Entrega
                         </button>
                     </div>

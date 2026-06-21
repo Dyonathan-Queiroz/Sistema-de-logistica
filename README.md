@@ -1,138 +1,150 @@
-# Sistema Logístico
+# 🦅 Sistema Logístico — Supermercado Gavião
 
-Sistema de gestão de entregas com dashboard web (FastAPI) e aplicativo PDV desktop (PyQt6).
+Plataforma de gestão logística desenvolvida para o **Supermercado Gavião** (Boa Vista/RR).  
+Centraliza o controle de entregas, gestão de frota, desempenho de motoristas e sincronização automática com o sistema Consinco (Oracle/PDV).
+
+---
+
+## Funcionalidades
+
+### Gestão de Entregas
+- Lançamento e acompanhamento de entregas em tempo real
+- Status por etapas: pendente → em rota → finalizado
+- Histórico completo por motorista, filial e período
+
+### Gestão de Frota
+- Cadastro e controle de veículos
+- Registro de abastecimentos e custo por km (CPK)
+- Controle de manutenções (solicitação, aprovação, histórico)
+- Controle de pneus (instalação, descarte, vida útil)
+- Alertas automáticos de manutenção e revisão
+
+### Desempenho de Motoristas
+- Score automático por turno (entregas, velocidade, ocorrências)
+- Ranking geral de motoristas
+- Histórico de turnos e checklists de veículo
+
+### Integração Consinco
+- Agente de sincronização automática (Oracle → Sistema Logístico)
+- Importa pedidos de entrega do PDV a cada 30 segundos
+- Cria clientes e entregas automaticamente, sem digitação manual
+
+### Perfis de Acesso
+| Perfil | Acesso |
+|---|---|
+| **Gestor** | Dashboard completo, frota, relatórios, gestão de usuários |
+| **Operador** | Lançamento de entregas e clientes |
+| **Entregador** | App mobile simplificado — turno, rotas e checklist |
+
+---
 
 ## Tecnologias
 
-- **Backend:** FastAPI + SQLAlchemy + MySQL
-- **Frontend:** Jinja2 + AdminLTE 3 + Bootstrap 4
-- **PDV Desktop:** PyQt6 + win32print (Windows)
-- **Migrações:** Alembic
-- **Autenticação:** bcrypt + cookies de sessão
+| Camada | Tecnologia |
+|---|---|
+| Backend | FastAPI (Python) |
+| Banco de dados | MySQL 8.0 + SQLAlchemy + Alembic |
+| Templates | Jinja2 + Bootstrap / Tailwind CSS |
+| Autenticação | Cookie HMAC-SHA256 |
+| Sync Agent | Python + oracledb (Oracle thin mode) |
+| Deploy | Docker + Docker Compose |
 
-## Pré-requisitos
+---
 
-- Python 3.11+
-- MySQL 8.0+ rodando localmente
-- Windows (para o módulo PDV com impressão térmica)
+## Arquitetura
 
-## Instalação
-
-### 1. Clone o repositório
-
-```bash
-git clone https://github.com/seu-usuario/sistema-logistico.git
-cd sistema-logistico
+```
+192.168.16.181  — Oracle/Consinco (PDV)
+       ↑
+       │ polling a cada 30s
+       │
+192.168.16.250  — Servidor principal
+   ├── app         (FastAPI — porta 8000)
+   ├── db          (MySQL 8.0)
+   └── sync_agent  (Agente de sincronização)
 ```
 
-### 2. Crie e ative o ambiente virtual
+---
 
+## Como rodar
+
+### Pré-requisitos
+- Docker e Docker Compose instalados
+- Acesso à rede onde o Oracle/Consinco está disponível
+
+### 1. Clonar o repositório
 ```bash
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# Linux / macOS
-source venv/bin/activate
+git clone https://github.com/SEU_USUARIO/Sistema-logistico.git
+cd Sistema-logistico
 ```
 
-### 3. Instale as dependências
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configure as variáveis de ambiente
-
+### 2. Configurar variáveis de ambiente
 ```bash
 cp .env.example .env
 ```
+Edite o `.env` com as credenciais reais (banco, Oracle, chave secreta).
 
-Edite o arquivo `.env` e preencha com seus dados:
-
-```env
-DATABASE_URL=mysql+pymysql://root:SUA_SENHA@localhost:3306/sistema_logistico
-SECRET_KEY=gere_uma_chave_segura_aqui
-```
-
-Para gerar uma `SECRET_KEY` segura:
-
+### 3. Subir os serviços
 ```bash
-python -c "import secrets; print(secrets.token_hex(32))"
+docker compose up -d --build
 ```
 
-### 5. Crie o banco de dados
+O sistema estará disponível em `http://localhost:8000` (ou no IP do servidor).
 
-No MySQL, execute:
+### 4. Primeiro acesso
+| Campo | Valor |
+|---|---|
+| Usuário | `admin` |
+| Senha | definida no setup inicial |
 
-```sql
-CREATE DATABASE sistema_logistico CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+---
 
-### 6. Execute as migrações
-
-```bash
-alembic upgrade head
-```
-
-> **Atenção:** Se precisar adicionar a coluna `motivo_erro` manualmente em instalações existentes:
-> ```sql
-> ALTER TABLE entregas ADD COLUMN motivo_erro TEXT NULL;
-> ```
-
-### 7. Inicie o servidor
-
-```bash
-uvicorn app.main:app --reload
-```
-
-O sistema estará disponível em: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-
-## Perfis de Acesso
-
-| Perfil | Acesso |
-|--------|--------|
-| `gestor` | Dashboard completo, gestão de clientes, funcionários, veículos, filiais |
-| `operador` | Dashboard (somente leitura) + lançamento via PDV |
-| `entregador` | Painel mobile de aceite e finalização de entregas |
-
-## Módulo PDV (Desktop)
-
-O aplicativo PDV fica em `pdv_gui/` e é iniciado separadamente:
-
-```bash
-python -m pdv_gui
-```
-
-- **F10** — Abre a janela do PDV
-- **F1** — Abre o formulário de lançamento de entrega
-- **F2** — Confirma e imprime o cupom
-- **F5** — Cadastrar novo cliente
-- **ESC** — Minimiza para a bandeja do sistema
-
-> Requer impressora térmica ESC/POS configurada no Windows.
-
-## Estrutura do Projeto
+## Estrutura do projeto
 
 ```
-sistema-logistico/
+Sistema-logistico/
 ├── app/
-│   ├── main.py          # Rotas FastAPI
+│   ├── main.py          # Rotas FastAPI (78 endpoints)
 │   ├── models.py        # Modelos SQLAlchemy
-│   ├── database.py      # Conexão com o banco
-│   ├── static/          # Assets AdminLTE
-│   └── templates/       # Templates Jinja2
-├── alembic/             # Migrações do banco
-├── pdv_gui/             # Aplicativo PDV desktop
-├── .env.example         # Template de variáveis de ambiente
-├── requirements.txt     # Dependências Python
-└── alembic.ini          # Configuração do Alembic
+│   ├── database.py      # Conexão com MySQL
+│   └── templates/       # Templates Jinja2 (26 telas)
+├── alembic/             # Migrations do banco
+├── sync_agent/
+│   ├── consinco_sync.py # Agente de sincronização Oracle
+│   └── requirements.txt
+├── Dockerfile
+├── docker-compose.yml
+├── entrypoint.sh        # Migrations + uvicorn
+└── .env.example
 ```
 
-## Variáveis de Ambiente
+---
 
-| Variável | Descrição | Obrigatória |
-|----------|-----------|:-----------:|
-| `DATABASE_URL` | URL de conexão MySQL | ✅ |
-| `SECRET_KEY` | Chave para segurança da aplicação | ✅ |
+## Comandos úteis
+
+```bash
+# Ver logs em tempo real
+docker compose logs -f
+
+# Reiniciar só a aplicação
+docker compose restart app
+
+# Reiniciar só o agente de sync
+docker compose restart sync_agent
+
+# Atualizar após mudanças no código
+git pull && docker compose up -d --build
+```
+
+---
+
+## Variáveis de ambiente
+
+Veja o arquivo [`.env.example`](.env.example) para a lista completa de variáveis necessárias.
+
+---
+
+## Desenvolvedor
+
+Desenvolvido por **Dyonathan Queiroz** — Auxiliar de T.I — Supermercado Gavião  
+Boa Vista, Roraima

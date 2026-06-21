@@ -1,178 +1,288 @@
 {% extends "base.html" %}
 
 {% block title %}Desempenho{% endblock %}
-{% block page_title %}Gestão de Desempenho{% endblock %}
+{% block page_title %}Desempenho dos Entregadores{% endblock %}
 {% block nav_desempenho %}active{% endblock %}
-
-{% block topbar_right %}
-<a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
-{% endblock %}
 
 {% block extra_head %}
 <style>
-/* ── STATS CARDS ────────────────────────────────── */
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;}
-@media(max-width:992px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
+  :root {
+    --amber:       #f59e0b;
+    --amber-dk:    #d97706;
+    --amber-light: #fffbeb;
+    --amber-mid:   #fcd34d;
+    --danger:      #DC2626;
+    --green:       #16A34A;
+    --blue:        #2563EB;
+    --shadow-sm:   0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+    --shadow:      0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+    --shadow-md:   0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+  }
 
-/* ── DESTAQUE ───────────────────────────────────── */
-.destaque-banner{background:linear-gradient(135deg,#7c3aed,#3b82f6);border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;gap:16px;color:#fff;}
-.destaque-icon{width:52px;height:52px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
-.destaque-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.8;margin-bottom:2px;}
-.destaque-name{font-size:20px;font-weight:800;}
-.destaque-sub{font-size:12px;opacity:.75;}
-.destaque-stat{margin-left:auto;text-align:right;flex-shrink:0;}
-.destaque-stat .num{font-size:28px;font-weight:800;line-height:1;}
-.destaque-stat .lbl{font-size:11px;opacity:.8;}
-@media(max-width:576px){.destaque-banner{flex-direction:column;text-align:center;}.destaque-stat{margin-left:0;text-align:center;}}
+  /* ── KPIs ─────────────────────────────────────────────── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 22px; }
+  @media(max-width:900px){ .kpi-row { grid-template-columns: repeat(2,1fr); } }
 
-/* ── FILTROS ────────────────────────────────────── */
-.filter-bar{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e5e7eb;padding:16px 20px;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
-.filter-group{display:flex;flex-direction:column;gap:4px;}
-.filter-group label{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;}
-.filter-group input,.filter-group select{border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;font-size:13px;color:#374151;outline:none;transition:border-color .15s;}
-.filter-group input:focus,.filter-group select:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.08);}
-@media(max-width:767px){.filter-bar{flex-direction:column;}.filter-group,.filter-group input,.filter-group select{width:100%;}}
+  .kpi-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    padding: 18px 20px; position: relative; overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .kpi-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:14px 14px 0 0;
+  }
+  .kpi-card.blue::before   { background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+  .kpi-card.green::before  { background: linear-gradient(90deg,#16a34a,#4ade80); }
+  .kpi-card.purple::before { background: linear-gradient(90deg,#7c3aed,#a78bfa); }
+  .kpi-card.orange::before { background: linear-gradient(90deg,#f97316,#fb923c); }
+  .kpi-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .kpi-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; }
+  .kpi-icon.blue   { background:#eff6ff; color:#3b82f6; }
+  .kpi-icon.green  { background:#f0fdf4; color:#16a34a; }
+  .kpi-icon.purple { background:#faf5ff; color:#7c3aed; }
+  .kpi-icon.orange { background:#fff7ed; color:#f97316; }
+  .kpi-value { font-size:30px; font-weight:800; color:#1a1f2e; line-height:1; margin-bottom:3px; font-variant-numeric:tabular-nums; }
+  .kpi-label { font-size:12px; color:#6b7280; }
+  .kpi-sub   { font-size:11px; color:#9ca3af; margin-top:2px; }
 
-/* ── PÓDIO ──────────────────────────────────────── */
-.podium-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
-.podium-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:20px 16px;text-align:center;position:relative;box-shadow:0 2px 8px rgba(0,0,0,.06);}
-.podium-card.rank-1{border-color:#f59e0b;background:linear-gradient(160deg,#fffbeb,#fff);}
-.podium-card.rank-2{border-color:#d1d5db;background:linear-gradient(160deg,#f9fafb,#fff);}
-.podium-card.rank-3{border-color:#ea580c40;background:linear-gradient(160deg,#fff7ed,#fff);}
-.podium-medal{font-size:2rem;margin-bottom:6px;display:block;}
-.podium-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;margin:0 auto 8px;}
-.rank-1 .podium-avatar{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#fff;}
-.rank-2 .podium-avatar{background:linear-gradient(135deg,#9ca3af,#6b7280);color:#fff;}
-.rank-3 .podium-avatar{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
-.podium-name{font-weight:700;font-size:14px;color:#1a1f2e;margin-bottom:2px;}
-.podium-total{font-size:22px;font-weight:800;color:#111827;line-height:1;}
-.podium-label{font-size:11px;color:#9ca3af;margin-bottom:8px;}
-.podium-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
-.pb-gold{background:#fef3c7;color:#92400e;}
-.pb-silver{background:#f3f4f6;color:#4b5563;}
-.pb-bronze{background:#ffedd5;color:#9a3412;}
-@media(max-width:576px){.podium-wrap{grid-template-columns:1fr;}}
+  /* ── Destaque ─────────────────────────────────────────── */
+  .destaque {
+    background: linear-gradient(135deg, var(--amber-dk), var(--amber));
+    border-radius: 14px; padding: 16px 22px;
+    display: flex; align-items: center; gap: 16px;
+    color: #000; margin-bottom: 22px;
+    box-shadow: var(--shadow-md);
+  }
+  .destaque-trophy { font-size: 32px; flex-shrink: 0; }
+  .destaque-info { flex: 1; min-width: 0; }
+  .destaque-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; opacity: .65; margin-bottom: 3px; }
+  .destaque-name { font-size: 18px; font-weight: 800; }
+  .destaque-meta { font-size: 12px; opacity: .75; margin-top: 3px; }
+  .destaque-num { font-size: 36px; font-weight: 800; line-height: 1; text-align: right; font-variant-numeric:tabular-nums; }
+  .destaque-num-lbl { font-size: 11px; opacity: .65; text-align: right; }
+  @media(max-width:576px){ .destaque { flex-wrap: wrap; } .destaque-num { text-align: left; } }
 
-/* ── CARDS INDIVIDUAIS ──────────────────────────── */
-.perf-cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
-@media(max-width:900px){.perf-cards-grid{grid-template-columns:1fr;}}
+  /* ── Filtros ──────────────────────────────────────────── */
+  .filter-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 20px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    box-shadow: var(--shadow-sm);
+  }
+  .fg { display: flex; flex-direction: column; gap: 4px; min-width: 130px; flex: 1; }
+  .fg label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; }
+  .fg input, .fg select {
+    border: 1px solid #e5e7eb; border-radius: 8px; padding: 7px 10px;
+    font-size: 13px; color: #374151; outline: none; transition: border .15s, box-shadow .15s;
+  }
+  .fg input:focus, .fg select:focus {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+  }
+  @media(max-width:600px){ .fg { min-width: 100%; } }
 
-.perf-card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08);border:1px solid #e5e7eb;transition:box-shadow .25s,transform .2s;}
-.perf-card:hover{box-shadow:0 12px 40px rgba(0,0,0,.13);transform:translateY(-4px);}
+  /* btn-primary: amber com texto preto */
+  .btn-primary {
+    background: var(--amber) !important;
+    border-color: var(--amber) !important;
+    color: #000 !important;
+    font-weight: 600;
+  }
+  .btn-primary:hover {
+    background: var(--amber-dk) !important;
+    border-color: var(--amber-dk) !important;
+    color: #000 !important;
+  }
 
-.pc-header{height:80px;position:relative;display:flex;align-items:flex-start;justify-content:space-between;padding:14px 16px;}
-.pc-medal{font-size:1.4rem;line-height:1;}
-.entregador-status{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;backdrop-filter:blur(4px);}
-.es-ativo{background:rgba(255,255,255,.85);color:#065f46;}
-.es-rota{background:rgba(255,255,255,.85);color:#1e40af;}
-.es-sem{background:rgba(255,255,255,.7);color:#6b7280;}
-.status-dot{width:6px;height:6px;border-radius:50%;display:inline-block;}
+  /* ── Tabela de ranking ────────────────────────────────── */
+  .ranking-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    overflow: hidden; margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .ranking-header {
+    padding: 14px 20px; border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  .ranking-title { font-size: 14px; font-weight: 700; color: #1a1f2e; display: flex; align-items: center; gap: 8px; }
+  .ranking-count { font-size: 12px; color: #9ca3af; font-variant-numeric: tabular-nums; }
 
-.pc-avatar-zone{display:flex;flex-direction:column;align-items:center;margin-top:-34px;padding:0 20px;position:relative;z-index:3;}
-.pc-avatar{width:68px;height:68px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;border:3px solid #fff;box-shadow:0 6px 20px rgba(0,0,0,.18);}
-.pc-name{font-weight:800;font-size:16px;color:#111827;margin-top:12px;line-height:1.2;text-align:center;}
-.pc-filial{font-size:11.5px;color:#9ca3af;margin-top:3px;text-align:center;}
+  .ranking-table { width: 100%; border-collapse: collapse; }
+  .ranking-table th {
+    background: #f9fafb; padding: 10px 16px; text-align: left;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: #6b7280; border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+  }
+  .ranking-table th.text-center { text-align: center; }
+  .ranking-table td {
+    padding: 13px 16px; border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle; color: #374151;
+  }
+  .ranking-table tr:last-child td { border-bottom: none; }
+  .ranking-table tr:hover td { background: #fafafa; }
 
-.pc-stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:18px;border-top:1px solid #f3f4f6;}
-.pc-stat{padding:14px 6px;text-align:center;}
-.pc-stat:not(:last-child){border-right:1px solid #f3f4f6;}
-.pc-stat-val{font-size:22px;font-weight:800;line-height:1;}
-.clr-neutral{color:#111827;}.clr-green{color:#16a34a;}.clr-red{color:#ef4444;}.clr-gray{color:#d1d5db;}
-.pc-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-top:3px;}
+  /* Posição */
+  .rank-pos {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+  }
+  .rank-1 { background: linear-gradient(135deg,#fbbf24,#f59e0b); color:#000; }
+  .rank-2 { background: linear-gradient(135deg,#9ca3af,#6b7280); color:#fff; }
+  .rank-3 { background: linear-gradient(135deg,#f97316,#ea580c); color:#fff; }
+  .rank-n { background: #f3f4f6; color: #6b7280; font-size: 12px; }
 
-.pc-ring-section{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-top:1px solid #f3f4f6;gap:16px;}
-.pc-ring{flex-shrink:0;}
-.pc-ring-info{flex:1;}
-.pc-ring-label{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
-.pc-times-col{display:flex;flex-direction:column;gap:8px;}
-.pc-time-row{display:flex;align-items:center;gap:8px;}
-.pc-time-icon-lbl{font-size:11px;color:#9ca3af;font-weight:600;min-width:72px;}
-.pc-time-val{font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;}
-.pct-fast{background:#d1fae5;color:#065f46;}
-.pct-med{background:#fef3c7;color:#92400e;}
-.pct-slow{background:#fee2e2;color:#991b1b;}
-.pct-none{background:#f3f4f6;color:#9ca3af;}
+  /* Avatar */
+  .ent-avatar {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  .ent-info { display: flex; align-items: center; gap: 10px; }
+  .ent-name { font-weight: 700; font-size: 13px; color: #1a1f2e; }
+  .ent-filial { font-size: 11px; color: #9ca3af; margin-top: 1px; }
 
-.pc-spark{padding:14px 18px 18px;border-top:1px solid #f3f4f6;}
-.pc-spark-title{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
-.pc-spark-wrap{display:flex;align-items:flex-end;gap:6px;height:44px;}
-.pc-spark-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;}
-.pc-spark-bar{width:100%;border-radius:4px 4px 0 0;min-height:4px;}
-.pc-spark-day{font-size:9px;color:#d1d5db;font-weight:700;}
+  /* Status */
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    white-space: nowrap;
+  }
+  /* Em Rota: amber */
+  .sp-rota      { background: var(--amber-light); color: #92400e; border: 1px solid var(--amber-mid); }
+  .sp-disponivel{ background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+  .sp-inativo   { background: #f9fafb; color: #9ca3af; border: 1px solid #e5e7eb; }
+  .sp-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .sp-rota .sp-dot       { background: var(--amber); animation: blink 1.2s infinite; }
+  .sp-disponivel .sp-dot { background: #16a34a; }
+  .sp-inativo .sp-dot    { background: #d1d5db; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
 
-/* Legenda */
-.legend-bar{display:flex;flex-wrap:wrap;gap:12px;padding:12px 0;}
-.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280;}
+  /* Números */
+  .num-col { text-align: center; }
+  .num-big { font-size: 18px; font-weight: 800; color: #1a1f2e; line-height: 1; font-variant-numeric: tabular-nums; }
+  .num-big.green  { color: #16a34a; }
+  .num-big.red    { color: #ef4444; }
+  .num-big.gray   { color: #d1d5db; }
 
-/* Empty state */
-.empty-desemp{text-align:center;padding:60px 20px;color:#9ca3af;}
-.empty-desemp i{font-size:48px;margin-bottom:16px;display:block;color:#e5e7eb;}
+  /* Barra de sucesso */
+  .sucesso-wrap { min-width: 130px; }
+  .sucesso-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .sucesso-pct { font-size: 13px; font-weight: 800; color: #1a1f2e; font-variant-numeric: tabular-nums; }
+  .sucesso-bar { height: 6px; background: #f3f4f6; border-radius: 6px; overflow: hidden; }
+  .sucesso-fill { height: 100%; border-radius: 6px; transition: width .5s ease; }
+  .sf-high   { background: linear-gradient(90deg,#16a34a,#4ade80); }
+  .sf-mid    { background: linear-gradient(90deg,var(--amber),var(--amber-mid)); }
+  .sf-low    { background: linear-gradient(90deg,#ef4444,#f87171); }
+  .sf-none   { background: #e5e7eb; }
+
+  /* Tempos */
+  .tempo-badge {
+    display: inline-block; padding: 3px 9px; border-radius: 20px;
+    font-size: 11.5px; font-weight: 700; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .tb-fast { background: #d1fae5; color: #065f46; }
+  .tb-med  { background: var(--amber-light); color: #92400e; }
+  .tb-slow { background: #fee2e2; color: #991b1b; }
+  .tb-none { background: #f3f4f6; color: #9ca3af; }
+
+  /* Sparkline inline */
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 28px; }
+  .spark-bar { width: 8px; border-radius: 2px 2px 0 0; min-height: 2px; }
+
+  /* Legenda */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px 0 4px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; }
+
+  /* Esconder colunas no mobile */
+  @media(max-width:900px) { .hide-md { display: none !important; } }
+  @media(max-width:600px) { .hide-sm { display: none !important; } }
+
+  /* Empty */
+  .empty-state { text-align: center; padding: 52px 20px; color: #9ca3af; }
+  .empty-state i { font-size: 40px; display: block; margin-bottom: 12px; opacity: .25; }
 </style>
+{% endblock %}
+
+{% block topbar_right %}
+<a href="/gestor" class="btn btn-sm btn-outline-secondary">
+  <i class="fas fa-arrow-left mr-1"></i> Dashboard
+</a>
 {% endblock %}
 
 {% block content %}
 
-{% if destaque %}
-<!-- Banner Destaque -->
-<div class="destaque-banner">
-  <div class="destaque-icon">🏆</div>
-  <div>
-    <div class="destaque-title">⭐ Destaque do período</div>
+<!-- ── KPIs ──────────────────────────────────────────────────────────── -->
+<div class="kpi-row">
+  <div class="kpi-card blue">
+    <div class="kpi-top">
+      <div class="kpi-icon blue"><i class="fas fa-users"></i></div>
+    </div>
+    <div class="kpi-value">{{ ativos }}</div>
+    <div class="kpi-label">Entregadores Ativos</div>
+    <div class="kpi-sub">{{ em_rota_cnt }} em rota agora</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="kpi-top">
+      <div class="kpi-icon green"><i class="fas fa-box-open"></i></div>
+    </div>
+    <div class="kpi-value">{{ total_entregas }}</div>
+    <div class="kpi-label">Entregas no Período</div>
+  </div>
+  <div class="kpi-card purple">
+    <div class="kpi-top">
+      <div class="kpi-icon purple"><i class="fas fa-percentage"></i></div>
+    </div>
+    <div class="kpi-value">
+      {% if taxa_media is not none %}{{ taxa_media }}<span style="font-size:16px;">%</span>{% else %}—{% endif %}
+    </div>
+    <div class="kpi-label">Taxa de Sucesso Média</div>
+  </div>
+  <div class="kpi-card orange">
+    <div class="kpi-top">
+      <div class="kpi-icon orange"><i class="fas fa-stopwatch"></i></div>
+    </div>
+    <div class="kpi-value">
+      {% if tempo_medio is not none %}{{ tempo_medio }}<span style="font-size:16px;">min</span>{% else %}—{% endif %}
+    </div>
+    <div class="kpi-label">Tempo Médio de Entrega</div>
+  </div>
+</div>
+
+<!-- ── DESTAQUE ───────────────────────────────────────────────────────── -->
+{% if destaque and not filtros.entregador_id %}
+<div class="destaque">
+  <div class="destaque-trophy">🏆</div>
+  <div class="destaque-info">
+    <div class="destaque-tag">Destaque do período</div>
     <div class="destaque-name">{{ destaque.usuario.username }}</div>
-    <div class="destaque-sub">
-      {{ destaque.finalizadas }} entregas
+    <div class="destaque-meta">
+      {{ destaque.finalizadas }} entregas finalizadas
       {% if destaque.taxa_sucesso is not none %}&middot; {{ destaque.taxa_sucesso }}% de sucesso{% endif %}
-      {% if destaque.t_total is not none %}&middot; Tempo médio: {{ destaque.t_total }} min{% endif %}
+      {% if destaque.t_total is not none %}&middot; {{ destaque.t_total }} min por entrega{% endif %}
     </div>
   </div>
-  <div class="destaque-stat">
-    <div class="num">{{ destaque.finalizadas }}</div>
-    <div class="lbl">entregas</div>
+  <div>
+    <div class="destaque-num">{{ destaque.finalizadas }}</div>
+    <div class="destaque-num-lbl">entregas</div>
   </div>
 </div>
 {% endif %}
 
-<!-- Cards de métricas gerais -->
-<div class="stats-grid">
-  <div class="stat-card blue">
-    <div class="stat-icon blue"><i class="fas fa-users"></i></div>
-    <div class="stat-value">{{ ativos }}</div>
-    <div class="stat-label">Entregadores Ativos</div>
-    <div class="stat-sub">{{ em_rota_cnt }} em rota agora</div>
-  </div>
-  <div class="stat-card green">
-    <div class="stat-icon green"><i class="fas fa-box-open"></i></div>
-    <div class="stat-value">{{ total_entregas }}</div>
-    <div class="stat-label">Entregas no Período</div>
-  </div>
-  <div class="stat-card purple">
-    <div class="stat-icon purple"><i class="fas fa-percentage"></i></div>
-    <div class="stat-value">
-      {% if taxa_media is not none %}{{ taxa_media }}<span style="font-size:18px;">%</span>{% else %}—{% endif %}
-    </div>
-    <div class="stat-label">Taxa de Sucesso Média</div>
-  </div>
-  <div class="stat-card orange">
-    <div class="stat-icon orange"><i class="fas fa-stopwatch"></i></div>
-    <div class="stat-value">
-      {% if tempo_medio is not none %}{{ tempo_medio }}<span style="font-size:18px;">min</span>{% else %}—{% endif %}
-    </div>
-    <div class="stat-label">Tempo Médio de Entrega</div>
-  </div>
-</div>
-
-<!-- Filtros -->
+<!-- ── FILTROS ────────────────────────────────────────────────────────── -->
 <form method="GET" action="/gestor/desempenho">
-<div class="filter-bar">
-  <div class="filter-group">
-    <label>Período Início</label>
+<div class="filter-card">
+  <div class="fg">
+    <label>Início</label>
     <input type="date" name="inicio" value="{{ filtros.inicio }}">
   </div>
-  <div class="filter-group">
-    <label>Período Fim</label>
+  <div class="fg">
+    <label>Fim</label>
     <input type="date" name="fim" value="{{ filtros.fim }}">
   </div>
-  <div class="filter-group">
+  <div class="fg">
     <label>Entregador</label>
     <select name="entregador_id">
       <option value="">Todos</option>
@@ -181,7 +291,7 @@
       {% endfor %}
     </select>
   </div>
-  <div class="filter-group">
+  <div class="fg">
     <label>Filial</label>
     <select name="filial_id">
       <option value="">Todas</option>
@@ -190,182 +300,215 @@
       {% endfor %}
     </select>
   </div>
-  <div class="filter-group" style="justify-content:flex-end;">
-    <label>&nbsp;</label>
-    <div style="display:flex;gap:6px;">
-      <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Filtrar</button>
-      <a href="/gestor/desempenho" class="btn btn-outline-secondary btn-sm" title="Limpar filtros"><i class="fas fa-times"></i></a>
-    </div>
+  <div style="display:flex;gap:6px;align-items:flex-end;">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="fas fa-filter mr-1"></i> Filtrar
+    </button>
+    <a href="/gestor/desempenho" class="btn btn-outline-secondary btn-sm" title="Limpar">
+      <i class="fas fa-times"></i>
+    </a>
   </div>
 </div>
 </form>
 
 {% if ranking %}
 
-<!-- Pódio Top 3 (somente sem filtro de entregador específico) -->
-{% if top3 and not filtros.entregador_id %}
-<div class="podium-wrap">
-  {% for item in top3 %}
-  {% if loop.index == 1 %}{% set rank_cls = "rank-1" %}{% set medal = "🥇" %}{% set badge_cls = "pb-gold" %}{% set star = "⭐" %}
-  {% elif loop.index == 2 %}{% set rank_cls = "rank-2" %}{% set medal = "🥈" %}{% set badge_cls = "pb-silver" %}{% set star = "✓" %}
-  {% else %}{% set rank_cls = "rank-3" %}{% set medal = "🥉" %}{% set badge_cls = "pb-bronze" %}{% set star = "✓" %}{% endif %}
-  <div class="podium-card {{ rank_cls }}">
-    <span class="podium-medal">{{ medal }}</span>
-    <div class="podium-avatar">{{ item.usuario.username[:2].upper() }}</div>
-    <div class="podium-name">{{ item.usuario.username }}</div>
-    <div class="podium-total">{{ item.finalizadas }}</div>
-    <div class="podium-label">entregas finalizadas</div>
-    {% if item.taxa_sucesso is not none %}
-    <span class="podium-badge {{ badge_cls }}">{{ star }} {{ item.taxa_sucesso }}% sucesso</span>
-    {% endif %}
-    {% if item.t_total is not none %}
-    <div class="text-muted mt-2" style="font-size:11px;"><i class="fas fa-clock mr-1"></i>Tempo médio: {{ item.t_total }} min</div>
-    {% endif %}
+<!-- ── TABELA DE RANKING ──────────────────────────────────────────────── -->
+<div class="ranking-card">
+  <div class="ranking-header">
+    <span class="ranking-title">
+      <i class="fas fa-trophy" style="color:var(--amber);"></i>
+      Ranking de Desempenho
+    </span>
+    <span class="ranking-count">{{ ranking|length }} entregador{{ 'es' if ranking|length != 1 else '' }}</span>
   </div>
-  {% endfor %}
-</div>
-{% endif %}
 
-<!-- Seção Desempenho Individual -->
-<div class="d-flex align-items-center justify-content-between flex-wrap mb-3" style="gap:10px;">
-  <h6 class="mb-0" style="font-weight:700;font-size:16px;color:#1a1f2e;">
-    <i class="fas fa-id-card" style="color:#7c3aed;margin-right:8px;"></i>Desempenho Individual
-  </h6>
-  <small class="text-muted">{{ ranking|length }} entregador{{ 'es' if ranking|length != 1 else '' }}</small>
-</div>
+  <div style="overflow-x:auto;">
+    <table class="ranking-table">
+      <thead>
+        <tr>
+          <th style="width:44px;">#</th>
+          <th>Entregador</th>
+          <th class="hide-sm">Status</th>
+          <th class="text-center">Total</th>
+          <th class="text-center">Finaliz.</th>
+          <th class="text-center">Erros</th>
+          <th class="hide-md">Taxa de Sucesso</th>
+          <th class="text-center hide-md">T. Reação</th>
+          <th class="text-center hide-md">T. Entrega</th>
+          <th class="text-center hide-sm">T. Total</th>
+          <th class="hide-md">7 dias</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in ranking %}
+        {% set colors = ["#3b82f6","#7c3aed","#16a34a","#f97316","#06b6d4","#ec4899","#84cc16","#f59e0b"] %}
+        {% set cor = colors[loop.index0 % colors|length] %}
+        <tr>
 
-<div class="perf-cards-grid">
-  {% for item in ranking %}
-  <div class="perf-card">
+          <!-- Posição -->
+          <td>
+            {% if item.rank == 1 %}
+              <span class="rank-pos rank-1">🥇</span>
+            {% elif item.rank == 2 %}
+              <span class="rank-pos rank-2">🥈</span>
+            {% elif item.rank == 3 %}
+              <span class="rank-pos rank-3">🥉</span>
+            {% else %}
+              <span class="rank-pos rank-n">{{ item.rank }}</span>
+            {% endif %}
+          </td>
 
-    <!-- Header gradiente -->
-    <div class="pc-header" style="background:{{ item.colors.header }};">
-      <span class="pc-medal">
-        {% if item.rank == 1 %}🥇
-        {% elif item.rank == 2 %}🥈
-        {% elif item.rank == 3 %}🥉
-        {% else %}<span style="font-size:13px;font-weight:800;color:rgba(255,255,255,.75);">{{ item.rank }}º</span>
-        {% endif %}
-      </span>
-      <span>
-        {% if item.status_atual == "em_rota" %}
-        <span class="entregador-status es-rota">
-          <span class="status-dot" style="background:#93c5fd;"></span> Em Rota
-        </span>
-        {% elif item.status_atual == "disponivel" %}
-        <span class="entregador-status es-ativo">
-          <span class="status-dot" style="background:#16a34a;"></span> Disponível
-        </span>
-        {% else %}
-        <span class="entregador-status es-sem">
-          <span class="status-dot" style="background:#d1d5db;"></span> Inativo hoje
-        </span>
-        {% endif %}
-      </span>
-    </div>
+          <!-- Nome + filial -->
+          <td>
+            <div class="ent-info">
+              <div class="ent-avatar" style="background:{{ cor }};">
+                {{ item.usuario.username[:2].upper() }}
+              </div>
+              <div>
+                <a href="/gestor/entregador/{{ item.usuario.id }}" class="ent-name" style="color:#1a1f2e;text-decoration:none;">
+                  {{ item.usuario.username }}
+                  <i class="fas fa-external-link-alt" style="font-size:9px;color:#9ca3af;margin-left:4px;"></i>
+                </a>
+                <div class="ent-filial"><i class="fas fa-store" style="font-size:9px;margin-right:3px;"></i>{{ item.filial_nome }}</div>
+              </div>
+            </div>
+          </td>
 
-    <!-- Avatar + nome -->
-    <div class="pc-avatar-zone">
-      <div class="pc-avatar" style="background:{{ item.colors.avatar }};">{{ item.usuario.username[:2].upper() }}</div>
-      <div class="pc-name">{{ item.usuario.username }}</div>
-      <div class="pc-filial"><i class="fas fa-store" style="font-size:9px;"></i> {{ item.filial_nome }}</div>
-    </div>
+          <!-- Status -->
+          <td class="hide-sm">
+            {% if item.status_atual == "em_rota" %}
+              <span class="status-pill sp-rota"><span class="sp-dot"></span> Em Rota</span>
+            {% elif item.status_atual == "disponivel" %}
+              <span class="status-pill sp-disponivel"><span class="sp-dot"></span> Disponível</span>
+            {% else %}
+              <span class="status-pill sp-inativo"><span class="sp-dot"></span> Inativo</span>
+            {% endif %}
+          </td>
 
-    <!-- Totais -->
-    <div class="pc-stats">
-      <div class="pc-stat">
-        <div class="pc-stat-val clr-neutral">{{ item.total }}</div>
-        <div class="pc-stat-lbl">Total</div>
-      </div>
-      <div class="pc-stat">
-        <div class="pc-stat-val {% if item.finalizadas > 0 %}clr-green{% else %}clr-gray{% endif %}">{{ item.finalizadas }}</div>
-        <div class="pc-stat-lbl">Finalizadas</div>
-      </div>
-      <div class="pc-stat">
-        <div class="pc-stat-val {% if item.erros > 0 %}clr-red{% else %}clr-gray{% endif %}">{{ item.erros }}</div>
-        <div class="pc-stat-lbl">Erros</div>
-      </div>
-    </div>
+          <!-- Total -->
+          <td class="num-col">
+            <div class="num-big">{{ item.total }}</div>
+          </td>
 
-    <!-- Anel SVG + Tempos -->
-    <div class="pc-ring-section">
-      <div class="pc-ring">
-        <svg width="110" height="110" viewBox="0 0 110 110">
-          <circle cx="55" cy="55" r="42" fill="none" stroke="#f3f4f6" stroke-width="9"/>
-          <circle cx="55" cy="55" r="42" fill="none"
-            stroke="{{ item.colors.ring }}" stroke-width="9"
-            stroke-dasharray="263.9" stroke-dashoffset="{{ item.ring_offset }}"
-            stroke-linecap="round" transform="rotate(-90 55 55)"/>
-          <text x="55" y="56" text-anchor="middle" font-size="19" font-weight="800"
-            fill="#111827" font-family="-apple-system,sans-serif">
-            {% if item.taxa_sucesso is not none %}{{ item.taxa_sucesso }}%{% else %}—{% endif %}
-          </text>
-          <text x="55" y="72" text-anchor="middle" font-size="9" fill="#9ca3af"
-            font-family="-apple-system,sans-serif">SUCESSO</text>
-        </svg>
-      </div>
-      <div class="pc-ring-info">
-        <div class="pc-ring-label">Tempos Médios</div>
-        <div class="pc-times-col">
-          <div class="pc-time-row">
-            <span class="pc-time-icon-lbl"><i class="fas fa-bolt" style="color:#7c3aed;font-size:10px;"></i> Reação</span>
+          <!-- Finalizadas -->
+          <td class="num-col">
+            <div class="num-big {% if item.finalizadas > 0 %}green{% else %}gray{% endif %}">
+              {{ item.finalizadas }}
+            </div>
+          </td>
+
+          <!-- Erros -->
+          <td class="num-col">
+            <div class="num-big {% if item.erros > 0 %}red{% else %}gray{% endif %}">
+              {{ item.erros }}
+            </div>
+          </td>
+
+          <!-- Taxa de sucesso -->
+          <td class="hide-md">
+            <div class="sucesso-wrap">
+              <div class="sucesso-top">
+                <span class="sucesso-pct">
+                  {% if item.taxa_sucesso is not none %}{{ item.taxa_sucesso }}%{% else %}—{% endif %}
+                </span>
+              </div>
+              <div class="sucesso-bar">
+                {% if item.taxa_sucesso is not none %}
+                  {% if item.taxa_sucesso >= 90 %}{% set sf = "sf-high" %}
+                  {% elif item.taxa_sucesso >= 70 %}{% set sf = "sf-mid" %}
+                  {% else %}{% set sf = "sf-low" %}{% endif %}
+                  <div class="sucesso-fill {{ sf }}" style="width:{{ item.taxa_sucesso }}%;"></div>
+                {% else %}
+                  <div class="sucesso-fill sf-none" style="width:100%;"></div>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+
+          <!-- T. Reação -->
+          <td class="num-col hide-md">
             {% if item.t_reacao is not none %}
-            <span class="pc-time-val {% if item.t_reacao <= 8 %}pct-fast{% elif item.t_reacao <= 20 %}pct-med{% else %}pct-slow{% endif %}">{{ item.t_reacao }} min</span>
-            {% else %}<span class="pc-time-val pct-none">—</span>{% endif %}
-          </div>
-          <div class="pc-time-row">
-            <span class="pc-time-icon-lbl"><i class="fas fa-motorcycle" style="color:#3b82f6;font-size:10px;"></i> Entrega</span>
+              <span class="tempo-badge {% if item.t_reacao <= 8 %}tb-fast{% elif item.t_reacao <= 20 %}tb-med{% else %}tb-slow{% endif %}">
+                {{ item.t_reacao }}min
+              </span>
+            {% else %}
+              <span class="tempo-badge tb-none">—</span>
+            {% endif %}
+          </td>
+
+          <!-- T. Entrega -->
+          <td class="num-col hide-md">
             {% if item.t_entrega is not none %}
-            <span class="pc-time-val {% if item.t_entrega <= 25 %}pct-fast{% elif item.t_entrega <= 40 %}pct-med{% else %}pct-slow{% endif %}">{{ item.t_entrega }} min</span>
-            {% else %}<span class="pc-time-val pct-none">—</span>{% endif %}
-          </div>
-          <div class="pc-time-row">
-            <span class="pc-time-icon-lbl"><i class="fas fa-stopwatch" style="color:#16a34a;font-size:10px;"></i> Total</span>
+              <span class="tempo-badge {% if item.t_entrega <= 25 %}tb-fast{% elif item.t_entrega <= 40 %}tb-med{% else %}tb-slow{% endif %}">
+                {{ item.t_entrega }}min
+              </span>
+            {% else %}
+              <span class="tempo-badge tb-none">—</span>
+            {% endif %}
+          </td>
+
+          <!-- T. Total -->
+          <td class="num-col hide-sm">
             {% if item.t_total is not none %}
-            <span class="pc-time-val {% if item.t_total <= 30 %}pct-fast{% elif item.t_total <= 50 %}pct-med{% else %}pct-slow{% endif %}">{{ item.t_total }} min</span>
-            {% else %}<span class="pc-time-val pct-none">—</span>{% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
+              <span class="tempo-badge {% if item.t_total <= 30 %}tb-fast{% elif item.t_total <= 50 %}tb-med{% else %}tb-slow{% endif %}">
+                {{ item.t_total }}min
+              </span>
+            {% else %}
+              <span class="tempo-badge tb-none">—</span>
+            {% endif %}
+          </td>
 
-    <!-- Sparkline 7 dias -->
-    <div class="pc-spark">
-      <div class="pc-spark-title">
-        <span><i class="fas fa-chart-bar mr-1"></i> Últimos 7 dias</span>
-        <span style="font-weight:400;">~{{ item.spark_avg }} entregas/dia</span>
-      </div>
-      <div class="pc-spark-wrap">
-        {% for bar in item.spark_bars %}
-        <div class="pc-spark-col">
-          <div class="pc-spark-bar" style="height:{{ bar.pct }}%;background:{{ item.colors.ring }};opacity:{{ bar.opacity }};"></div>
-          <div class="pc-spark-day">{{ bar.label }}</div>
-        </div>
+          <!-- Sparkline 7 dias -->
+          <td class="hide-md">
+            <div class="spark">
+              {% for bar in item.spark_bars %}
+              <div class="spark-bar"
+                style="height:{{ bar.pct }}%;background:{{ cor }};opacity:{{ bar.opacity }};"></div>
+              {% endfor %}
+            </div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:3px;font-variant-numeric:tabular-nums;">{{ item.spark_avg }}/dia</div>
+          </td>
+
+        </tr>
         {% endfor %}
-      </div>
-    </div>
+      </tbody>
+    </table>
+  </div>
+</div>
 
-  </div><!-- /perf-card -->
-  {% endfor %}
-</div><!-- /perf-cards-grid -->
-
-<!-- Legenda -->
-<div class="legend-bar">
-  <div class="legend-item"><span class="pc-time-val pct-fast" style="font-size:10px;">Verde</span> Tempo excelente (≤ 30 min total)</div>
-  <div class="legend-item"><span class="pc-time-val pct-med" style="font-size:10px;">Amarelo</span> Tempo regular (31–50 min)</div>
-  <div class="legend-item"><span class="pc-time-val pct-slow" style="font-size:10px;">Vermelho</span> Tempo alto (&gt; 50 min)</div>
-  <div class="legend-item"><i class="fas fa-bolt" style="color:#7c3aed;"></i> <strong>T. Reação</strong> = lançamento → aceite</div>
-  <div class="legend-item"><i class="fas fa-motorcycle" style="color:#3b82f6;"></i> <strong>T. Entrega</strong> = aceite → finalizado</div>
+<!-- ── LEGENDA ────────────────────────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-item">
+    <span class="tempo-badge tb-fast" style="font-size:10px;">Verde</span> Tempo excelente
+  </div>
+  <div class="legend-item">
+    <span class="tempo-badge tb-med" style="font-size:10px;">Âmbar</span> Tempo regular
+  </div>
+  <div class="legend-item">
+    <span class="tempo-badge tb-slow" style="font-size:10px;">Vermelho</span> Tempo alto
+  </div>
+  <div class="legend-item" style="margin-left:8px;">
+    <i class="fas fa-bolt" style="color:#7c3aed;width:14px;text-align:center;"></i>
+    <strong>T. Reação</strong>: lançamento → aceite
+  </div>
+  <div class="legend-item">
+    <i class="fas fa-motorcycle" style="color:#3b82f6;width:14px;text-align:center;"></i>
+    <strong>T. Entrega</strong>: aceite → finalizado
+  </div>
+  <div class="legend-item">
+    <i class="fas fa-stopwatch" style="color:#16a34a;width:14px;text-align:center;"></i>
+    <strong>T. Total</strong>: lançamento → finalizado
+  </div>
 </div>
 
 {% else %}
-<!-- Estado vazio -->
-<div class="card">
-  <div class="empty-desemp">
+<div class="ranking-card">
+  <div class="empty-state">
     <i class="fas fa-chart-line"></i>
-    <p class="font-weight-bold mb-1">Nenhum dado encontrado</p>
-    <p class="small text-muted">Ajuste o período ou os filtros para ver o desempenho dos entregadores.</p>
-    <a href="/gestor/desempenho" class="btn btn-outline-primary btn-sm mt-2">Limpar filtros</a>
+    <p style="font-weight:700;margin-bottom:4px;color:#374151;">Nenhum dado encontrado</p>
+    <p style="font-size:13px;margin:0;">Ajuste o período ou os filtros para ver o desempenho.</p>
+    <a href="/gestor/desempenho" class="btn btn-outline-primary btn-sm mt-3">Limpar filtros</a>
   </div>
 </div>
 {% endif %}

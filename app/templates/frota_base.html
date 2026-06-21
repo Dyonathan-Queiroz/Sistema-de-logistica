@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Frota{% endblock %} — Gavião</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Figtree — alinhado com o restante do sistema -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Figtree', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand:   { DEFAULT: '#f59e0b', light: '#fffbeb', dark: '#d97706', hover: '#f59e0b' },
+            success: { DEFAULT: '#16A34A', light: '#F0FDF4' },
+            danger:  { DEFAULT: '#DC2626', light: '#FEF2F2' },
+            warn:    { DEFAULT: '#D97706', light: '#FFFBEB' },
+            sidebar: { DEFAULT: '#0F1117', hover: 'rgba(255,255,255,0.055)', active: 'rgba(245,158,11,0.12)', border: 'rgba(255,255,255,0.065)' },
+          },
+          boxShadow: {
+            card: '0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04)',
+            md:   '0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07)',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --amber:      #f59e0b;
+      --amber-dk:   #d97706;
+      --amber-lt:   #fffbeb;
+      --amber-mid:  #fcd34d;
+      --danger:     #DC2626;
+      --sb-bg:    #0F1117;
+      --page-bg:  #F4F5F7;
+      --card-bg:  #FFFFFF;
+      --brd:      #E4E6EA;
+      --text:     #111318;
+      --text2:    #626677;
+      --text3:    #9BA3B0;
+      --font:     'Figtree', sans-serif;
+      --radius:   10px;
+      --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+      --shadow:    0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+      --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+    }
+
+    * { box-sizing: border-box; }
+
+    body { font-family: var(--font); background: var(--page-bg); }
+
+    /* scrollbar sutil */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+    @keyframes fadeSlideUp {
+      from { opacity:0; transform:translateY(14px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .fade-up { animation: fadeSlideUp .35s ease both; }
+    .fade-up-1 { animation-delay: .04s; }
+    .fade-up-2 { animation-delay: .09s; }
+    .fade-up-3 { animation-delay: .14s; }
+    .fade-up-4 { animation-delay: .19s; }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="h-full antialiased" x-data="{ sidebarOpen: false }">
+
+  <!-- OVERLAY MOBILE -->
+  <div
+    x-show="sidebarOpen"
+    @click="sidebarOpen = false"
+    x-transition:enter="transition-opacity ease-out duration-200"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition-opacity ease-in duration-150"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 bg-black/60 z-30 lg:hidden"
+    style="display:none"
+  ></div>
+
+  <!-- SIDEBAR -->
+  <aside
+    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+    class="fixed inset-y-0 left-0 w-64 z-40 flex flex-col transition-transform duration-300 ease-in-out"
+    style="background:var(--sb-bg);"
+  >
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-5 py-4" style="border-bottom:1px solid rgba(255,255,255,0.065);">
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg"
+           style="background:var(--amber);">
+        <i data-lucide="truck" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-sm font-bold text-white leading-tight truncate">System Logística</div>
+        <div class="text-xs truncate" style="color:rgba(255,255,255,0.35);">Super GAVIÃO · Frota</div>
+      </div>
+      <button @click="sidebarOpen = false" class="ml-auto lg:hidden transition-colors flex-shrink-0"
+              style="color:rgba(255,255,255,0.4);" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+
+      <!-- Voltar ao Dashboard -->
+      <a href="/gestor"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 mt-1 mb-2"
+         style="color:rgba(255,255,255,0.45);"
+         onmouseover="this.style.background='rgba(255,255,255,0.055)';this.style.color='#fff';"
+         onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.45)';">
+        <i data-lucide="arrow-left" class="w-4 h-4 flex-shrink-0"></i> Dashboard Principal
+      </a>
+      <div class="mx-3 mb-2" style="border-top:1px solid rgba(255,255,255,0.065);"></div>
+
+      {% if usuario is not defined or usuario.perfil in ('gestor', 'operador') %}
+      <p class="text-[10px] font-semibold uppercase tracking-widest px-3 pt-2 pb-1.5" style="color:rgba(255,255,255,0.3);">Gestão de Frota</p>
+
+      <a href="/frota/dashboard"
+         class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_dash %}inactive{% endblock %}">
+        <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i> Painel Geral
+      </a>
+
+      <a href="/frota/alertas"
+         class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_alertas %}inactive{% endblock %}">
+        <i data-lucide="bell-ring" class="w-4 h-4 flex-shrink-0"></i> Alertas
+        {% if alertas_count is defined and alertas_count > 0 %}
+          <span class="ml-auto text-white text-[10px] font-bold px-1.5 py-1 rounded-full min-w-[18px] text-center leading-none"
+                style="background:var(--amber);">{{ alertas_count }}</span>
+        {% endif %}
+      </a>
+
+      <a href="/frota/manutencao"
+         class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_manutencao %}inactive{% endblock %}">
+        <i data-lucide="wrench" class="w-4 h-4 flex-shrink-0"></i> Manutenção
+      </a>
+
+      <a href="/frota/ranking"
+         class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_score %}inactive{% endblock %}">
+        <i data-lucide="trophy" class="w-4 h-4 flex-shrink-0"></i> Ranking
+      </a>
+
+      <a href="/frota/historico-geral"
+         class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_hist_geral %}inactive{% endblock %}">
+        <i data-lucide="scroll-text" class="w-4 h-4 flex-shrink-0"></i> Histórico Geral
+      </a>
+
+      <a href="/frota/configuracoes"
+         class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_config %}inactive{% endblock %}">
+        <i data-lucide="settings-2" class="w-4 h-4 flex-shrink-0"></i> Oficinas e Peças
+      </a>
+      {% endif %}
+
+      {% if usuario is defined and usuario.perfil == 'entregador' %}
+      <p class="text-[10px] font-semibold uppercase tracking-widest px-3 pt-3 pb-1.5" style="color:rgba(255,255,255,0.3);">Meu Turno</p>
+      <a href="/frota/turno"
+         class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_turno %}inactive{% endblock %}">
+        <i data-lucide="play-circle" class="w-4 h-4 flex-shrink-0"></i> Iniciar/Ver Turno
+      </a>
+      {% endif %}
+
+      <!-- Logout -->
+      <div class="pt-3 mt-2" style="border-top:1px solid rgba(255,255,255,0.065);">
+        <a href="/logout"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
+           style="color:rgba(245,158,11,.6);"
+           onmouseover="this.style.background='rgba(245,158,11,0.12)';this.style.color='#f59e0b';"
+           onmouseout="this.style.background='transparent';this.style.color='rgba(245,158,11,.6)';">
+          <i data-lucide="log-out" class="w-4 h-4 flex-shrink-0"></i> Sair
+        </a>
+      </div>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="px-4 py-3 leading-relaxed" style="border-top:1px solid rgba(255,255,255,0.065);">
+      <div class="text-[10px] font-semibold" style="color:rgba(255,255,255,0.25);">
+        Criado por Dyonathan Queiroz &mdash; Aux T.I &mdash; Super Gavião
+      </div>
+    </div>
+  </aside>
+
+  <!-- ÁREA PRINCIPAL -->
+  <div class="lg:pl-64 min-h-screen flex flex-col">
+
+    <!-- Top bar -->
+    <header class="sticky top-0 z-20 px-4 sm:px-6 h-14 flex items-center justify-between gap-3"
+            style="background:var(--card-bg);border-bottom:1px solid var(--brd);box-shadow:0 1px 4px rgba(0,0,0,.05);">
+      <div class="flex items-center gap-3 min-w-0">
+        <button
+          @click="sidebarOpen = true"
+          class="lg:hidden p-2 rounded-lg transition-colors -ml-1 flex-shrink-0"
+          style="color:var(--text2);"
+          onmouseover="this.style.background='#F3F4F6';"
+          onmouseout="this.style.background='transparent';">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+        <h1 class="text-base font-bold truncate" style="color:var(--text);">{% block page_title %}Gestão de Frota{% endblock %}</h1>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        {% block topbar_actions %}{% endblock %}
+        <div class="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center ring-2"
+             style="background:var(--amber);ring-color:var(--amber-lt);"
+             title="{{ usuario.username if usuario is defined else '' }}">
+          {{ usuario.username[:2].upper() if usuario is defined else 'GV' }}
+        </div>
+      </div>
+    </header>
+
+    <!-- Conteúdo -->
+    <main class="flex-1 p-4 sm:p-6">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-3" style="border-top:1px solid var(--brd);background:var(--card-bg);">
+      <span class="text-xs" style="color:var(--text3);">
+        Criado por Dyonathan Queiroz &mdash; Aux T.I &mdash; Super Gavião
+      </span>
+    </footer>
+  </div>
+
+  <style>
+    /* Nav links — estado padrão e hover via CSS puro */
+    .nav-link.inactive {
+      color: rgba(255,255,255,0.45);
+    }
+    .nav-link.inactive:hover {
+      background: rgba(255,255,255,0.055);
+      color: #fff;
+    }
+    /* Estado ativo injetado pelos blocos Jinja2 */
+    .nav-link.active {
+      background: rgba(245,158,11,0.15);
+      color: #d97706;
+      position: relative;
+    }
+    .nav-link.active::before {
+      content: '';
+      position: absolute;
+      left: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 20px;
+      background: #f59e0b;
+      border-radius: 0 3px 3px 0;
+    }
+    /* Avatar ring fix para Tailwind config */
+    [style*="ring-color"] { --tw-ring-color: var(--amber-lt); }
+  </style>
+
+  <script>lucide.createIcons();</script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

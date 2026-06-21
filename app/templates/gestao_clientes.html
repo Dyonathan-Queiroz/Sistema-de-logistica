@@ -13,6 +13,67 @@
 <a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
+{% block extra_styles %}
+<style>
+  /* ── Amber token overrides (page-specific) ── */
+  .btn-primary {
+    background: var(--amber, #f59e0b);
+    border-color: var(--amber, #f59e0b);
+    color: #000 !important;
+    font-weight: 600;
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background: var(--amber-dk, #d97706);
+    border-color: var(--amber-dk, #d97706);
+    color: #000 !important;
+  }
+
+  .form-control:focus {
+    border-color: var(--amber, #f59e0b);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    outline: none;
+  }
+
+  /* Table action button */
+  .btn-outline-primary {
+    color: var(--amber-dk, #d97706);
+    border-color: var(--amber, #f59e0b);
+  }
+  .btn-outline-primary:hover {
+    background: var(--amber, #f59e0b);
+    border-color: var(--amber, #f59e0b);
+    color: #000;
+  }
+
+  /* Modal header */
+  .modal-header.bg-primary {
+    background: var(--amber, #f59e0b) !important;
+    color: #000 !important;
+  }
+  .modal-header.bg-primary .modal-title,
+  .modal-header.bg-primary .close {
+    color: #000 !important;
+  }
+
+  /* ID column — tabular nums */
+  .col-id {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Search button accent */
+  .input-group .btn-primary {
+    background: var(--amber, #f59e0b);
+    border-color: var(--amber, #f59e0b);
+    color: #000;
+  }
+  .input-group .btn-primary:hover {
+    background: var(--amber-dk, #d97706);
+    border-color: var(--amber-dk, #d97706);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Flash messages -->
 {% if msg == 'excluido' %}
@@ -55,7 +116,7 @@
             <table class="table table-sm table-hover mb-0">
                 <thead class="thead-light">
                     <tr>
-                        <th class="col-mob-hide">#</th>
+                        <th class="col-mob-hide col-id">#</th>
                         <th>Nome</th>
                         <th>CPF / CNPJ</th>
                         <th class="col-mob-hide">Telefone</th>
@@ -66,7 +127,7 @@
                 <tbody>
                     {% for c in clientes %}
                     <tr>
-                        <td class="text-muted col-mob-hide">{{ c.id }}</td>
+                        <td class="text-muted col-mob-hide col-id">{{ c.id }}</td>
                         <td><strong>{{ c.nome }}</strong></td>
                         <td><code>{{ c.documento or '—' }}</code></td>
                         <td class="col-mob-hide">{{ c.telefone or '—' }}</td>

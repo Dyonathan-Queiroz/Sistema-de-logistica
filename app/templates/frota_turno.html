@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>Meu Turno — Gavião</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+
+  <script>
+    tailwind.config = {
+      theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] }, colors: { brand: { DEFAULT: '#f59e0b' } } } }
+    }
+  </script>
+  <style>
+    :root {
+      --amber:       #f59e0b;
+      --amber-dk:    #d97706;
+      --amber-light: #fffbeb;
+      --amber-mid:   #fcd34d;
+      --danger:      #DC2626;
+      --green:       #16A34A;
+      --blue:        #2563EB;
+      --shadow-sm:   0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+      --shadow:      0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+      --shadow-md:   0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+    }
+    .pb-safe { padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.5rem); }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .pulse-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
+    @keyframes count-up { from{transform:scale(.85);opacity:0} to{transform:scale(1);opacity:1} }
+    .count-up { animation: count-up .4s cubic-bezier(.34,1.56,.64,1) forwards; }
+    @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .slide-up { animation: slideUp .3s ease-out forwards; }
+    .slide-up-2 { animation: slideUp .35s .06s ease-out both; }
+    .slide-up-3 { animation: slideUp .35s .12s ease-out both; }
+  </style>
+</head>
+
+{# ─────────────────────────────────────────────────────────────────────
+   Contexto esperado do backend:
+     usuario  : Usuario          — motorista logado
+     turno    : TurnoEntrega|None — turno ativo de hoje
+     veiculo  : Veiculo|None     — veículo vinculado ao turno
+     data_hoje: str              — "Sábado, 07 de Junho de 2026"
+   ────────────────────────────────────────────────────────────────────── #}
+
+<body class="bg-slate-950 font-sans antialiased overflow-x-hidden"
+      style="min-height:100dvh;"
+      x-data="{
+        turnoAberto:  {{ 'true' if turno and turno.status == 'aberto' else 'false' }},
+        cupons:       {{ turno.total_cupons_dia if turno else 0 }},
+        kmInicio:     {{ turno.checklist_inicio.odometro_registrado if turno and turno.checklist_inicio else 0 }},
+        iniciouEm:    '{{ turno.checklist_inicio.data_hora.strftime('%H:%M') if turno and turno.checklist_inicio else '' }}',
+        tempoTurno:   '',
+        confirmarEnc: false,
+        _calcTempo() {
+          {% if turno and turno.checklist_inicio %}
+          const inicio = new Date('{{ turno.checklist_inicio.data_hora.strftime('%Y-%m-%dT%H:%M:%S') }}');
+          const diff   = Math.floor((Date.now() - inicio.getTime()) / 1000);
+          const h = Math.floor(diff / 3600);
+          const m = Math.floor((diff % 3600) / 60);
+          this.tempoTurno = (h > 0 ? h + 'h ' : '') + m + 'min';
+          {% endif %}
+        },
+      }"
+      x-init="$nextTick(() => { lucide.createIcons(); _calcTempo(); setInterval(() => _calcTempo(), 60000); })">
+
+
+  {# ══════ HEADER ══════ #}
+  <header class="sticky top-0 z-20 bg-slate-950/95 backdrop-blur-sm border-b border-slate-800/60 px-5 pt-safe-top"
+          style="padding-top: max(env(safe-area-inset-top, 0px), 1.25rem); padding-bottom: 1rem;">
+    <div class="flex items-center justify-between max-w-lg mx-auto">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0"
+             style="background:linear-gradient(135deg,var(--amber),var(--amber-dk));box-shadow:0 4px 16px rgba(245,158,11,0.3)">
+          <i data-lucide="zap" class="w-5 h-5 text-black"></i>
+        </div>
+        <div>
+          <div class="text-white font-black text-sm leading-tight">
+            Olá, {{ usuario.username.split()[0] }} 👋
+          </div>
+          <div class="text-slate-500 text-xs mt-0.5">{{ data_hoje }}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/entregador"
+           class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 flex items-center justify-center transition-all"
+           title="Painel de Entregas">
+          <i data-lucide="package" class="w-4 h-4 text-slate-400"></i>
+        </a>
+        <a href="/gestor"
+           class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 flex items-center justify-center transition-all"
+           title="Dashboard Principal">
+          <i data-lucide="grid-2x2" class="w-4 h-4 text-slate-400"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+
+  {# ══════════════════════════════════════════════════════════════════
+     ESTADO A — SEM TURNO ABERTO
+  ══════════════════════════════════════════════════════════════════ #}
+  <div x-show="!turnoAberto" x-transition class="max-w-lg mx-auto px-4 pt-5 pb-safe">
+
+    {# Título da tela #}
+    <div class="mb-5">
+      <h1 class="text-white font-black text-2xl leading-tight">Iniciar Turno</h1>
+      <p class="text-slate-500 text-sm mt-1">Complete o checklist para liberar as entregas</p>
+    </div>
+
+    {# Card do veículo #}
+    {% if veiculo %}
+    <div class="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 mb-4 flex items-center gap-4">
+      <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+           style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2)">
+        <i data-lucide="{{ 'bike' if veiculo.tipo == 'Moto' else 'car' }}"
+           class="w-7 h-7" style="color:var(--amber)"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-white font-black text-lg leading-tight">{{ veiculo.placa }}</div>
+        <div class="text-slate-400 text-sm mt-0.5">{{ veiculo.modelo }}</div>
+        <div class="flex items-center gap-2 mt-1.5">
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">{{ veiculo.tipo }}</span>
+          {% if veiculo.odometro_atual %}
+          <span class="text-[10px] font-semibold text-slate-500" style="font-variant-numeric:tabular-nums">
+            <i data-lucide="gauge" class="w-3 h-3 inline mr-0.5"></i>
+            {{ '{:,}'.format(veiculo.odometro_atual).replace(',', '.') }} km
+          </span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="flex-shrink-0">
+        <!-- Turno aguardando = amber (pending/waiting semantic color) -->
+        <span class="text-[10px] font-bold px-2.5 py-1.5 rounded-xl"
+              style="background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.25)">
+          Aguardando
+        </span>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4 flex items-center gap-3">
+      <i data-lucide="truck" class="w-5 h-5 text-red-400 flex-shrink-0"></i>
+      <p class="text-red-300 text-sm">Nenhum veículo vinculado. Fale com o gestor.</p>
+    </div>
+    {% endif %}
+
+    {# Passos #}
+    <div class="space-y-2 mb-6">
+      <div class="flex items-center gap-3 bg-slate-800/40 border border-slate-700/30 rounded-xl px-4 py-3 slide-up">
+        <div class="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 text-white text-xs font-black">1</div>
+        <div class="flex-1">
+          <div class="text-white text-sm font-semibold">Inspecionar o veículo</div>
+          <div class="text-slate-500 text-xs mt-0.5">Responda o checklist de segurança</div>
+        </div>
+        <i data-lucide="clipboard-check" class="w-4 h-4 text-blue-400 flex-shrink-0"></i>
+      </div>
+      <div class="flex items-center gap-3 bg-slate-800/20 border border-slate-700/20 rounded-xl px-4 py-3 slide-up-2">
+        <div class="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center flex-shrink-0 text-slate-400 text-xs font-black">2</div>
+        <div class="flex-1">
+          <div class="text-slate-400 text-sm font-semibold">Turno aberto automaticamente</div>
+          <div class="text-slate-600 text-xs mt-0.5">Se o checklist for aprovado</div>
+        </div>
+        <i data-lucide="play-circle" class="w-4 h-4 text-slate-600 flex-shrink-0"></i>
+      </div>
+      <div class="flex items-center gap-3 bg-slate-800/20 border border-slate-700/20 rounded-xl px-4 py-3 slide-up-3">
+        <div class="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center flex-shrink-0 text-slate-400 text-xs font-black">3</div>
+        <div class="flex-1">
+          <div class="text-slate-400 text-sm font-semibold">Aceitar e realizar entregas</div>
+          <div class="text-slate-600 text-xs mt-0.5">Registre combustível e manutenção</div>
+        </div>
+        <i data-lucide="package" class="w-4 h-4 text-slate-600 flex-shrink-0"></i>
+      </div>
+    </div>
+
+    {# CTA principal — amber primary button with BLACK text #}
+    {% if veiculo %}
+    <a href="/frota/checklist?tipo=inicio&veiculo_id={{ veiculo.id }}"
+       class="flex items-center justify-center gap-3 w-full font-black text-lg rounded-2xl py-5 transition-all duration-200 active:scale-95"
+       style="background:var(--amber);color:#000;box-shadow:0 8px 32px rgba(245,158,11,0.35)"
+       onmouseover="this.style.background='var(--amber-dk)'"
+       onmouseout="this.style.background='var(--amber)'">
+      <i data-lucide="play-circle" class="w-6 h-6"></i>
+      Fazer Checklist de Início
+    </a>
+    <p class="text-center text-xs text-slate-600 mt-3">O turno abre automaticamente após aprovação</p>
+    {% else %}
+    <div class="flex items-center justify-center gap-3 w-full bg-slate-700/50 text-slate-500 font-black text-lg rounded-2xl py-5 cursor-not-allowed">
+      <i data-lucide="lock" class="w-6 h-6"></i>
+      Sem veículo vinculado
+    </div>
+    {% endif %}
+
+  </div>
+  {# /Estado A #}
+
+
+  {# ══════════════════════════════════════════════════════════════════
+     ESTADO B — TURNO ATIVO
+  ══════════════════════════════════════════════════════════════════ #}
+  <div x-show="turnoAberto" x-transition style="display:none"
+       class="max-w-lg mx-auto px-4 pt-4 pb-safe">
+
+    {# Banner turno ativo — amber for "aberto" status #}
+    <div class="flex items-center gap-2.5 rounded-xl px-4 py-2.5 mb-4"
+         style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+      <span class="w-2 h-2 rounded-full flex-shrink-0 pulse-dot"
+            style="background:var(--amber)"></span>
+      <span class="text-xs font-bold" style="color:var(--amber)">Turno aberto</span>
+      {% if veiculo %}
+        <span class="text-slate-600 text-xs">·</span>
+        <span class="text-slate-400 text-xs">{{ veiculo.placa }} · {{ veiculo.tipo }}</span>
+      {% endif %}
+      {% if turno and turno.checklist_inicio %}
+        <span class="ml-auto text-slate-500 text-xs font-semibold" x-text="iniciouEm ? 'Início: ' + iniciouEm : ''">
+          Início: {{ turno.checklist_inicio.data_hora.strftime('%H:%M') }}
+        </span>
+      {% endif %}
+    </div>
+
+    {# Card de contador de entregas #}
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl border border-slate-700/50 mb-4 overflow-hidden"
+         style="box-shadow:var(--shadow-md)">
+      <div class="px-6 pt-6 pb-4 text-center">
+        <p class="text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-2">Entregas realizadas hoje</p>
+        <div class="text-7xl font-black text-white leading-none count-up mb-1"
+             style="font-variant-numeric:tabular-nums"
+             x-text="cupons">{{ turno.total_cupons_dia if turno else 0 }}</div>
+        <div class="flex items-center justify-center gap-1.5 text-slate-500 text-xs mt-1">
+          <i data-lucide="receipt" class="w-3.5 h-3.5"></i>
+          <span>cupons fiscais entregues</span>
+        </div>
+      </div>
+      {# Linha de info do turno #}
+      <div class="border-t border-slate-700/50 px-6 py-3 flex items-center justify-between text-xs">
+        <span class="text-slate-500 flex items-center gap-1.5">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+          <span x-text="tempoTurno || '...'">em turno</span>
+        </span>
+        {% if turno and turno.checklist_inicio %}
+        <span class="text-slate-500 flex items-center gap-1.5" style="font-variant-numeric:tabular-nums">
+          <i data-lucide="gauge" class="w-3.5 h-3.5"></i>
+          KM início: <strong class="text-slate-300 ml-1">{{ '{:,}'.format(turno.checklist_inicio.odometro_registrado).replace(',', '.') }}</strong>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Cards de custo — amber accent for fuel/totals #}
+    {% if turno %}
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center"
+               style="background:rgba(245,158,11,0.1)">
+            <i data-lucide="fuel" class="w-3.5 h-3.5" style="color:var(--amber)"></i>
+          </div>
+          <span class="text-slate-500 text-xs font-semibold">Combustível</span>
+        </div>
+        <div class="text-white font-black text-xl" style="font-variant-numeric:tabular-nums">
+          R$ {{ '%.2f' | format(turno.custo_combustivel_total or 0) | replace('.', ',') }}
+        </div>
+      </div>
+      <div class="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center"
+               style="background:rgba(245,158,11,0.1)">
+            <i data-lucide="wrench" class="w-3.5 h-3.5" style="color:var(--amber)"></i>
+          </div>
+          <span class="text-slate-500 text-xs font-semibold">Manutenção</span>
+        </div>
+        <div class="text-white font-black text-xl" style="font-variant-numeric:tabular-nums">
+          R$ {{ '%.2f' | format(turno.custo_manutencao_total or 0) | replace('.', ',') }}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# Ações rápidas #}
+    <p class="text-slate-600 text-[11px] font-bold uppercase tracking-widest mb-2.5 px-1">Ações rápidas</p>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <a href="/entregador?aba=combustivel"
+         class="flex flex-col items-center gap-2.5 bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 border border-slate-700/50 rounded-2xl p-5 text-center transition-all duration-150 group">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
+             style="background:rgba(245,158,11,0.1)"
+             x-on:mouseover="$el.style.background='rgba(245,158,11,0.2)'"
+             x-on:mouseout="$el.style.background='rgba(245,158,11,0.1)'">
+          <i data-lucide="fuel" class="w-6 h-6" style="color:var(--amber)"></i>
+        </div>
+        <div>
+          <div class="text-white text-sm font-bold">Abastecimento</div>
+          <div class="text-slate-500 text-xs mt-0.5">Registrar posto</div>
+        </div>
+      </a>
+
+      <a href="/entregador?aba=manutencao"
+         class="flex flex-col items-center gap-2.5 bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 border border-slate-700/50 rounded-2xl p-5 text-center transition-all duration-150 group">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
+             style="background:rgba(245,158,11,0.1)"
+             x-on:mouseover="$el.style.background='rgba(245,158,11,0.2)'"
+             x-on:mouseout="$el.style.background='rgba(245,158,11,0.1)'">
+          <i data-lucide="wrench" class="w-6 h-6" style="color:var(--amber)"></i>
+        </div>
+        <div>
+          <div class="text-white text-sm font-bold">Manutenção</div>
+          <div class="text-slate-500 text-xs mt-0.5">Registrar serviço</div>
+        </div>
+      </a>
+    </div>
+
+    <a href="/entregador"
+       class="flex items-center gap-3 w-full bg-slate-800/60 hover:bg-slate-700/60 active:scale-95 border border-slate-700/50 rounded-2xl px-4 py-3.5 mb-3 transition-all duration-150">
+      <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+        <i data-lucide="package" class="w-4 h-4 text-emerald-400"></i>
+      </div>
+      <div class="flex-1">
+        <div class="text-white text-sm font-semibold">Painel de Entregas</div>
+        <div class="text-slate-500 text-xs">Ver disponíveis e em rota</div>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 flex-shrink-0"></i>
+    </a>
+
+    {% if veiculo %}
+    <a href="/frota/historico/{{ veiculo.id }}"
+       class="flex items-center gap-3 w-full bg-slate-800/60 hover:bg-slate-700/60 active:scale-95 border border-slate-700/50 rounded-2xl px-4 py-3.5 mb-5 transition-all duration-150">
+      <div class="w-9 h-9 rounded-xl bg-slate-700 flex items-center justify-center flex-shrink-0">
+        <i data-lucide="history" class="w-4 h-4 text-slate-400"></i>
+      </div>
+      <div class="flex-1">
+        <div class="text-white text-sm font-semibold">Histórico do Veículo</div>
+        <div class="text-slate-500 text-xs" style="font-variant-numeric:tabular-nums">{{ veiculo.placa }} · KM {{ veiculo.odometro_atual or '—' }}</div>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 flex-shrink-0"></i>
+    </a>
+    {% endif %}
+
+    {# Encerrar turno — danger keeps red #}
+    <div x-show="!confirmarEnc">
+      <button @click="confirmarEnc = true"
+              class="w-full flex items-center justify-center gap-3 bg-slate-800/60 hover:bg-red-500/10 active:scale-95 border border-slate-700/50 hover:border-red-500/30 text-slate-400 hover:text-red-400 font-bold text-sm rounded-2xl py-4 transition-all duration-200">
+        <i data-lucide="square" class="w-5 h-5"></i>
+        Encerrar Turno
+      </button>
+      <p class="text-center text-xs text-slate-700 mt-2">Será solicitado checklist de fim de turno</p>
+    </div>
+
+    <div x-show="confirmarEnc" style="display:none"
+         class="bg-red-500/10 border border-red-500/25 rounded-2xl p-4">
+      <p class="text-red-300 text-sm font-semibold text-center mb-3">Confirma encerramento do turno?</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button @click="confirmarEnc = false"
+                class="py-3 rounded-xl bg-slate-700/60 text-slate-300 text-sm font-bold active:scale-95 transition-all">
+          Cancelar
+        </button>
+        {% if veiculo %}
+        <a href="/frota/checklist?tipo=fim&veiculo_id={{ veiculo.id }}"
+           class="py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold text-center active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20">
+          <i data-lucide="lock" class="w-4 h-4"></i> Encerrar
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="h-6"></div>
+  </div>
+  {# /Estado B #}
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

@@ -10,13 +10,66 @@
 <a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
+{% block extra_styles %}
+<style>
+  /* ── Amber token overrides (page-specific) ── */
+  .btn-primary {
+    background: var(--amber, #f59e0b);
+    border-color: var(--amber, #f59e0b);
+    color: #000 !important;
+    font-weight: 600;
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background: var(--amber-dk, #d97706);
+    border-color: var(--amber-dk, #d97706);
+    color: #000 !important;
+  }
+
+  .form-control:focus,
+  .custom-select:focus {
+    border-color: var(--amber, #f59e0b);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    outline: none;
+  }
+
+  /* Section icon accent */
+  .section-icon {
+    color: var(--amber, #f59e0b);
+  }
+
+  /* Table action button */
+  .btn-outline-primary {
+    color: var(--amber-dk, #d97706);
+    border-color: var(--amber, #f59e0b);
+  }
+  .btn-outline-primary:hover {
+    background: var(--amber, #f59e0b);
+    border-color: var(--amber, #f59e0b);
+    color: #000;
+  }
+
+  /* Card accent */
+  .card-register {
+    border-left: 3px solid var(--amber, #f59e0b);
+  }
+
+  /* Numeric column */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <!-- Coluna Esquerda: Novo Cadastro -->
     <div class="col-12 col-md-4 mb-4 mb-md-0">
-        <div class="card mb-4" style="border-left: 3px solid #3b82f6;">
+        <div class="card card-register mb-4">
             <div class="card-header">
-                <h6 class="mb-0 font-weight-bold"><i class="fas fa-user-plus mr-2"></i>Novo Cadastro</h6>
+                <h6 class="mb-0 font-weight-bold">
+                    <i class="fas fa-user-plus mr-2 section-icon"></i>Novo Cadastro
+                </h6>
             </div>
             <div class="card-body">
                 <form method="POST" action="/salvar-funcionario">
@@ -57,7 +110,9 @@
     <div class="col-12 col-md-8">
         <div class="card mb-4">
             <div class="card-header">
-                <h6 class="mb-0 font-weight-bold"><i class="fas fa-users mr-2"></i>Equipe Cadastrada</h6>
+                <h6 class="mb-0 font-weight-bold">
+                    <i class="fas fa-users mr-2 section-icon"></i>Equipe Cadastrada
+                </h6>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">

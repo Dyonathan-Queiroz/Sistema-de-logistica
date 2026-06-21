@@ -10,11 +10,119 @@
 <a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
+{% block extra_styles %}
+<style>
+    :root {
+        --amber: #f59e0b;
+        --amber-dk: #d97706;
+        --amber-light: #fffbeb;
+        --amber-mid: #fcd34d;
+        --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+        --shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+        --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+    }
+
+    /* Branch cards: amber accent on hover */
+    .filial-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: var(--shadow-sm);
+        transition: border-color 0.18s, box-shadow 0.18s;
+        overflow: hidden;
+    }
+    .filial-card:hover {
+        border-color: var(--amber);
+        box-shadow: var(--shadow);
+    }
+    .filial-card .card-header {
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.65rem 1rem;
+    }
+
+    /* Edit toggle button: amber */
+    .btn-edit-filial {
+        background: transparent;
+        border: 1px solid var(--amber);
+        color: var(--amber-dk);
+        font-size: 0.8rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 5px;
+        transition: background 0.15s, color 0.15s;
+        font-weight: 600;
+    }
+    .btn-edit-filial:hover {
+        background: var(--amber);
+        color: #000;
+    }
+
+    /* Primary/save button: amber with black text */
+    .btn-primary-amber {
+        background: var(--amber);
+        color: #000;
+        border: none;
+        font-weight: 600;
+        border-radius: 6px;
+        transition: background 0.15s;
+    }
+    .btn-primary-amber:hover {
+        background: var(--amber-dk);
+        color: #000;
+    }
+    .btn-primary-amber:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(245,158,11,0.3);
+    }
+
+    /* Inline save button in edit row */
+    .btn-save-inline {
+        background: var(--amber);
+        color: #000;
+        border: none;
+        font-weight: 600;
+        font-size: 0.8rem;
+        border-radius: 5px;
+        width: 100%;
+        padding: 0.3rem 0.5rem;
+        transition: background 0.15s;
+    }
+    .btn-save-inline:hover {
+        background: var(--amber-dk);
+        color: #000;
+    }
+
+    /* Input focus: amber */
+    .form-control:focus {
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+        outline: none;
+    }
+
+    /* Edit panel bg */
+    .edit-panel {
+        background: var(--amber-light);
+        border-top: 1px solid #fcd34d;
+        padding: 0.75rem 1rem;
+    }
+
+    /* New branch card accent */
+    .card-new-filial {
+        border-left: 3px solid #16a34a;
+        box-shadow: var(--shadow);
+    }
+
+    /* Filiais list card */
+    .card-filiais-list {
+        box-shadow: var(--shadow);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <!-- Coluna Esquerda: Nova Filial -->
     <div class="col-12 col-md-4 mb-4 mb-md-0">
-        <div class="card mb-4" style="border-left: 3px solid #16a34a;">
+        <div class="card card-new-filial mb-4">
             <div class="card-header">
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-plus mr-2"></i>Nova Filial</h6>
             </div>
@@ -28,7 +136,7 @@
                         <label for="cidade">Cidade</label>
                         <input type="text" class="form-control" id="cidade" name="cidade" placeholder="Ex: São Paulo">
                     </div>
-                    <button type="submit" class="btn btn-success btn-block">
+                    <button type="submit" class="btn btn-primary-amber btn-block">
                         <i class="fas fa-save mr-1"></i> Criar Filial
                     </button>
                 </form>
@@ -38,13 +146,13 @@
 
     <!-- Coluna Direita: Filiais Cadastradas -->
     <div class="col-12 col-md-8">
-        <div class="card mb-4">
+        <div class="card card-filiais-list mb-4">
             <div class="card-header">
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-list mr-2"></i>Filiais Cadastradas</h6>
             </div>
             <div class="card-body">
                 {% for f in filiais %}
-                <div class="card mb-3" style="border: 1px solid #e5e7eb;">
+                <div class="filial-card card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">
                             <i class="fas fa-store mr-1 text-primary"></i>
@@ -53,9 +161,9 @@
                             <small class="text-muted ml-2">— {{ f.cidade }}</small>
                             {% endif %}
                         </h6>
-                        <div>
-                            <button class="btn btn-sm btn-outline-warning" onclick="toggleEdit({{ f.id }})">
-                                <i class="fas fa-edit"></i> Editar
+                        <div class="d-flex" style="gap:6px;">
+                            <button class="btn-edit-filial" onclick="toggleEdit({{ f.id }})">
+                                <i class="fas fa-edit mr-1"></i> Editar
                             </button>
                             <form action="/processar-filial/{{ f.id }}" method="POST" class="d-inline"
                                   onsubmit="return confirm('Excluir a filial {{ f.nome }}? Isso falhará se houver usuários ou entregas vinculados.')">
@@ -68,18 +176,18 @@
                     </div>
 
                     <!-- Form de edição (oculto por padrão) -->
-                    <div id="edit-{{ f.id }}" style="display:none;" class="card-body border-top bg-light">
+                    <div id="edit-{{ f.id }}" style="display:none;" class="edit-panel">
                         <form action="/processar-filial/{{ f.id }}" method="POST">
                             <input type="hidden" name="acao" value="editar">
-                            <div class="form-row">
-                                <div class="form-group col-12 col-sm-5">
+                            <div class="form-row align-items-end">
+                                <div class="form-group col-12 col-sm-5 mb-2">
                                     <input type="text" name="nome" value="{{ f.nome }}" class="form-control form-control-sm" placeholder="Nome" required>
                                 </div>
-                                <div class="form-group col-12 col-sm-5">
+                                <div class="form-group col-12 col-sm-5 mb-2">
                                     <input type="text" name="cidade" value="{{ f.cidade or '' }}" class="form-control form-control-sm" placeholder="Cidade">
                                 </div>
-                                <div class="form-group col-12 col-sm-2">
-                                    <button type="submit" class="btn btn-sm btn-warning btn-block">
+                                <div class="form-group col-12 col-sm-2 mb-2">
+                                    <button type="submit" class="btn-save-inline">
                                         <i class="fas fa-save"></i> Salvar
                                     </button>
                                 </div>

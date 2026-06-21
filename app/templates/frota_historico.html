@@ -1,0 +1,423 @@
+{% extends "frota_base.html" %}
+
+{# ──────────────────────────────────────────────────────────────────────────
+   Contexto esperado do backend:
+     veiculo  : Veiculo       — veículo selecionado
+     eventos  : list[dict]    — lista unificada ordenada por data desc
+                  { tipo: 'abastecimento'|'manutencao'|'checklist'|'pneu',
+                    data: str (ISO),  titulo: str,  subtitulo: str,
+                    valor: float|None, icone: str,
+                    detalhes: dict }
+     consumo  : dict          — { consumo_km_l, fonte, total_abastecimentos, ... }
+     cpk      : dict          — { cpk_reais_por_km, km_total_rodado, ... }
+     pneus    : list[dict]    — trocas de pneus
+     veiculos : list[Veiculo] — para o seletor de veículo
+     usuario  : Usuario
+   ────────────────────────────────────────────────────────────────────────── #}
+
+{% block title %}Histórico — {{ veiculo.placa }}{% endblock %}
+
+{% block nav_hist %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root {
+    --amber: #f59e0b;
+    --amber-dk: #d97706;
+    --amber-light: #fffbeb;
+    --amber-mid: #fcd34d;
+    --danger: #DC2626;
+    --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+    --shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+    --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+  }
+
+  /* Timeline connector line */
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 40px;
+    bottom: -12px;
+    width: 2px;
+    background: #e2e8f0;
+  }
+  .timeline-item:last-child::before { display: none; }
+
+  /* Odometer value — amber */
+  .odometer-value {
+    color: var(--amber);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Cost figures — tabular nums */
+  .cost-value {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Action links */
+  .action-link {
+    color: var(--amber-dk);
+    transition: color .15s;
+  }
+  .action-link:hover {
+    color: var(--amber);
+  }
+
+  /* btn-primary: amber background, black text */
+  .btn-primary {
+    background: var(--amber);
+    color: #000;
+    font-weight: 700;
+    transition: background .15s;
+  }
+  .btn-primary:hover {
+    background: var(--amber-dk);
+  }
+
+  /* Input focus: amber ring */
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--amber) !important;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.15) !important;
+    outline: none !important;
+  }
+
+  /* KPI numbers */
+  .kpi-value {
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+{% endblock %}
+
+{% block page_title %}Histórico do Veículo{% endblock %}
+
+{% block topbar_actions %}
+{# Seletor de veículo — troca sem recarregar, só redireciona #}
+<select
+  onchange="window.location.href='/frota/historico/' + this.value"
+  class="text-xs font-semibold bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 cursor-pointer"
+  style="focus:outline:none;">
+  {% for v in veiculos %}
+  <option value="{{ v.id }}" {% if v.id == veiculo.id %}selected{% endif %}>
+    {{ v.placa }} · {{ v.modelo[:12] }}
+  </option>
+  {% endfor %}
+</select>
+{% endblock %}
+
+{% block content %}
+<div
+  x-data="{
+    filtro: 'todos',
+    expandido: null,
+    setFiltro(f) { this.filtro = f; this.expandido = null; },
+    visivel(tipo) { return this.filtro === 'todos' || this.filtro === tipo; },
+    toggle(id) { this.expandido = this.expandido === id ? null : id; },
+  }"
+>
+
+  {# ══════ HEADER DO VEÍCULO ══════ #}
+  <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-6" style="box-shadow: var(--shadow);">
+    <div class="flex items-start gap-4">
+
+      {# Ícone do tipo de veículo #}
+      <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0
+        {% if veiculo.tipo == 'Moto' %}bg-amber-100{% else %}bg-blue-100{% endif %}">
+        <i data-lucide="{% if veiculo.tipo == 'Moto' %}bike{% else %}truck{% endif %}"
+           class="w-7 h-7 {% if veiculo.tipo == 'Moto' %}text-amber-600{% else %}text-blue-600{% endif %}"></i>
+      </div>
+
+      {# Info básica #}
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h2 class="text-xl font-black text-slate-800 truncate">{{ veiculo.placa }}</h2>
+          <span class="text-xs font-bold px-2.5 py-1 rounded-full
+            {% if veiculo.status == 'ativo' %}bg-emerald-100 text-emerald-700
+            {% elif veiculo.status == 'manutencao' %}bg-amber-100 text-amber-700
+            {% else %}bg-red-100 text-red-700{% endif %}">
+            {{ veiculo.status|capitalize }}
+          </span>
+        </div>
+        <p class="text-sm text-slate-500 mt-0.5 truncate">
+          {{ veiculo.modelo }} · {{ veiculo.tipo }}
+          {% if veiculo.ano %}&nbsp;· {{ veiculo.ano }}{% endif %}
+        </p>
+        {% if veiculo.odometro_atual %}
+        <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+          <i data-lucide="gauge" class="w-3 h-3"></i>
+          <span class="odometer-value">{{ '{:,}'.format(veiculo.odometro_atual).replace(',', '.') }}</span>&nbsp;km no odômetro
+        </p>
+        {% endif %}
+      </div>
+
+      {# Link rápido de manutenção #}
+      <a href="/frota/manutencao?veiculo_id={{ veiculo.id }}"
+         class="flex-shrink-0 p-2 rounded-xl bg-slate-100 hover:bg-amber-50 text-slate-500 transition-colors action-link">
+        <i data-lucide="wrench" class="w-5 h-5"></i>
+      </a>
+    </div>
+
+    {# ── KPIs do veículo ── #}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-100">
+
+      {# Consumo #}
+      <div class="bg-slate-50 rounded-xl p-3 text-center">
+        <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Consumo</p>
+        {% if consumo %}
+        <p class="text-lg font-black text-slate-800 kpi-value">{{ consumo.consumo_km_l }} <span class="text-xs font-normal text-slate-500">km/l</span></p>
+        <p class="text-[10px] text-slate-400 mt-0.5">{{ 'Calculado' if consumo.fonte == 'calculado' else 'Padrão' }}</p>
+        {% else %}
+        <p class="text-slate-400 text-sm">—</p>
+        {% endif %}
+      </div>
+
+      {# CPK #}
+      <div class="bg-slate-50 rounded-xl p-3 text-center">
+        <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">CPK (R$/km)</p>
+        {% if cpk %}
+        <p class="text-lg font-black text-slate-800 kpi-value">
+          R$&nbsp;{{ '%.4f'|format(cpk.cpk_reais_por_km) }}
+        </p>
+        <p class="text-[10px] text-slate-400 mt-0.5 kpi-value">{{ '{:,}'.format(cpk.km_total_rodado).replace(',', '.') }} km total</p>
+        {% else %}
+        <p class="text-slate-400 text-sm">—</p>
+        {% endif %}
+      </div>
+
+      {# Custo manutenção #}
+      <div class="bg-slate-50 rounded-xl p-3 text-center">
+        <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Custo Manutenção</p>
+        <p class="text-lg font-black text-slate-800 kpi-value">
+          R$&nbsp;{{ '%.0f'|format(veiculo.custo_acumulado_manutencao or 0) }}
+        </p>
+        <p class="text-[10px] text-slate-400 mt-0.5">Acumulado vida útil</p>
+      </div>
+
+      {# Trocas de pneu #}
+      <div class="bg-slate-50 rounded-xl p-3 text-center">
+        <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Pneus Trocados</p>
+        <p class="text-lg font-black text-slate-800 kpi-value">{{ pneus|length if pneus else 0 }}</p>
+        <p class="text-[10px] text-slate-400 mt-0.5">Registros no sistema</p>
+      </div>
+    </div>
+  </div>
+
+  {# ══════ FILTROS DA TIMELINE ══════ #}
+  <div class="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+    {% set filtros = [
+      ('todos',           'Todos',          'layers'),
+      ('abastecimento',   'Abastecimento',  'fuel'),
+      ('manutencao',      'Manutenção',     'wrench'),
+      ('checklist',       'Checklist',      'clipboard-check'),
+      ('pneu',            'Pneus',          'circle-dot'),
+    ] %}
+    {% for slug, label, icon in filtros %}
+    <button
+      @click="setFiltro('{{ slug }}')"
+      :class="filtro === '{{ slug }}'
+        ? '{% if slug == "todos" %}bg-slate-800 text-white{% elif slug == "abastecimento" %}bg-emerald-600 text-white{% elif slug == "manutencao" %}bg-amber-500 text-white{% elif slug == "checklist" %}bg-blue-600 text-white{% else %}bg-purple-600 text-white{% endif %} shadow-md'
+        : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'"
+      class="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-150 flex-shrink-0">
+      <i data-lucide="{{ icon }}" class="w-3.5 h-3.5"></i>
+      {{ label }}
+    </button>
+    {% endfor %}
+  </div>
+
+  {# ══════ TIMELINE DE EVENTOS ══════ #}
+  {% if eventos %}
+  <div class="space-y-3">
+
+    {# Agrupamento por mês — iteração no lado Jinja2 #}
+    {% set ns = namespace(mes_atual='') %}
+    {% for ev in eventos %}
+
+    {# Separador de mês #}
+    {% set mes_ev = ev.data[:7] %}
+    {% if mes_ev != ns.mes_atual %}
+    {% set ns.mes_atual = mes_ev %}
+    <div class="flex items-center gap-3 {% if not loop.first %}mt-6{% endif %}">
+      <span class="text-xs font-bold text-slate-500 whitespace-nowrap">
+        {{ ev.data[:7] | replace('-', '/') }}
+      </span>
+      <div class="flex-1 h-px bg-slate-200"></div>
+    </div>
+    {% endif %}
+
+    {# ── Item da timeline ── #}
+    <div class="relative timeline-item pl-12">
+
+      {# Ícone na linha do tempo #}
+      <div class="absolute left-0 top-3 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+        style="box-shadow: var(--shadow-sm); {% if ev.tipo == 'abastecimento' %}background:#dcfce7;{% elif ev.tipo == 'manutencao' %}background:#fef3c7;{% elif ev.tipo == 'checklist' %}background:#dbeafe;{% elif ev.tipo == 'pneu' %}background:#f3e8ff;{% else %}background:#f1f5f9;{% endif %}"
+        x-show="visivel('{{ ev.tipo }}')"
+        style="display: none">
+        <i data-lucide="{{ ev.icone }}"
+           class="w-5 h-5
+             {% if ev.tipo == 'abastecimento' %}text-emerald-600
+             {% elif ev.tipo == 'manutencao' %}text-amber-600
+             {% elif ev.tipo == 'checklist' %}text-blue-600
+             {% elif ev.tipo == 'pneu' %}text-purple-600
+             {% else %}text-slate-500{% endif %}"></i>
+      </div>
+
+      {# Card do evento #}
+      <div
+        x-show="visivel('{{ ev.tipo }}')"
+        style="display: none"
+        class="bg-white border border-slate-200 rounded-2xl overflow-hidden cursor-pointer hover:border-slate-300 transition-colors"
+        style="box-shadow: var(--shadow-sm);"
+        @click="toggle('{{ loop.index }}')">
+
+        {# Header do card #}
+        <div class="flex items-start gap-3 p-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-bold px-2 py-0.5 rounded-full
+                {% if ev.tipo == 'abastecimento' %}bg-emerald-100 text-emerald-700
+                {% elif ev.tipo == 'manutencao' %}bg-amber-100 text-amber-700
+                {% elif ev.tipo == 'checklist' %}bg-blue-100 text-blue-700
+                {% elif ev.tipo == 'pneu' %}bg-purple-100 text-purple-700
+                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                {{ ev.tipo|capitalize }}
+              </span>
+              <span class="text-xs text-slate-400">{{ ev.data[8:10] }}/{{ ev.data[5:7] }} às {{ ev.data[11:16] if ev.data|length > 10 else '—' }}</span>
+            </div>
+            <p class="text-sm font-bold text-slate-800 mt-1 leading-snug">{{ ev.titulo }}</p>
+            <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">{{ ev.subtitulo }}</p>
+          </div>
+
+          {# Valor à direita #}
+          {% if ev.valor %}
+          <div class="text-right flex-shrink-0">
+            <p class="text-sm font-black cost-value
+              {% if ev.tipo == 'manutencao' or ev.tipo == 'pneu' %}text-slate-700{% else %}text-slate-800{% endif %}">
+              R$&nbsp;{{ '%.2f'|format(ev.valor) }}
+            </p>
+          </div>
+          {% endif %}
+
+          {# Chevron de expansão #}
+          {% if ev.detalhes %}
+          <div class="flex-shrink-0 ml-1 mt-0.5">
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform duration-200"
+               :class="expandido === '{{ loop.index }}' ? 'rotate-180' : ''"></i>
+          </div>
+          {% endif %}
+        </div>
+
+        {# Detalhes expansíveis #}
+        {% if ev.detalhes %}
+        <div
+          x-show="expandido === '{{ loop.index }}'"
+          x-transition:enter="transition ease-out duration-200"
+          x-transition:enter-start="opacity-0 -translate-y-2"
+          x-transition:enter-end="opacity-100 translate-y-0"
+          x-transition:leave="transition ease-in duration-150"
+          x-transition:leave-start="opacity-100 translate-y-0"
+          x-transition:leave-end="opacity-0 -translate-y-2"
+          class="bg-slate-50 border-t border-slate-100 px-4 py-3"
+          style="display:none"
+          @click.stop>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-2">
+            {% for chave, valor in ev.detalhes.items() %}
+            {% if valor is not none %}
+            <div>
+              <dt class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{{ chave }}</dt>
+              <dd class="text-xs font-medium text-slate-700 mt-0.5">{{ valor }}</dd>
+            </div>
+            {% endif %}
+            {% endfor %}
+          </dl>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  {# Paginação ou CTA de "carregar mais" #}
+  {% if eventos|length >= 50 %}
+  <div class="text-center mt-8">
+    <a href="?veiculo_id={{ veiculo.id }}&offset=50"
+       class="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-amber-300 text-slate-600 font-semibold px-5 py-3 rounded-xl text-sm transition-colors"
+       style="box-shadow: var(--shadow-sm);">
+      <i data-lucide="loader" class="w-4 h-4"></i>
+      Carregar mais registros
+    </a>
+  </div>
+  {% endif %}
+
+  {% else %}
+  {# Estado vazio #}
+  <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center" style="box-shadow: var(--shadow);">
+    <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+      <i data-lucide="inbox" class="w-8 h-8 text-slate-400"></i>
+    </div>
+    <h3 class="text-lg font-bold text-slate-700 mb-2">Nenhum registro encontrado</h3>
+    <p class="text-sm text-slate-400 max-w-xs mx-auto leading-relaxed">
+      Este veículo ainda não possui abastecimentos, manutenções ou checklists registrados no sistema.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-2 justify-center mt-6">
+      <a href="/frota/abastecimento?veiculo_id={{ veiculo.id }}"
+         class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors">
+        <i data-lucide="fuel" class="w-4 h-4"></i> Abastecimento
+      </a>
+      <a href="/frota/manutencao?veiculo_id={{ veiculo.id }}"
+         class="inline-flex items-center justify-center gap-2 btn-primary px-4 py-2.5 rounded-xl text-sm">
+        <i data-lucide="wrench" class="w-4 h-4"></i> Manutenção
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ══════ PAINEL LATERAL DE PNEUS (se existir) ══════ #}
+  {% if pneus %}
+  <div class="mt-8 bg-white rounded-2xl border border-purple-200 overflow-hidden"
+    style="box-shadow: var(--shadow);"
+    x-show="filtro === 'todos' || filtro === 'pneu'" style="display:none">
+    <div class="px-5 py-3 bg-purple-50 border-b border-purple-200 flex items-center gap-2">
+      <i data-lucide="circle-dot" class="w-4 h-4 text-purple-600"></i>
+      <span class="text-sm font-bold text-purple-800">Histórico de Pneus</span>
+    </div>
+    <div class="divide-y divide-slate-100">
+      {% for pneu in pneus %}
+      <div class="flex items-center gap-4 px-5 py-3.5">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-slate-800">{{ pneu.posicao|replace('_', ' ')|title }}</p>
+          <p class="text-xs text-slate-500">
+            Trocado em {{ pneu.data_troca[:10] if pneu.data_troca else '—' }}
+            {% if pneu.km_troca %} · <span class="kpi-value">{{ '{:,}'.format(pneu.km_troca).replace(',', '.') }}</span> km{% endif %}
+          </p>
+          {% if pneu.marca %}
+          <p class="text-xs text-slate-400 mt-0.5">{{ pneu.marca }} {{ pneu.modelo or '' }}</p>
+          {% endif %}
+        </div>
+        {% if pneu.custo %}
+        <p class="text-sm font-bold text-purple-600 cost-value flex-shrink-0">
+          R$&nbsp;{{ '%.2f'|format(pneu.custo) }}
+        </p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Garantir que ícones dinâmicos (dentro de x-show) também sejam renderizados
+  document.addEventListener('alpine:initialized', () => {
+    // Re-cria os ícones quando o Alpine terminar a hidratação inicial
+    lucide.createIcons();
+    // Observer para ícones que aparecem via x-show
+    const observer = new MutationObserver(() => lucide.createIcons());
+    observer.observe(document.body, { childList: true, subtree: true, attributes: false });
+  });
+</script>
+{% endblock %}

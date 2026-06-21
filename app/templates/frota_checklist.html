@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>Checklist {{ 'Início' if tipo == 'inicio' else 'Fim' }} — {{ veiculo.placa }}</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] }, colors: { brand: { DEFAULT: '#f59e0b' } } } } }
+  </script>
+  <style>
+    :root {
+      --amber:       #f59e0b;
+      --amber-dk:    #d97706;
+      --amber-light: #fffbeb;
+      --amber-mid:   #fcd34d;
+      --danger:      #DC2626;
+      --green:       #16A34A;
+      --blue:        #2563EB;
+      --shadow-sm:   0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+      --shadow:      0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+      --shadow-md:   0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+    }
+    .pb-safe  { padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem); }
+    .step-track { display: flex; flex-wrap: nowrap; will-change: transform;
+                  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1); }
+    @keyframes pulseDanger { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)} 60%{box-shadow:0 0 0 12px rgba(220,38,38,0)} }
+    .pulse-danger { animation: pulseDanger 1.8s infinite; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fadeUp .25s ease-out forwards; }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+
+    /* Amber focus for inputs */
+    input[type="number"]:focus {
+      border-color: var(--amber) !important;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.15) !important;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 font-sans antialiased"
+      style="height:100dvh;overflow:hidden;"
+      x-data="checklistData()"
+      x-init="$nextTick(() => lucide.createIcons())">
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — VEÍCULO BLOQUEADO
+     ═══════════════════════════════════════════════════════════ -->
+<div x-show="modalAberto"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70"
+     style="display:none" @keydown.escape.window="modalAberto = false">
+  <div x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-90 opacity-0"
+       x-transition:enter-end="translate-y-0 sm:scale-100 opacity-100"
+       class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden" @click.stop>
+    <div class="bg-gradient-to-br from-red-600 to-red-700 px-6 pt-7 pb-6 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="shield-x" class="w-9 h-9 text-white"></i>
+      </div>
+      <h2 class="text-white font-black text-xl leading-tight">VEÍCULO BLOQUEADO<br>POR SEGURANÇA</h2>
+      <p class="text-red-200 text-xs mt-2 leading-relaxed">Um ou mais itens críticos foram reprovados</p>
+    </div>
+    <div class="px-6 py-5">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">
+        <p class="text-xs font-bold text-red-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <i data-lucide="alert-octagon" class="w-3.5 h-3.5"></i> Itens com defeito crítico
+        </p>
+        <ul class="space-y-1.5">
+          <template x-for="item in todosItens.filter(i => i.critico && i.status === 'ruim')" :key="item.id">
+            <li class="flex items-center gap-2 text-sm text-red-700">
+              <i data-lucide="x-circle" class="w-4 h-4 text-red-500 flex-shrink-0"></i>
+              <span class="font-semibold" x-text="item.nome"></span>
+            </li>
+          </template>
+        </ul>
+      </div>
+      <p class="text-slate-500 text-xs text-center leading-relaxed mb-5">
+        Este veículo <strong class="text-slate-700">não pode sair em rota</strong> até que os defeitos sejam corrigidos.
+      </p>
+      <button @click="salvarReprovado()" :disabled="enviando"
+              class="w-full bg-red-600 hover:bg-red-700 active:scale-95 disabled:opacity-60 text-white font-bold py-4 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 mb-2">
+        <span x-show="!enviando" class="flex items-center gap-2">
+          <i data-lucide="send" class="w-4 h-4"></i> Registrar Reprovação e Avisar Gestor
+        </span>
+        <span x-show="enviando" style="display:none" class="flex items-center gap-2">
+          <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Enviando...
+        </span>
+      </button>
+      <button @click="modalAberto = false"
+              class="w-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold py-3.5 rounded-2xl text-sm transition-all">
+        ← Voltar e corrigir
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER FIXO
+     ═══════════════════════════════════════════════════════════ -->
+<header class="fixed top-0 left-0 right-0 z-30 bg-white border-b border-slate-200"
+        style="height:56px;">
+  <div class="flex items-center gap-3 px-4 h-full max-w-lg mx-auto">
+    <a href="/frota/turno"
+       class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center flex-shrink-0 transition-colors">
+      <i data-lucide="arrow-left" class="w-5 h-5 text-slate-600"></i>
+    </a>
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-black text-slate-800 leading-tight">
+        Checklist de
+        <span class="{{ 'text-blue-600' if tipo == 'inicio' else 'text-amber-500' }}">
+          {{ 'Início' if tipo == 'inicio' else 'Fim de Turno' }}
+        </span>
+      </p>
+      <p class="text-xs text-slate-400 truncate">{{ veiculo.placa }} · {{ veiculo.modelo }}</p>
+    </div>
+    <span class="flex-shrink-0 text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap"
+          x-text="'Etapa ' + (etapaAtual + 1) + ' / ' + totalEtapas"></span>
+  </div>
+</header>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     FAIXA DE PROGRESSO (abaixo do header)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="fixed z-20 left-0 right-0 bg-white border-b border-slate-100 px-4 py-2.5"
+     style="top:56px;">
+  <div class="max-w-lg mx-auto">
+    <!-- Segmentos por etapa -->
+    <div class="flex gap-1 mb-2">
+      <template x-for="i in totalEtapas" :key="i">
+        <div class="h-1.5 flex-1 rounded-full transition-all duration-400"
+             :class="{
+               'bg-blue-600':    (i-1) === etapaAtual && !ehUltimaEtapa,
+               'bg-emerald-500': (i-1) < etapaAtual,
+               'bg-red-500':     (i-1) === etapaAtual && ehUltimaEtapa && temCriticoReprovado,
+               'bg-emerald-400': (i-1) === etapaAtual && ehUltimaEtapa && !temCriticoReprovado,
+               'bg-slate-200':   (i-1) > etapaAtual,
+             }">
+        </div>
+      </template>
+    </div>
+    <!-- Mini stats -->
+    <div class="flex items-center gap-3 text-[11px] font-semibold">
+      <span class="text-emerald-600 flex items-center gap-1">
+        <span x-text="todosItens.filter(i=>i.status==='ok').length" class="font-black" style="font-variant-numeric:tabular-nums"></span> OK
+      </span>
+      <span class="text-red-500 flex items-center gap-1">
+        <span x-text="itensReprovados.length" class="font-black" style="font-variant-numeric:tabular-nums"></span> Com defeito
+      </span>
+      <span class="ml-auto text-slate-400 flex items-center gap-1">
+        <span x-text="itensPendentes" class="font-black" style="font-variant-numeric:tabular-nums"></span> restantes
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     ÁREA DE CONTEÚDO COM SLIDER
+     ═══════════════════════════════════════════════════════════ -->
+<div class="fixed left-0 right-0 overflow-hidden" style="top:108px; bottom:72px;">
+  <div class="step-track h-full"
+       :style="{ transform: 'translateX(calc(' + etapaAtual + ' * -100vw))', width: (totalEtapas * 100) + 'vw' }">
+
+    <!-- ── Etapas de cada bloco ── -->
+    <template x-for="(bloco, bi) in blocos" :key="bloco.id">
+      <div class="flex-shrink-0 overflow-y-auto overscroll-contain" style="width:100vw; height:100%;">
+        <div class="max-w-lg mx-auto px-4 pt-3 pb-4">
+
+          <!-- Cabeçalho do bloco -->
+          <div class="rounded-2xl overflow-hidden mb-3" style="box-shadow:var(--shadow-sm)">
+            <div class="px-5 py-4 flex items-center gap-3"
+                 :class="{
+                   'bg-gradient-to-r from-red-600 to-red-500':         bloco.cor === 'red',
+                   'bg-gradient-to-r from-amber-500 to-amber-400':     bloco.cor === 'amber',
+                   'bg-gradient-to-r from-blue-600 to-blue-500':       bloco.cor === 'blue',
+                   'bg-gradient-to-r from-slate-700 to-slate-600':     bloco.cor === 'slate',
+                 }">
+              <div class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <i :data-lucide="bloco.icone" class="w-6 h-6 text-white"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h2 class="text-white font-black text-base leading-tight" x-text="bloco.titulo"></h2>
+                <p class="text-white/70 text-xs mt-0.5"
+                   x-text="bloco.itens.length + ' itens' + (bloco.itens.filter(i=>i.critico).length ? ' · ' + bloco.itens.filter(i=>i.critico).length + ' crítico(s)' : '')"></p>
+              </div>
+              <!-- Contador do bloco -->
+              <div class="bg-white/20 rounded-xl px-3 py-1.5 flex-shrink-0 text-center">
+                <span class="text-white font-black text-sm"
+                      style="font-variant-numeric:tabular-nums"
+                      x-text="bloco.itens.filter(i=>i.status!==null).length + '/' + bloco.itens.length"></span>
+              </div>
+            </div>
+            <!-- Barra de progresso do bloco -->
+            <div class="bg-black/20 h-1">
+              <div class="h-1 bg-white/60 transition-all duration-300"
+                   :style="'width:' + (bloco.itens.filter(i=>i.status!==null).length / bloco.itens.length * 100) + '%'">
+              </div>
+            </div>
+          </div>
+
+          <!-- Itens do bloco -->
+          <div class="space-y-2.5">
+            <template x-for="item in bloco.itens" :key="item.id">
+              <div class="bg-white rounded-2xl overflow-hidden border transition-all duration-150"
+                   style="box-shadow:var(--shadow-sm)"
+                   :class="{
+                     'border-emerald-200': item.status === 'ok',
+                     'border-red-300':     item.status === 'ruim',
+                     'border-slate-200':   item.status === null,
+                   }">
+                <!-- Barra superior crítica -->
+                <div x-show="item.critico" class="h-0.5 w-full"
+                     :class="item.status === 'ruim' ? 'bg-red-600' : item.status === 'ok' ? 'bg-emerald-500' : 'bg-red-300'">
+                </div>
+
+                <div class="px-4 pt-3 pb-3.5">
+                  <!-- Nome + badges -->
+                  <div class="flex items-start gap-2.5 mb-3">
+                    <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all"
+                         :class="{
+                           'bg-emerald-500': item.status === 'ok',
+                           'bg-red-500':     item.status === 'ruim',
+                           'bg-slate-200':   item.status === null,
+                         }">
+                      <span x-show="item.status === 'ok'"  class="text-white text-[10px] font-black leading-none">✓</span>
+                      <span x-show="item.status === 'ruim'" class="text-white text-[10px] font-black leading-none">✗</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="font-bold text-sm leading-snug"
+                              :class="{
+                                'text-emerald-700': item.status === 'ok',
+                                'text-red-700':     item.status === 'ruim',
+                                'text-slate-800':   item.status === null,
+                              }"
+                              x-text="item.nome"></span>
+                        <span x-show="item.critico"
+                              class="text-[9px] font-black px-1.5 py-0.5 rounded-full border"
+                              :class="item.status === 'ruim'
+                                ? 'bg-red-600 text-white border-red-600'
+                                : 'bg-red-50 text-red-700 border-red-200'">
+                          ⚠ CRÍTICO
+                        </span>
+                      </div>
+                      <p class="text-[11px] text-slate-400 mt-0.5 leading-relaxed" x-text="item.sub"></p>
+                    </div>
+                  </div>
+
+                  <!-- Botões OK / Com Defeito — OK keeps green (passed inspection), Com Defeito keeps red (safety) -->
+                  <div class="grid grid-cols-2 gap-2">
+                    <button @click="marcar(item, 'ok', bi); $nextTick(() => lucide.createIcons())"
+                            :class="item.status === 'ok'
+                              ? 'bg-emerald-500 text-white ring-2 ring-emerald-400 ring-offset-1 shadow-md shadow-emerald-500/20'
+                              : 'bg-slate-100 text-slate-600 active:bg-emerald-50'"
+                            class="py-3.5 rounded-xl font-bold text-sm transition-all duration-150 active:scale-95 flex items-center justify-center gap-1.5 min-h-[50px]">
+                      <span :class="item.status === 'ok' ? 'text-white' : 'text-emerald-500'" class="text-base leading-none">✓</span>
+                      <span>OK</span>
+                    </button>
+                    <button @click="marcar(item, 'ruim', bi); $nextTick(() => lucide.createIcons())"
+                            :class="item.status === 'ruim'
+                              ? 'bg-red-500 text-white ring-2 ring-red-400 ring-offset-1 shadow-md shadow-red-500/20'
+                              : 'bg-slate-100 text-slate-600 active:bg-red-50'"
+                            class="py-3.5 rounded-xl font-bold text-sm transition-all duration-150 active:scale-95 flex items-center justify-center gap-1.5 min-h-[50px]">
+                      <span :class="item.status === 'ruim' ? 'text-white' : 'text-red-500'" class="text-base leading-none">✗</span>
+                      <span>Com Defeito</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Banner bloco concluído -->
+          <div x-show="bloco.itens.every(i => i.status !== null)"
+               class="mt-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3.5 flex items-center gap-3 fade-up"
+               style="display:none">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="check-circle" class="w-5 h-5 text-white"></i>
+            </div>
+            <div class="flex-1">
+              <p class="text-sm font-bold text-emerald-800">Bloco concluído!</p>
+              <p class="text-xs text-emerald-600 mt-0.5"
+                 x-text="bi < blocos.length - 1 ? 'Avançando para a próxima etapa...' : 'Avançando para o resumo...'"></p>
+            </div>
+          </div>
+
+          <div class="h-4"></div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ── Etapa final: Resumo + Odômetro ── -->
+    <div class="flex-shrink-0 overflow-y-auto overscroll-contain" style="width:100vw; height:100%;">
+      <div class="max-w-lg mx-auto px-4 pt-3 pb-6">
+
+        <!-- Cabeçalho do resultado -->
+        <div class="rounded-2xl overflow-hidden mb-4" style="box-shadow:var(--shadow-sm)">
+          <div class="px-5 py-5 flex items-center gap-4"
+               :class="{
+                 'bg-gradient-to-r from-red-600 to-red-500':           temCriticoReprovado,
+                 'bg-gradient-to-r from-amber-500 to-amber-400':       !temCriticoReprovado && itensReprovados.length > 0,
+                 'bg-gradient-to-r from-emerald-600 to-emerald-500':   !temCriticoReprovado && itensReprovados.length === 0,
+               }">
+            <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <i :data-lucide="temCriticoReprovado ? 'shield-x' : itensReprovados.length > 0 ? 'alert-triangle' : 'check-circle'"
+                 class="w-7 h-7 text-white"></i>
+            </div>
+            <div class="flex-1">
+              <h2 class="text-white font-black text-lg leading-tight"
+                  x-text="temCriticoReprovado ? 'Defeitos Críticos!' : itensReprovados.length > 0 ? 'Inspeção com Ressalvas' : 'Inspeção Aprovada!'">
+              </h2>
+              <p class="text-white/80 text-sm mt-0.5"
+                 x-text="todosItens.filter(i=>i.status==='ok').length + ' OK · ' + itensReprovados.length + ' com defeito'">
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="grid grid-cols-3 gap-2.5 mb-4">
+          <div class="bg-white rounded-2xl border border-slate-200 p-3.5 text-center" style="box-shadow:var(--shadow-sm)">
+            <p class="text-2xl font-black text-slate-800" style="font-variant-numeric:tabular-nums" x-text="todosItens.length"></p>
+            <p class="text-[10px] text-slate-400 font-semibold mt-0.5 uppercase tracking-wider">Itens</p>
+          </div>
+          <div class="bg-emerald-50 rounded-2xl border border-emerald-200 p-3.5 text-center" style="box-shadow:var(--shadow-sm)">
+            <p class="text-2xl font-black text-emerald-700" style="font-variant-numeric:tabular-nums"
+               x-text="todosItens.filter(i=>i.status==='ok').length"></p>
+            <p class="text-[10px] text-emerald-600 font-semibold mt-0.5 uppercase tracking-wider">Aprovados</p>
+          </div>
+          <div class="rounded-2xl border p-3.5 text-center transition-all" style="box-shadow:var(--shadow-sm)"
+               :class="itensReprovados.length ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200 opacity-50'">
+            <p class="text-2xl font-black" style="font-variant-numeric:tabular-nums"
+               :class="itensReprovados.length ? 'text-red-600' : 'text-slate-400'"
+               x-text="itensReprovados.length"></p>
+            <p class="text-[10px] font-semibold mt-0.5 uppercase tracking-wider"
+               :class="itensReprovados.length ? 'text-red-500' : 'text-slate-400'">Defeitos</p>
+          </div>
+        </div>
+
+        <!-- Lista de reprovados -->
+        <div x-show="itensReprovados.length > 0"
+             class="bg-white rounded-2xl border border-red-200 overflow-hidden mb-4"
+             style="display:none;box-shadow:var(--shadow-sm)">
+          <div class="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-red-600"></i>
+            <span class="text-sm font-bold text-red-800">Itens com defeito</span>
+            <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                  style="font-variant-numeric:tabular-nums"
+                  x-text="itensReprovados.length"></span>
+          </div>
+          <div class="divide-y divide-slate-100">
+            <template x-for="item in itensReprovados" :key="item.id">
+              <div class="px-4 py-3 flex items-center gap-3">
+                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                     :class="item.critico ? 'bg-red-600' : 'bg-amber-400'">
+                  <span class="text-white text-[10px] font-black">✗</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-800 truncate" x-text="item.nome"></p>
+                  <span x-show="item.critico" class="text-[10px] font-bold text-red-600">⚠ CRÍTICO — bloqueio de rota</span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Odômetro -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4" style="box-shadow:var(--shadow-sm)">
+          <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+            <i data-lucide="gauge" class="w-4 h-4 text-amber-500"></i>
+            Odômetro Atual (km) <span class="text-red-500 ml-0.5">*</span>
+          </label>
+          <input type="number"
+                 x-model="odometro"
+                 inputmode="numeric"
+                 min="{{ odometro_sugerido or 0 }}"
+                 placeholder="Ex: 10.550"
+                 class="w-full text-3xl font-black text-slate-800 border-2 border-slate-200 rounded-xl px-4 py-3 outline-none transition-all"
+                 style="font-variant-numeric:tabular-nums;letter-spacing:-0.02em">
+          <div class="flex items-start justify-between mt-2">
+            <p class="text-xs text-slate-400 flex items-center gap-1">
+              <i data-lucide="info" class="w-3 h-3 flex-shrink-0"></i>
+              {% if veiculo.odometro_atual %}
+              Último registrado: <strong class="text-slate-600 ml-1">{{ '{:,}'.format(veiculo.odometro_atual).replace(',', '.') }} km</strong>
+              {% else %}
+              Informe o valor atual do odômetro
+              {% endif %}
+            </p>
+            <span x-show="odometro > 0 && odometro < {{ (odometro_sugerido or 0) - 1 }}"
+                  class="text-[10px] font-bold text-red-600 flex items-center gap-1 flex-shrink-0 ml-2"
+                  style="display:none">
+              <i data-lucide="alert-triangle" class="w-3 h-3"></i> Valor abaixo
+            </span>
+          </div>
+        </div>
+
+        <div class="h-2"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     BANNER CRÍTICO FLUTUANTE
+     ═══════════════════════════════════════════════════════════ -->
+<div x-show="bannerCritico"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 translate-y-2"
+     x-transition:enter-end="opacity-100 translate-y-0"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     class="fixed left-4 right-4 z-40 max-w-lg mx-auto"
+     style="display:none; bottom: calc(80px + env(safe-area-inset-bottom, 0px));">
+  <div class="bg-red-600 text-white rounded-2xl shadow-2xl shadow-red-600/40 px-4 py-3 flex items-center gap-3">
+    <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+      <i data-lucide="shield-x" class="w-4 h-4 text-white"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-black">⚠️ Item crítico reprovado</p>
+      <p class="text-xs text-red-200 truncate" x-text="bannerItemNome"></p>
+    </div>
+    <button @click="bannerCritico = false" class="text-white/70 hover:text-white flex-shrink-0">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     RODAPÉ FIXO — Navegação entre etapas
+     ═══════════════════════════════════════════════════════════ -->
+<div class="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 pt-2.5 pb-safe">
+  <div class="flex gap-2.5 max-w-lg mx-auto" style="min-height:52px;">
+
+    <!-- Botão Anterior -->
+    <button x-show="etapaAtual > 0"
+            @click="voltar()"
+            style="display:none"
+            class="w-12 h-12 flex-shrink-0 bg-slate-100 hover:bg-slate-200 active:scale-95 rounded-xl flex items-center justify-center transition-all">
+      <i data-lucide="chevron-left" class="w-5 h-5 text-slate-600"></i>
+    </button>
+
+    <!-- Botão Próxima Etapa (etapas de bloco) -->
+    <button x-show="!ehUltimaEtapa"
+            @click="avancar()"
+            :disabled="!blocoAtualCompleto"
+            :class="{
+              'active:scale-95 shadow-lg': blocoAtualCompleto,
+              'bg-slate-100 text-slate-400 cursor-not-allowed': !blocoAtualCompleto,
+            }"
+            :style="blocoAtualCompleto ? 'background:var(--amber);color:#000;box-shadow:0 4px 16px rgba(245,158,11,0.3)' : ''"
+            style="display:none"
+            class="flex-1 h-12 rounded-xl font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2">
+      <span x-show="!blocoAtualCompleto" class="flex items-center gap-1.5">
+        <i data-lucide="clock" class="w-4 h-4"></i>
+        <span x-text="(blocoAtual ? blocoAtual.itens.filter(i=>i.status===null).length : 0) + ' item(s) pendente(s)'"></span>
+      </span>
+      <span x-show="blocoAtualCompleto" style="display:none" class="flex items-center gap-2">
+        Próxima Etapa
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </span>
+    </button>
+
+    <!-- Botão Enviar (etapa de resumo) -->
+    <button x-show="ehUltimaEtapa"
+            @click="tentarEnviar()"
+            :disabled="parseInt(odometro) <= 0 || enviando"
+            :class="{
+              'active:scale-95 shadow-lg': !temCriticoReprovado && parseInt(odometro) > 0 && !enviando,
+              'bg-red-600 hover:bg-red-700 active:scale-95 text-white shadow-lg pulse-danger':
+                temCriticoReprovado && parseInt(odometro) > 0 && !enviando,
+              'bg-slate-100 text-slate-400 cursor-not-allowed':
+                parseInt(odometro) <= 0 && !enviando,
+              'opacity-60 cursor-wait': enviando,
+            }"
+            :style="!temCriticoReprovado && parseInt(odometro) > 0 && !enviando ? 'background:var(--amber);color:#000' : ''"
+            style="display:none"
+            class="flex-1 h-12 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2">
+      <span x-show="!enviando" class="flex items-center gap-2">
+        <i :data-lucide="temCriticoReprovado ? 'shield-x' : '{{ 'play-circle' if tipo == 'inicio' else 'stop-circle' }}'"
+           class="w-5 h-5"></i>
+        <span x-text="parseInt(odometro) <= 0
+          ? 'Preencha o odômetro'
+          : temCriticoReprovado
+            ? 'Registrar Reprovação'
+            : '{{ 'Registrar e Iniciar Turno' if tipo == 'inicio' else 'Registrar e Encerrar Turno' }}'">
+        </span>
+      </span>
+      <span x-show="enviando" style="display:none" class="flex items-center gap-2">
+        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Enviando...
+      </span>
+    </button>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPT Alpine.js
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+function checklistData() {
+  return {
+    /* ── Contexto do Jinja2 ── */
+    tipoVeiculo:   '{{ veiculo.tipo }}',
+    tipoChecklist: '{{ tipo }}',
+    veiculoId:     {{ veiculo.id }},
+    odometro:      {{ odometro_sugerido or 0 }},
+
+    /* ── Navegação ── */
+    etapaAtual: 0,
+
+    /* ── Estado da UI ── */
+    enviando:       false,
+    modalAberto:    false,
+    bannerCritico:  false,
+    bannerItemNome: '',
+
+    /* ════════════════════════════════════════════════
+       🏍️  MOTOS
+    ════════════════════════════════════════════════ */
+    blocosMoto: [
+      {
+        id: 'seguranca_moto', titulo: 'Segurança & Rodagem', icone: 'shield-alert', cor: 'red',
+        itens: [
+          { id: 'pneu_dianteiro', nome: 'Pneu Dianteiro',
+            sub: 'Desgaste, índice TWI e calibragem correta', critico: true, status: null },
+          { id: 'pneu_traseiro', nome: 'Pneu Traseiro',
+            sub: 'Desgaste, índice TWI e calibragem correta', critico: true, status: null },
+          { id: 'freio_dianteiro', nome: 'Freio Dianteiro',
+            sub: 'Espessura da pastilha/lona e curso correto do punho', critico: true, status: null },
+          { id: 'freio_traseiro', nome: 'Freio Traseiro',
+            sub: 'Espessura da pastilha/lona e curso correto do pedal', critico: true, status: null },
+        ]
+      },
+      {
+        id: 'eletrico_moto', titulo: 'Sistema Elétrico & Iluminação', icone: 'zap', cor: 'amber',
+        itens: [
+          { id: 'farol_principal', nome: 'Farol Principal (Alto e Baixo)',
+            sub: 'Facho alto, baixo e alinhamento do farol', critico: true, status: null },
+          { id: 'luz_freio_lanterna', nome: 'Luz de Freio e Lanterna Traseira',
+            sub: 'Iluminação de frenagem e luz de posição traseira', critico: true, status: null },
+          { id: 'setas_moto', nome: 'Setas Indicadoras (Esq. e Dir.)',
+            sub: 'Pisca-pisca dianteiro e traseiro nos dois lados', critico: false, status: null },
+          { id: 'buzina_painel', nome: 'Buzina e Painel de Instrumentos',
+            sub: 'Buzina, velocímetro e indicadores do painel', critico: false, status: null },
+        ]
+      },
+      {
+        id: 'mecanica_moto', titulo: 'Mecânica & Estrutura', icone: 'settings', cor: 'blue',
+        itens: [
+          { id: 'oleo_motor_moto', nome: 'Nível do Óleo do Motor',
+            sub: 'Visor ou vareta: cor e possíveis vazamentos', critico: false, status: null },
+          { id: 'kit_relacao', nome: 'Kit Relação (Corrente/Coroa/Pinhão)',
+            sub: 'Tensão da corrente, lubrificação e desgaste dos dentes', critico: false, status: null },
+          { id: 'cabos_comando', nome: 'Cabos de Comando',
+            sub: 'Acelerador livre e embreagem com curso correto', critico: false, status: null },
+          { id: 'retrovisores', nome: 'Retrovisores',
+            sub: 'Posicionamento, integridade e visibilidade traseira', critico: false, status: null },
+          { id: 'bau_mochila', nome: 'Baú / Mochila de Entrega',
+            sub: 'Fixação segura, fecho funcionando e sem danos estruturais', critico: false, status: null },
+        ]
+      },
+      {
+        id: 'carrocinha', titulo: 'Inspeção da Carrocinha', icone: 'package', cor: 'slate',
+        itens: [
+          { id: 'fixacao_carrocinha_moto', nome: 'Fixação da Carrocinha à Moto',
+            sub: 'Travas, parafusos e encaixes no chassi — folga indica risco de desprendimento',
+            critico: true, status: null },
+          { id: 'luz_freio_carrocinha', nome: 'Luz de Freio da Carrocinha',
+            sub: 'Deve acender ao frear — apagada indica fio partido ou lâmpada queimada',
+            critico: true, status: null },
+          { id: 'setas_carrocinha', nome: 'Setas Indicadoras (Esq. e Dir.)',
+            sub: 'Pisca-pisca sincronizado com os da moto nos dois lados', critico: false, status: null },
+          { id: 'lanterna_posicao_carrocinha', nome: 'Lanterna de Posição Traseira',
+            sub: 'Luz de posição acende ao ligar a moto — visibilidade noturna', critico: false, status: null },
+          { id: 'fixacao_placa_carrocinha', nome: 'Fixação da Placa da Carrocinha',
+            sub: 'Placa visível, sem dobras, firmemente afixada e legível', critico: false, status: null },
+          { id: 'estado_geral_carrocinha', nome: 'Estado Geral da Carrocinha',
+            sub: 'Sem amassados, trincas ou danos estruturais nas soldas e suportes',
+            critico: false, status: null },
+        ]
+      },
+    ],
+
+    /* ════════════════════════════════════════════════
+       🚗  CARROS E CAMINHÕES
+    ════════════════════════════════════════════════ */
+    blocosCarro: [
+      {
+        id: 'seguranca_carro', titulo: 'Segurança & Rodagem', icone: 'shield-alert', cor: 'red',
+        itens: [
+          { id: 'freio_servico', nome: 'Freio de Serviço e Freio de Mão',
+            sub: 'Firmeza do pedal, pedal esponjoso indica falha; tração do freio de mão', critico: true, status: null },
+          { id: 'pneus_rodagem', nome: 'Pneus Dianteiros e Traseiros',
+            sub: 'Sulcos mín. 1,6mm, calibragem e desgaste irregular', critico: true, status: null },
+          { id: 'pneu_estepe', nome: 'Pneu Estepe',
+            sub: 'Presença no veículo, estado de conservação e calibragem', critico: true, status: null },
+          { id: 'palhetas_limpador', nome: 'Palhetas e Limpador de Para-brisa',
+            sub: 'Motor, borrachas e nível d\'água', critico: true, status: null },
+        ]
+      },
+      {
+        id: 'eletrico_carro', titulo: 'Sistema Elétrico & Iluminação', icone: 'zap', cor: 'amber',
+        itens: [
+          { id: 'farois_lanternas', nome: 'Faróis (Alto/Baixo) e Lanternas',
+            sub: 'Farol alto, baixo, milha, lanternas dianteiras e traseiras', critico: true, status: null },
+          { id: 'luzes_freio_re_pisca', nome: 'Luzes de Freio, Ré e Pisca-Alerta',
+            sub: 'Funcionamento de todas as luzes de sinalização', critico: true, status: null },
+          { id: 'setas_carro', nome: 'Setas Direcionais (Dianteiras e Traseiras)',
+            sub: 'Pisca-pisca nos quatro quadrantes do veículo', critico: false, status: null },
+          { id: 'painel_instrumentos', nome: 'Painel e Luzes de Advertência',
+            sub: 'Verificar alertas acesos: motor, óleo, temperatura', critico: false, status: null },
+        ]
+      },
+      {
+        id: 'mecanica_carro', titulo: 'Mecânica & Níveis', icone: 'droplets', cor: 'blue',
+        itens: [
+          { id: 'oleo_motor_carro', nome: 'Nível de Óleo do Motor',
+            sub: 'Vareta — entre mínimo e máximo; cor escura indica troca', critico: false, status: null },
+          { id: 'fluido_arrefecimento', nome: 'Fluido de Arrefecimento',
+            sub: 'Nível no reservatório de expansão e mangueiras', critico: false, status: null },
+          { id: 'fluido_freio_direcao', nome: 'Fluido de Freio e Direção Hidráulica',
+            sub: 'Nível nos reservatórios — fuga indica falha grave', critico: false, status: null },
+        ]
+      },
+      {
+        id: 'equipamentos_carro', titulo: 'Equipamentos & Conservação', icone: 'package-check', cor: 'slate',
+        itens: [
+          { id: 'cintos_seguranca', nome: 'Cintos de Segurança',
+            sub: 'Todos os cintos — trava, retração e estado da fita', critico: false, status: null },
+          { id: 'kit_emergencia', nome: 'Macaco, Chave de Roda e Triângulo',
+            sub: 'Presença e estado operacional dos equipamentos obrigatórios', critico: false, status: null },
+          { id: 'retrovisores_vidros', nome: 'Retrovisores, Vidros e Lataria',
+            sub: 'Integridade dos espelhos, trincas no para-brisa e amassados', critico: false, status: null },
+        ]
+      },
+    ],
+
+    /* ════════════════════════════════════════════════
+       GETTERS COMPUTADOS
+    ════════════════════════════════════════════════ */
+    get blocos() {
+      return this.tipoVeiculo === 'Moto' ? this.blocosMoto : this.blocosCarro;
+    },
+    get totalEtapas() {
+      return this.blocos.length + 1; // blocos + resumo
+    },
+    get ehUltimaEtapa() {
+      return this.etapaAtual === this.blocos.length;
+    },
+    get blocoAtual() {
+      return this.ehUltimaEtapa ? null : this.blocos[this.etapaAtual];
+    },
+    get blocoAtualCompleto() {
+      if (!this.blocoAtual) return true;
+      return this.blocoAtual.itens.every(i => i.status !== null);
+    },
+    get todosItens() {
+      return this.blocos.flatMap(b => b.itens);
+    },
+    get itensPendentes() {
+      return this.todosItens.filter(i => i.status === null).length;
+    },
+    get itensReprovados() {
+      return this.todosItens.filter(i => i.status === 'ruim');
+    },
+    get temCriticoReprovado() {
+      return this.todosItens.some(i => i.critico && i.status === 'ruim');
+    },
+    get todosRespondidos() {
+      return this.itensPendentes === 0;
+    },
+
+    /* ════════════════════════════════════════════════
+       NAVEGAÇÃO
+    ════════════════════════════════════════════════ */
+    avancar() {
+      if (this.etapaAtual < this.totalEtapas - 1 && this.blocoAtualCompleto) {
+        this.etapaAtual++;
+        this.$nextTick(() => lucide.createIcons());
+      }
+    },
+    voltar() {
+      if (this.etapaAtual > 0) {
+        this.etapaAtual--;
+        this.$nextTick(() => lucide.createIcons());
+      }
+    },
+
+    /* ════════════════════════════════════════════════
+       MARCAR ITEM + AUTO-AVANÇA
+    ════════════════════════════════════════════════ */
+    marcar(item, novoStatus, bi) {
+      item.status = novoStatus;
+      const criticosRuim = this.todosItens.filter(i => i.critico && i.status === 'ruim');
+      this.bannerCritico  = criticosRuim.length > 0;
+      this.bannerItemNome = criticosRuim.map(i => i.nome).join(' · ');
+
+      // Auto-avança quando todos os itens do bloco estão respondidos
+      const snapEtapa = this.etapaAtual;
+      const bloco     = this.blocos[bi];
+      if (bloco && bloco.itens.every(i => i.status !== null)) {
+        setTimeout(() => {
+          // Confirma que o usuário ainda está na mesma etapa e ela continua completa
+          if (this.etapaAtual === snapEtapa && bloco.itens.every(i => i.status !== null)) {
+            this.avancar();
+          }
+        }, 750);
+      }
+    },
+
+    /* ════════════════════════════════════════════════
+       ENVIO
+    ════════════════════════════════════════════════ */
+    tentarEnviar() {
+      if (parseInt(this.odometro) <= 0 || this.enviando) return;
+      if (this.temCriticoReprovado) {
+        this.modalAberto = true;
+        this.$nextTick(() => lucide.createIcons());
+        return;
+      }
+      this.enviar();
+    },
+
+    async enviar() {
+      if (this.enviando) return;
+      this.enviando = true;
+      await this._post();
+    },
+
+    async salvarReprovado() {
+      if (this.enviando) return;
+      this.enviando    = true;
+      this.modalAberto = false;
+      await this._post();
+    },
+
+    async _post() {
+      const payload = {
+        veiculo_id:          this.veiculoId,
+        tipo:                this.tipoChecklist,
+        odometro_registrado: parseInt(this.odometro) || 0,
+        itens_reprovados:    this.itensReprovados.map(i => ({
+          item:      i.id,
+          descricao: 'Reprovado pelo motorista',
+        })),
+      };
+      try {
+        const res  = await fetch('/frota/checklist', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          window.location.href = '/frota/turno';
+        } else {
+          alert('Erro ao registrar: ' + (data.detail || 'Tente novamente'));
+          this.enviando = false;
+        }
+      } catch {
+        alert('Erro de conexão. Verifique o sinal e tente novamente.');
+        this.enviando = false;
+      }
+    },
+  };
+}
+
+document.addEventListener('alpine:initialized', () => lucide.createIcons());
+</script>
+
+</body>
+</html>

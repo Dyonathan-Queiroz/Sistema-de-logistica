@@ -12,13 +12,70 @@
 </a>
 {% endblock %}
 
+{% block extra_styles %}
+<style>
+    :root {
+        --amber: #f59e0b;
+        --amber-dk: #d97706;
+        --amber-light: #fffbeb;
+        --amber-mid: #fcd34d;
+        --shadow-sm: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+        --shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+        --shadow-md: 0 0 0 1px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.1), 0 16px 40px rgba(0,0,0,.07);
+    }
+
+    /* Card with amber left border */
+    .card-editar-veiculo {
+        border-left: 3px solid var(--amber);
+        box-shadow: var(--shadow);
+    }
+
+    /* Input focus: amber */
+    .form-control:focus {
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+        outline: none;
+    }
+
+    /* Primary confirm button: amber, black text */
+    .btn-confirm {
+        background: var(--amber);
+        color: #000;
+        border: none;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 0.45rem 1.2rem;
+        transition: background 0.15s;
+    }
+    .btn-confirm:hover {
+        background: var(--amber-dk);
+        color: #000;
+    }
+    .btn-confirm:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(245,158,11,0.3);
+    }
+
+    /* Card footer separator */
+    .card-footer {
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    /* Icon accent */
+    .icon-amber {
+        color: var(--amber);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12 col-md-8 offset-md-2 col-lg-6 offset-lg-3">
-        <div class="card" style="border-left: 3px solid #f59e0b;">
+        <div class="card card-editar-veiculo">
             <div class="card-header">
                 <h6 class="mb-0 font-weight-bold text-dark">
-                    <i class="fas fa-truck mr-2 text-warning"></i>Editar Veículo
+                    <i class="fas fa-truck mr-2 icon-amber"></i>Editar Veículo
                 </h6>
             </div>
             <form method="POST" action="/processar-veiculo/{{ veiculo.id }}">
@@ -79,7 +136,7 @@
 
                 </div>
                 <div class="card-footer d-flex justify-content-between align-items-center">
-                    <button type="submit" class="btn btn-warning font-weight-bold">
+                    <button type="submit" class="btn-confirm">
                         <i class="fas fa-check mr-1"></i> Confirmar
                     </button>
                     <a href="/gestao-veiculo" class="btn btn-outline-secondary">
