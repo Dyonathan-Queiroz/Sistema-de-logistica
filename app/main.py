@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Form, Depends, Cookie, HTTPException, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy import func, case as sql_case, or_
@@ -21,12 +21,17 @@ from app.database import get_db
 from app.models import (
     Entrega, Usuario, Veiculo, Cliente, Filial,
     Checklist, TurnoEntrega, Abastecimento, Manutencao, PneuControle, MotoristaScore,
-    Oficina, PecaCatalogo,
+    Oficina, PecaCatalogo, PontoRota,
 )
 from app.utils import gerar_link_rota
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+class PontoRotaIn(BaseModel):
+    lat: float
+    lng: float
+    tipo: str = "rota"
 
 
 # ---------------------------------------------------------------------------
@@ -629,7 +634,14 @@ async def dashboard_entregador(request: Request, db: Session = Depends(get_db), 
 
 
 @app.post("/entregador/aceitar/{entrega_id}")
-async def aceitar_entrega(entrega_id: int, db: Session = Depends(get_db), user_id: str = Cookie(None), user_role: str = Cookie(None)):
+async def aceitar_entrega(
+    entrega_id: int,
+    lat: str = Form(None),
+    lng: str = Form(None),
+    db: Session = Depends(get_db),
+    user_id: str = Cookie(None),
+    user_role: str = Cookie(None),
+):
     """entregador"""
     if user_role != "entregador":
         return RedirectResponse(url="/login")
@@ -645,6 +657,11 @@ async def aceitar_entrega(entrega_id: int, db: Session = Depends(get_db), user_i
         entrega.status = "em_rota"
         entrega.entregador_id = uid
         entrega.data_aceite = agora()
+        try:
+            if lat and lng:
+                db.add(PontoRota(entrega_id=entrega_id, latitude=float(lat), longitude=float(lng), tipo="inicio"))
+        except (ValueError, TypeError):
+            pass
         db.commit()
 
     return RedirectResponse(url="/entregador?aba=emrota", status_code=303)
@@ -697,7 +714,14 @@ async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depen
 
 
 @app.post("/entregador/finalizar/{entrega_id}")
-async def finalizar_entrega(entrega_id: int, db: Session = Depends(get_db), user_id: str = Cookie(None), user_role: str = Cookie(None)):
+async def finalizar_entrega(
+    entrega_id: int,
+    lat: str = Form(None),
+    lng: str = Form(None),
+    db: Session = Depends(get_db),
+    user_id: str = Cookie(None),
+    user_role: str = Cookie(None),
+):
     """entregador"""
     if user_role != "entregador":
         return RedirectResponse(url="/login")
@@ -708,9 +732,38 @@ async def finalizar_entrega(entrega_id: int, db: Session = Depends(get_db), user
     if entrega and entrega.status == "em_rota" and entrega.entregador_id == uid:
         entrega.status = "finalizado"
         entrega.data_finalizacao = agora()
+        try:
+            if lat and lng:
+                db.add(PontoRota(entrega_id=entrega_id, latitude=float(lat), longitude=float(lng), tipo="fim"))
+        except (ValueError, TypeError):
+            pass
         db.commit()
 
     return RedirectResponse(url="/entregador", status_code=303)
+
+
+@app.post("/entregador/rastrear/{entrega_id}")
+async def rastrear_entrega(
+    entrega_id: int,
+    body: PontoRotaIn,
+    db: Session = Depends(get_db),
+    user_id: str = Cookie(None),
+    user_role: str = Cookie(None),
+):
+    """entregador — recebe ponto GPS periódico durante a rota"""
+    if user_role != "entregador":
+        return JSONResponse({"ok": False}, status_code=401)
+
+    uid = int(user_id) if user_id and user_id.isdigit() else None
+    entrega = db.query(Entrega).filter(
+        Entrega.id == entrega_id,
+        Entrega.entregador_id == uid,
+        Entrega.status == "em_rota",
+    ).first()
+    if entrega:
+        db.add(PontoRota(entrega_id=entrega_id, latitude=body.lat, longitude=body.lng, tipo="rota"))
+        db.commit()
+    return JSONResponse({"ok": True})
 
 
 @app.post("/entregas/{entrega_id}/reportar-erro")
