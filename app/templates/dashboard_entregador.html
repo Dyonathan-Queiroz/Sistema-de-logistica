@@ -1343,7 +1343,9 @@
                 {% endif %}
                 <div class="dcard-action">
                   {% if turno_ativo %}
-                  <form action="/entregador/aceitar/{{ e.id }}" method="POST">
+                  <form class="form-aceitar" action="/entregador/aceitar/{{ e.id }}" method="POST">
+                    <input type="hidden" name="lat">
+                    <input type="hidden" name="lng">
                     <button type="submit" class="btn-accept">
                       <i class="fas fa-check-circle"></i> Aceitar Entrega
                     </button>
@@ -2133,6 +2135,26 @@
     setInterval(atualizarTempo, 60000);
   })();
   {% endif %}
+
+  // GPS no aceitar entrega
+  document.querySelectorAll('.form-aceitar').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      if (!navigator.geolocation) return;
+      e.preventDefault();
+      var f = this;
+      var timeout = setTimeout(function() { f.submit(); }, 5000);
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          clearTimeout(timeout);
+          f.querySelector('[name="lat"]').value = pos.coords.latitude;
+          f.querySelector('[name="lng"]').value = pos.coords.longitude;
+          f.submit();
+        },
+        function() { clearTimeout(timeout); f.submit(); },
+        { timeout: 4000, maximumAge: 0, enableHighAccuracy: true }
+      );
+    });
+  });
 </script>
 </body>
 </html>

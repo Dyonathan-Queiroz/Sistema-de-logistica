@@ -378,8 +378,10 @@
     <div class="actions-card">
       <div class="card-lbl"><i class="fas fa-flag-checkered" style="color:#4ade80;"></i> Conclusão</div>
 
-      <form action="/entregador/finalizar/{{ entrega.id }}" method="POST">
-        <button type="submit" class="btn-action btn-finish">
+      <form id="formFinalizar" action="/entregador/finalizar/{{ entrega.id }}" method="POST">
+        <input type="hidden" name="lat" id="inputLat">
+        <input type="hidden" name="lng" id="inputLng">
+        <button type="submit" id="btnFinalizar" class="btn-action btn-finish">
           <i class="fas fa-check-double"></i> Finalizar Entrega
         </button>
       </form>
@@ -420,6 +422,55 @@ function toggleErro() {
   p.style.display = isHidden ? 'block' : 'none';
   if (isHidden) { p.querySelector('textarea').focus(); }
 }
+
+(function () {
+  var ENTREGA_ID = {{ entrega.id }};
+  var STATUS     = "{{ entrega.status }}";
+  var trackTimer = null;
+
+  function enviarPonto(lat, lng, tipo) {
+    fetch('/entregador/rastrear/' + ENTREGA_ID, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat: lat, lng: lng, tipo: tipo || 'rota' })
+    });
+  }
+
+  // Rastreamento contínuo enquanto em_rota (a cada 30s)
+  if (STATUS === 'em_rota' && navigator.geolocation) {
+    trackTimer = setInterval(function () {
+      navigator.geolocation.getCurrentPosition(
+        function (pos) { enviarPonto(pos.coords.latitude, pos.coords.longitude, 'rota'); },
+        function () {},
+        { timeout: 8000, enableHighAccuracy: true }
+      );
+    }, 30000);
+    window.addEventListener('beforeunload', function () { clearInterval(trackTimer); });
+  }
+
+  // GPS no botão Finalizar
+  var form = document.getElementById('formFinalizar');
+  var btn  = document.getElementById('btnFinalizar');
+  if (form && navigator.geolocation) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finalizando...';
+      clearInterval(trackTimer);
+      var timeout = setTimeout(function () { form.submit(); }, 6000);
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          clearTimeout(timeout);
+          document.getElementById('inputLat').value = pos.coords.latitude;
+          document.getElementById('inputLng').value = pos.coords.longitude;
+          form.submit();
+        },
+        function () { clearTimeout(timeout); form.submit(); },
+        { timeout: 5000, maximumAge: 0, enableHighAccuracy: true }
+      );
+    });
+  }
+})();
 </script>
 </body>
 </html>
