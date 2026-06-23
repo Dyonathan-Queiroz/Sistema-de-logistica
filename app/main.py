@@ -1140,6 +1140,12 @@ async def log_entregas_page(request: Request, db: Session = Depends(get_db), use
 
     entregas_raw = lista_q.offset((page - 1) * _PER_PAGE).limit(_PER_PAGE).all()
 
+    ids_pagina = [e.id for e in entregas_raw]
+    ids_com_rota = set(
+        row.entrega_id for row in db.query(PontoRota.entrega_id)
+        .filter(PontoRota.entrega_id.in_(ids_pagina)).distinct().all()
+    ) if ids_pagina else set()
+
     clientes_map = {c.id: c for c in db.query(Cliente).all()}
     filiais_map = {f.id: f for f in db.query(Filial).all()}
     usuarios_map = {u.id: u for u in db.query(Usuario).all()}
@@ -1175,6 +1181,7 @@ async def log_entregas_page(request: Request, db: Session = Depends(get_db), use
 
     return templates.TemplateResponse(request=request, name="log_entregas.html", context={
         "entregas": entregas,
+        "ids_com_rota": ids_com_rota,
         "total": total,
         "page": page,
         "total_pages": total_pages,
@@ -1229,6 +1236,44 @@ async def salvar_edicao_log(entrega_id: int, rua: str = Form(...), numero: str =
 
     db.commit()
     return RedirectResponse(url="/gestor/log", status_code=303)
+
+
+@app.get("/gestor/entrega/{entrega_id}/rota")
+async def rota_entrega_gestor(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor — mapa de rastreamento GPS de uma entrega"""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
+    if not entrega:
+        return RedirectResponse(url="/gestor/log")
+
+    pontos = db.query(PontoRota).filter(PontoRota.entrega_id == entrega_id).order_by(PontoRota.timestamp).all()
+    cliente    = db.query(Cliente).filter(Cliente.id == entrega.cliente_id).first()
+    entregador = db.query(Usuario).filter(Usuario.id == entrega.entregador_id).first() if entrega.entregador_id else None
+    filial     = db.query(Filial).filter(Filial.id == entrega.filial_id).first()
+
+    import json
+    pontos_json = json.dumps([
+        {
+            "lat": p.latitude,
+            "lng": p.longitude,
+            "tipo": p.tipo,
+            "timestamp": p.timestamp.strftime("%d/%m/%Y %H:%M:%S") if p.timestamp else "",
+        }
+        for p in pontos
+    ])
+
+    return templates.TemplateResponse(request=request, name="rota_entrega.html", context={
+        "entrega": entrega,
+        "pontos": pontos,
+        "pontos_json": pontos_json,
+        "cliente": cliente,
+        "entregador": entregador,
+        "filial": filial,
+    })
+
+
 @app.get("/gestao-funcionario")
 async def pagina_gestao_funcionario(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
