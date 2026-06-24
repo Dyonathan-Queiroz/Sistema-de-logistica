@@ -1390,6 +1390,53 @@
     .enc-loading p {
       font-size: 13px; color: var(--text2); line-height: 1.5;
     }
+
+    /* ── STOP ALERT BAR ─────────────────────────────── */
+    .stop-alert-bar {
+      background: #DC2626;
+      color: #fff;
+      padding: 10px 1.25rem;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; font-weight: 600;
+      position: sticky; top: 0; z-index: 900;
+    }
+    .stop-alert-bar.hidden { display: none; }
+    .sab-pulse { animation: sabBlink 1s ease-in-out infinite; font-size: 16px; }
+    @keyframes sabBlink { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .sab-text { flex: 1; line-height: 1.3; }
+    .sab-time { font-weight: 400; opacity: .9; }
+
+    /* ── VOCÊ ESTÁ BEM? OVERLAY ─────────────────────── */
+    .bem-overlay {
+      position: fixed; inset: 0; z-index: 9600;
+      background: rgba(0,0,0,0.88);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+      animation: pgFadeIn 0.2s ease-out;
+    }
+    .bem-overlay.hidden { display: none; }
+    .bem-sheet {
+      background: var(--s1);
+      border-radius: 20px;
+      border: 1px solid rgba(220,38,38,0.35);
+      padding: 2rem 1.5rem 1.75rem;
+      max-width: 360px; width: 100%;
+      text-align: center;
+    }
+    .bem-emoji { font-size: 52px; margin-bottom: 12px; }
+    .bem-title { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 6px; font-family: var(--fcond); }
+    .bem-msg   { font-size: 14px; color: var(--text2); margin-bottom: 1.5rem; line-height: 1.5; }
+    .bem-btns  { display: flex; flex-direction: column; gap: 10px; }
+    .btn-bem-ok {
+      padding: 14px; background: #16A34A; color: #fff;
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-bem-ajuda {
+      padding: 14px; background: var(--danger); color: #fff;
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -1411,6 +1458,32 @@
     <button class="gps-retry-btn" onclick="gpsRetry()">
       <i class="fas fa-rotate-right"></i> Tentar Novamente
     </button>
+  </div>
+</div>
+
+<!-- STOP ALERT BAR (aparece em 2m30s parado, some ao mover) -->
+<div class="stop-alert-bar hidden" id="stopAlertBar">
+  <i class="fas fa-triangle-exclamation sab-pulse"></i>
+  <div class="sab-text">
+    Motorista parado <span class="sab-time" id="sabTime"></span>
+  </div>
+</div>
+
+<!-- VOCÊ ESTÁ BEM? OVERLAY (10min e 20min parado) -->
+<div class="bem-overlay hidden" id="bemOverlay">
+  <div class="bem-sheet">
+    <input type="hidden" id="bemEntregaId" value="">
+    <div class="bem-emoji">⚠️</div>
+    <div class="bem-title">Você está bem?</div>
+    <div class="bem-msg" id="bemMsg">Você está parado há vários minutos.</div>
+    <div class="bem-btns">
+      <button class="btn-bem-ok" onclick="bemEstouBem()">
+        <i class="fas fa-check-circle"></i> Sim, estou bem!
+      </button>
+      <button class="btn-bem-ajuda" onclick="bemPrecisoAjuda()">
+        <i class="fas fa-exclamation-triangle"></i> Preciso de ajuda
+      </button>
+    </div>
   </div>
 </div>
 
@@ -2508,6 +2581,9 @@
 
   function _fazerRefresh() {
     if (_encerrandoTurno) return;
+    // Não recarrega enquanto o entregador está respondendo ao alerta
+    var bemOv = document.getElementById('bemOverlay');
+    if (bemOv && !bemOv.classList.contains('hidden')) return;
     var shell = document.querySelector('.shell');
     if (shell) { shell.style.transition = 'opacity 0.2s'; shell.style.opacity = '0.55'; }
     var ticker = document.getElementById('refreshTicker');
@@ -2571,23 +2647,22 @@
   });
 
   /* ── GPS TRACKING PERIÓDICO (entregas em rota) ──────── */
-  var GPS_ENTREGAS = {{ em_rota | map(attribute='id') | list | tojson }};
+  var GPS_ENTREGAS  = {{ em_rota | map(attribute='id') | list | tojson }};
   var _gpsTrackTimer = null;
-  var GPS_INTERVAL_S = 15; // segundos entre envios
+  var GPS_INTERVAL_S = 30; // 30s — equilíbrio entre precisão e bateria
 
+  // ── helpers ──
   function _metrosEntre(la1, lo1, la2, lo2) {
     var dLat = (la2 - la1) * 111000;
     var dLng = (lo2 - lo1) * 111000 * Math.cos(la1 * Math.PI / 180);
     return Math.sqrt(dLat * dLat + dLng * dLng);
   }
-
   function _lerGpsEstado(eid) {
     try { return JSON.parse(localStorage.getItem('gps_e_' + eid) || 'null'); } catch(e) { return null; }
   }
   function _salvarGpsEstado(eid, s) {
     try { localStorage.setItem('gps_e_' + eid, JSON.stringify(s)); } catch(e) {}
   }
-
   function _enviarGps(eid, lat, lng, tipo) {
     fetch('/entregador/rastrear/' + eid, {
       method: 'POST',
@@ -2596,58 +2671,151 @@
     }).catch(function() {});
   }
 
+  // ── banner vermelho (2m30s parado) ──
+  function _atualizarBanner(msParado) {
+    var bar  = document.getElementById('stopAlertBar');
+    var time = document.getElementById('sabTime');
+    if (!bar) return;
+    if (msParado >= 150000) {
+      var mins = Math.floor(msParado / 60000);
+      var secs = Math.floor((msParado % 60000) / 1000);
+      if (time) time.textContent = '— ' + mins + 'min ' + (secs > 0 ? secs + 's' : '');
+      bar.classList.remove('hidden');
+    } else {
+      bar.classList.add('hidden');
+    }
+  }
+
+  // ── modal "Você está bem?" ──
+  function _mostrarModalBem(eid, mins) {
+    var ov  = document.getElementById('bemOverlay');
+    var msg = document.getElementById('bemMsg');
+    var eid_input = document.getElementById('bemEntregaId');
+    if (!ov) return;
+    if (msg) msg.textContent = 'Você está parado há ' + mins + ' minutos. Está tudo bem?';
+    if (eid_input) eid_input.value = eid;
+    ov.classList.remove('hidden');
+    _pararRefresh(); // não recarrega enquanto aguarda resposta
+    // Notificação do sistema (se permitida)
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try {
+        new Notification('Sistema Gavião ⚠️', {
+          body: 'Parado há ' + mins + ' minutos. Você está bem?',
+          icon: '/static/icons/icon.svg',
+          requireInteraction: true
+        });
+      } catch(e) {}
+    }
+  }
+
+  function bemEstouBem() {
+    document.getElementById('bemOverlay').classList.add('hidden');
+    _iniciarRefresh();
+  }
+  function bemPrecisoAjuda() {
+    var eid = document.getElementById('bemEntregaId').value;
+    if (eid) {
+      fetch('/entregador/alerta/' + eid, { method: 'POST' }).catch(function(){});
+    }
+    document.getElementById('bemOverlay').classList.add('hidden');
+    _iniciarRefresh();
+  }
+
+  // ── processamento GPS ──
   function _processarGps(pos) {
-    var lat  = pos.coords.latitude;
-    var lng  = pos.coords.longitude;
+    var lat   = pos.coords.latitude;
+    var lng   = pos.coords.longitude;
     var agora = Date.now();
+    var piorMs = 0; // maior tempo parado entre todas as entregas
 
     GPS_ENTREGAS.forEach(function(eid) {
       var st = _lerGpsEstado(eid);
 
       if (!st) {
-        // Primeiro tick — salva posição inicial sem enviar (inicio já foi gravado no aceitar)
-        _salvarGpsEstado(eid, { lat: lat, lng: lng, movedAt: agora, stopStart: null, stoppedSent: false });
+        _salvarGpsEstado(eid, { lat: lat, lng: lng, movedAt: agora, stopStart: null,
+                                stoppedSent: false, alerta10: false, alerta20: false });
         return;
       }
 
       var dist = _metrosEntre(st.lat, st.lng, lat, lng);
 
       if (dist > 15) {
-        // Moveu — envia ponto de rota e reseta parada
+        // ── em movimento ──
         _enviarGps(eid, lat, lng, 'rota');
-        _salvarGpsEstado(eid, { lat: lat, lng: lng, movedAt: agora, stopStart: null, stoppedSent: false });
+        _salvarGpsEstado(eid, { lat: lat, lng: lng, movedAt: agora, stopStart: null,
+                                stoppedSent: false, alerta10: false, alerta20: false });
       } else {
-        // Parado — inicia ou continua contagem
-        var stopStart    = st.stopStart || agora;
-        var paradoHa     = agora - stopStart;
-        var stoppedSent  = st.stoppedSent || false;
+        // ── parado ──
+        var stopStart   = st.stopStart || agora;
+        var paradoHa    = agora - stopStart;
+        var stoppedSent = st.stoppedSent || false;
+        var alerta10    = st.alerta10    || false;
+        var alerta20    = st.alerta20    || false;
 
+        // ponto laranja no mapa (2min)
         if (paradoHa > 120000 && !stoppedSent) {
-          // Parado há +2min — envia marcador de parada (uma vez)
           _enviarGps(eid, lat, lng, 'parado');
-          _salvarGpsEstado(eid, { lat: st.lat, lng: st.lng, movedAt: st.movedAt, stopStart: stopStart, stoppedSent: true });
-        } else {
-          _salvarGpsEstado(eid, { lat: st.lat, lng: st.lng, movedAt: st.movedAt, stopStart: stopStart, stoppedSent: stoppedSent });
+          stoppedSent = true;
         }
+        // modal "Você está bem?" (10min)
+        if (paradoHa > 600000 && !alerta10) {
+          _mostrarModalBem(eid, Math.floor(paradoHa / 60000));
+          alerta10 = true;
+        }
+        // segundo alerta (20min)
+        if (paradoHa > 1200000 && !alerta20) {
+          _mostrarModalBem(eid, Math.floor(paradoHa / 60000));
+          alerta20 = true;
+        }
+
+        _salvarGpsEstado(eid, { lat: st.lat, lng: st.lng, movedAt: st.movedAt,
+                                stopStart: stopStart, stoppedSent: stoppedSent,
+                                alerta10: alerta10, alerta20: alerta20 });
+
+        if (paradoHa > piorMs) piorMs = paradoHa;
       }
     });
+
+    _atualizarBanner(piorMs);
   }
 
+  // ── inicia rastreamento ──
   function iniciarRastreamento() {
     if (!GPS_ENTREGAS.length || _gpsTrackTimer) return;
+
+    // Pede permissão para notificações do sistema
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      try { Notification.requestPermission(); } catch(e) {}
+    }
+
     function _tick() {
       if (!navigator.geolocation) return;
       navigator.geolocation.getCurrentPosition(
         _processarGps,
-        function() {}, // erro silencioso em background
-        { timeout: 8000, maximumAge: 10000, enableHighAccuracy: true }
+        function() {},
+        { timeout: 10000, maximumAge: 25000, enableHighAccuracy: false }
       );
     }
-    _tick(); // envia imediatamente
+    _tick();
     _gpsTrackTimer = setInterval(_tick, GPS_INTERVAL_S * 1000);
   }
 
+  // Restaura banner ao carregar a página (estado persiste no localStorage)
+  function _verificarEstadoInicial() {
+    var agora  = Date.now();
+    var piorMs = 0;
+    GPS_ENTREGAS.forEach(function(eid) {
+      var st = _lerGpsEstado(eid);
+      if (st && st.stopStart) {
+        var ms = agora - st.stopStart;
+        if (ms > piorMs) piorMs = ms;
+      }
+    });
+    _atualizarBanner(piorMs);
+  }
+
   iniciarRastreamento();
+  _verificarEstadoInicial();
 
   // GPS no aceitar entrega — OBRIGATÓRIO (sem fallback)
   document.querySelectorAll('.form-aceitar').forEach(function(form) {
