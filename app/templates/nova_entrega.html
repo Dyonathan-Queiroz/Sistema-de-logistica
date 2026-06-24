@@ -1,150 +1,275 @@
 {% extends "base.html" %}
-{% block title %}Nova Entrega Manual — Sistema Logístico{% endblock %}
+{% block title %}Nova Entrega Manual{% endblock %}
 {% block nav_nova_entrega %}active{% endblock %}
 
-{% block content %}
+{% block extra_head %}
 <style>
-  .ne-wrap{max-width:760px;margin:0 auto;padding:2rem 1rem 4rem}
+  /* ── PAGE SHELL ───────────────────────────────── */
+  .ne-page { padding: 32px 32px 80px; max-width: 860px; }
 
-  .ne-header{margin-bottom:2rem}
-  .ne-title{font-size:1.4rem;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:.6rem}
-  .ne-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;
-    background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.22)}
-  .ne-sub{font-size:13px;color:#64748b;margin-top:.35rem}
+  /* ── BREADCRUMB ───────────────────────────────── */
+  .ne-breadcrumb {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text3); margin-bottom: 20px;
+  }
+  .ne-breadcrumb a { color: var(--text2); text-decoration: none; }
+  .ne-breadcrumb a:hover { color: var(--text); }
+  .ne-breadcrumb i { font-size: 10px; }
 
-  .ne-card{
-    background:#0f1117;border:1px solid rgba(255,255,255,.08);
-    border-radius:10px;overflow:hidden;margin-bottom:1.25rem
+  /* ── PAGE HEADER ──────────────────────────────── */
+  .ne-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+  .ne-header-left { display: flex; align-items: center; gap: 14px; }
+  .ne-icon {
+    width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+    background: var(--blue-light); color: var(--blue);
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
   }
-  .ne-card-header{
-    padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.06);
-    display:flex;align-items:center;gap:8px;
-    font-size:12px;font-weight:700;text-transform:uppercase;
-    letter-spacing:.07em;color:#64748b
-  }
-  .ne-card-header i{font-size:13px}
-  .ne-card-body{padding:18px}
-
-  .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .form-row-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px}
-  @media(max-width:640px){
-    .form-row-2,.form-row-3{grid-template-columns:1fr}
+  .ne-title { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -.4px; line-height: 1.1; }
+  .ne-sub   { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .ne-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    background: var(--amber-light); color: var(--amber-dk);
+    border: 1px solid #fcd34d; border-radius: 5px; padding: 4px 9px;
+    align-self: flex-start; margin-top: 4px;
   }
 
-  .fgroup{display:flex;flex-direction:column;gap:5px}
-  .flabel{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
-  .flabel span{color:#ef4444;margin-left:2px}
+  /* ── FORM CARD ────────────────────────────────── */
+  .ne-card {
+    background: var(--card-bg);
+    border: 1px solid var(--brd);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .ne-card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--brd);
+    display: flex; align-items: center; gap: 9px;
+    background: #fafafa;
+  }
+  .ne-card-header-icon {
+    width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+  }
+  .icon-blue   { background: var(--blue-light);   color: var(--blue);   }
+  .icon-amber  { background: var(--amber-light);  color: var(--amber-dk); }
+  .icon-green  { background: var(--green-lt);     color: var(--green);  }
+  .ne-card-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--text2);
+  }
+  .ne-card-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 
-  .finput{
-    background:#07090e;border:1px solid rgba(255,255,255,.1);
-    border-radius:7px;color:#f1f5f9;font-size:14px;
-    padding:9px 12px;width:100%;transition:border-color .15s
+  /* ── FORM FIELDS ──────────────────────────────── */
+  .fg { display: flex; flex-direction: column; gap: 5px; }
+  .fl {
+    font-size: 12px; font-weight: 600;
+    color: var(--text2); letter-spacing: .03em;
   }
-  .finput:focus{outline:none;border-color:rgba(59,130,246,.5);
-    box-shadow:0 0 0 3px rgba(59,130,246,.08)}
-  .finput::placeholder{color:#475569}
-  select.finput option{background:#0f1117}
+  .fl .req { color: #dc2626; margin-left: 2px; }
+  .fl .opt { font-size: 11px; font-weight: 400; color: var(--text3); margin-left: 4px; }
 
-  /* AUTOCOMPLETE */
-  .autocomplete-wrap{position:relative}
-  .ac-results{
-    position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;
-    background:#161b27;border:1px solid rgba(255,255,255,.12);
-    border-radius:8px;overflow:hidden;display:none;
-    box-shadow:0 8px 24px rgba(0,0,0,.5)
+  .fi {
+    background: var(--input-bg);
+    border: 1.5px solid var(--brd);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 9px 12px;
+    width: 100%;
+    transition: border-color .15s, box-shadow .15s;
+    outline: none;
   }
-  .ac-results.open{display:block}
-  .ac-item{
-    padding:9px 13px;font-size:13px;color:#cbd5e1;cursor:pointer;
-    border-bottom:1px solid rgba(255,255,255,.05);
-    display:flex;flex-direction:column;gap:2px
+  .fi:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
   }
-  .ac-item:last-child{border-bottom:none}
-  .ac-item:hover,.ac-item.selected{background:rgba(59,130,246,.12);color:#f1f5f9}
-  .ac-item-nome{font-weight:600}
-  .ac-item-sub{font-size:11px;color:#64748b}
-  .ac-criar{
-    padding:9px 13px;font-size:13px;color:#f59e0b;cursor:pointer;
-    display:flex;align-items:center;gap:6px;font-weight:500
-  }
-  .ac-criar:hover{background:rgba(245,158,11,.08)}
-  .cliente-tag{
-    display:inline-flex;align-items:center;gap:6px;margin-top:4px;
-    font-size:12px;font-weight:500;
-    background:rgba(34,197,94,.1);color:#86efac;
-    border:1px solid rgba(34,197,94,.2);border-radius:5px;padding:3px 8px
-  }
-  .cliente-tag .tag-x{cursor:pointer;opacity:.7;margin-left:2px}
-  .cliente-tag .tag-x:hover{opacity:1}
+  .fi::placeholder { color: var(--text3); }
+  select.fi { cursor: pointer; }
+  textarea.fi { resize: vertical; min-height: 80px; }
 
-  /* NOVO CLIENTE expanded */
-  .novo-cliente-fields{
-    display:none;margin-top:12px;padding:14px;
-    background:rgba(245,158,11,.04);
-    border:1px solid rgba(245,158,11,.15);
-    border-radius:8px
-  }
-  .novo-cliente-fields.visible{display:block}
-  .novo-lbl{font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:10px;
-    display:flex;align-items:center;gap:6px}
+  .hint { font-size: 11px; color: var(--text3); margin-top: 2px; }
 
-  /* SUBMIT */
-  .ne-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem}
-  .btn-cancel{
-    font-size:13px;font-weight:500;color:#64748b;
-    background:transparent;border:1px solid rgba(255,255,255,.1);
-    padding:9px 20px;border-radius:7px;text-decoration:none;
-    transition:color .15s,border-color .15s
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; }
+  @media(max-width:640px) {
+    .grid-2,.grid-3 { grid-template-columns: 1fr; }
+    .ne-page { padding: 20px 16px 80px; }
   }
-  .btn-cancel:hover{color:#f1f5f9;border-color:rgba(255,255,255,.2)}
-  .btn-criar{
-    font-size:13px;font-weight:600;color:#fff;
-    background:linear-gradient(135deg,#3b82f6,#2563eb);
-    border:none;padding:9px 24px;border-radius:7px;cursor:pointer;
-    display:flex;align-items:center;gap:7px;
-    transition:opacity .15s
-  }
-  .btn-criar:hover{opacity:.88}
-  .btn-criar:active{opacity:.75}
 
-  .hint{font-size:11px;color:#475569;margin-top:3px}
+  /* ── AUTOCOMPLETE ─────────────────────────────── */
+  .ac-wrap { position: relative; }
+  .ac-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    z-index: 300;
+    background: var(--card-bg);
+    border: 1.5px solid var(--brd2);
+    border-radius: 10px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    display: none;
+  }
+  .ac-dropdown.open { display: block; }
+  .ac-item {
+    padding: 10px 14px; cursor: pointer;
+    border-bottom: 1px solid var(--brd);
+    display: flex; align-items: center; gap: 10px;
+    transition: background .1s;
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.hov { background: var(--blue-light); }
+  .ac-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: var(--blue-light); color: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .ac-info { flex: 1; min-width: 0; }
+  .ac-nome { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ac-sub  { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .ac-criar {
+    padding: 10px 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 9px;
+    font-size: 13px; font-weight: 600; color: var(--blue);
+    border-top: 1px solid var(--brd);
+    background: var(--blue-light);
+    transition: filter .1s;
+  }
+  .ac-criar:hover { filter: brightness(.97); }
+  .ac-criar-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0;
+  }
+
+  /* ── SELECTED CLIENT TAG ──────────────────────── */
+  .client-selected {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    border: 1.5px solid #bbdefb;
+    background: #e3f2fd;
+    margin-top: 4px;
+  }
+  .cs-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .cs-info { flex: 1; }
+  .cs-nome { font-size: 13px; font-weight: 700; color: var(--text); }
+  .cs-tipo { font-size: 11px; color: var(--text3); }
+  .cs-clear {
+    padding: 4px 8px; border-radius: 5px; cursor: pointer;
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    background: rgba(0,0,0,.06); border: none;
+    transition: background .1s, color .1s;
+  }
+  .cs-clear:hover { background: rgba(220,38,38,.1); color: #dc2626; }
+
+  /* ── NOVO CLIENTE EXPAND ──────────────────────── */
+  .novo-expand {
+    display: none; padding: 14px;
+    border: 1.5px solid #fcd34d;
+    border-radius: 8px; background: #fffbeb;
+    margin-top: 8px;
+  }
+  .novo-expand.visible { display: block; }
+  .novo-expand-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--amber-dk);
+    display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+  }
+
+  /* ── STICKY FOOTER ────────────────────────────── */
+  .ne-footer {
+    position: fixed; bottom: 0; left: 248px; right: 0;
+    background: var(--card-bg);
+    border-top: 1px solid var(--brd);
+    padding: 12px 32px;
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    z-index: 90;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.06);
+  }
+  .btn-cancel {
+    font-size: 13px; font-weight: 600; color: var(--text2);
+    background: var(--card-bg); border: 1.5px solid var(--brd2);
+    padding: 9px 20px; border-radius: 8px; text-decoration: none;
+    transition: border-color .15s, color .15s;
+  }
+  .btn-cancel:hover { border-color: var(--text3); color: var(--text); text-decoration: none; }
+  .btn-submit {
+    font-size: 13px; font-weight: 700; color: #fff;
+    background: var(--blue);
+    border: none; padding: 9px 24px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; gap: 7px;
+    box-shadow: 0 1px 3px rgba(37,99,235,.3);
+    transition: filter .15s, box-shadow .15s;
+  }
+  .btn-submit:hover { filter: brightness(1.08); box-shadow: 0 4px 12px rgba(37,99,235,.35); }
+  .btn-submit:active { filter: brightness(.97); }
+
+  /* ── INPUT ERROR ──────────────────────────────── */
+  .fi.error { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.1); }
 </style>
+{% endblock %}
 
-<div class="ne-wrap">
+{% block content %}
+<div class="ne-page">
 
+  <!-- BREADCRUMB -->
+  <nav class="ne-breadcrumb">
+    <a href="/gestor">Dashboard</a>
+    <i class="fas fa-chevron-right"></i>
+    <a href="/gestor/log">Log de Entregas</a>
+    <i class="fas fa-chevron-right"></i>
+    <span>Nova Entrega</span>
+  </nav>
+
+  <!-- HEADER -->
   <div class="ne-header">
-    <div class="ne-title">
-      <i class="fas fa-plus-circle" style="color:#3b82f6"></i>
-      Nova Entrega
-      <span class="ne-badge">MANUAL</span>
+    <div class="ne-header-left">
+      <div class="ne-icon"><i class="fas fa-plus"></i></div>
+      <div>
+        <div class="ne-title">Nova Entrega</div>
+        <div class="ne-sub">Crie uma entrega fora do PDV — aparece no histórico do motorista e do veículo.</div>
+      </div>
     </div>
-    <p class="ne-sub">Cadastre uma entrega fora do PDV. Ela será atribuída ao motorista normalmente e contabilizada no histórico.</p>
+    <span class="ne-badge"><i class="fas fa-pen" style="margin-right:4px"></i>Manual</span>
   </div>
 
   <form method="POST" action="/gestor/entrega/nova" id="formNova">
+    <input type="hidden" name="cliente_id" id="clienteId">
+    <input type="hidden" name="cliente_nome_novo" id="clienteNomeNovo">
 
     <!-- ── CLIENTE ─────────────────────────────── -->
     <div class="ne-card">
-      <div class="ne-card-header"><i class="fas fa-user"></i> Cliente</div>
+      <div class="ne-card-header">
+        <div class="ne-card-header-icon icon-blue"><i class="fas fa-user"></i></div>
+        <span class="ne-card-title">Cliente</span>
+      </div>
       <div class="ne-card-body">
 
-        <input type="hidden" name="cliente_id" id="clienteId">
-        <input type="hidden" name="cliente_nome_novo" id="clienteNomeNovo">
-
-        <div class="fgroup autocomplete-wrap" id="acWrap">
-          <label class="flabel">Buscar cliente cadastrado <span>*</span></label>
-          <input type="text" id="acInput" class="finput" placeholder="Digite o nome do cliente..."
-                 autocomplete="off">
-          <div class="ac-results" id="acResults"></div>
+        <div class="fg">
+          <label class="fl">Buscar cliente cadastrado <span class="req">*</span></label>
+          <div class="ac-wrap" id="acWrap">
+            <input type="text" id="acInput" class="fi" placeholder="Digite o nome do cliente..." autocomplete="off">
+            <div class="ac-dropdown" id="acDropdown"></div>
+          </div>
+          <p class="hint">Se não encontrar, selecione "Novo cliente" para cadastrar automaticamente.</p>
           <div id="clienteTag"></div>
-          <p class="hint">Se não encontrar, selecione "Criar como novo" para cadastrar.</p>
         </div>
 
-        <div class="novo-cliente-fields" id="novoClienteFields">
-          <div class="novo-lbl"><i class="fas fa-user-plus"></i> Criando novo cliente</div>
-          <div class="fgroup" style="margin-bottom:0">
-            <label class="flabel">Nome completo <span>*</span></label>
-            <input type="text" id="novoNomeInput" class="finput" placeholder="Ex: João da Silva">
+        <!-- Novo cliente expandido -->
+        <div class="novo-expand" id="novoExpand">
+          <div class="novo-expand-title">
+            <i class="fas fa-user-plus"></i> Cadastrando novo cliente
+          </div>
+          <div class="fg">
+            <label class="fl">Nome completo <span class="req">*</span></label>
+            <input type="text" id="novoNomeInput" class="fi" placeholder="Ex: Maria Aparecida da Silva">
           </div>
         </div>
 
@@ -153,32 +278,35 @@
 
     <!-- ── ENDEREÇO ────────────────────────────── -->
     <div class="ne-card">
-      <div class="ne-card-header"><i class="fas fa-map-pin"></i> Endereço de Entrega</div>
-      <div class="ne-card-body" style="display:flex;flex-direction:column;gap:14px">
+      <div class="ne-card-header">
+        <div class="ne-card-header-icon icon-amber"><i class="fas fa-map-pin"></i></div>
+        <span class="ne-card-title">Endereço de Entrega</span>
+      </div>
+      <div class="ne-card-body">
 
-        <div class="form-row-3">
-          <div class="fgroup">
-            <label class="flabel">Rua / Av.</label>
-            <input type="text" name="rua" id="fRua" class="finput" placeholder="Ex: Rua das Flores">
+        <div class="grid-3">
+          <div class="fg">
+            <label class="fl">Rua / Avenida</label>
+            <input type="text" name="rua" id="fRua" class="fi" placeholder="Ex: Rua das Flores">
           </div>
-          <div class="fgroup">
-            <label class="flabel">Número</label>
-            <input type="text" name="numero" id="fNumero" class="finput" placeholder="Ex: 123">
+          <div class="fg">
+            <label class="fl">Número</label>
+            <input type="text" name="numero" id="fNumero" class="fi" placeholder="123">
           </div>
-          <div class="fgroup">
-            <label class="flabel">CEP</label>
-            <input type="text" name="cep" class="finput" placeholder="00000-000">
+          <div class="fg">
+            <label class="fl">CEP <span class="opt">(opcional)</span></label>
+            <input type="text" name="cep" class="fi" placeholder="00000-000" maxlength="9">
           </div>
         </div>
 
-        <div class="form-row-2">
-          <div class="fgroup">
-            <label class="flabel">Bairro</label>
-            <input type="text" name="bairro" id="fBairro" class="finput" placeholder="Ex: Caranã">
+        <div class="grid-2">
+          <div class="fg">
+            <label class="fl">Bairro</label>
+            <input type="text" name="bairro" id="fBairro" class="fi" placeholder="Ex: Caranã">
           </div>
-          <div class="fgroup">
-            <label class="flabel">Município</label>
-            <input type="text" name="municipio" id="fMunicipio" class="finput" placeholder="Ex: Boa Vista" value="Boa Vista">
+          <div class="fg">
+            <label class="fl">Município</label>
+            <input type="text" name="municipio" id="fMunicipio" class="fi" value="Boa Vista">
           </div>
         </div>
 
@@ -187,127 +315,158 @@
 
     <!-- ── LOGÍSTICA ──────────────────────────── -->
     <div class="ne-card">
-      <div class="ne-card-header"><i class="fas fa-truck"></i> Logística</div>
-      <div class="ne-card-body" style="display:flex;flex-direction:column;gap:14px">
+      <div class="ne-card-header">
+        <div class="ne-card-header-icon icon-green"><i class="fas fa-truck"></i></div>
+        <span class="ne-card-title">Logística</span>
+      </div>
+      <div class="ne-card-body">
 
-        <div class="form-row-2">
-          <div class="fgroup">
-            <label class="flabel">Filial <span>*</span></label>
-            <select name="filial_id" class="finput" required>
+        <div class="grid-2">
+          <div class="fg">
+            <label class="fl">Filial <span class="req">*</span></label>
+            <select name="filial_id" class="fi" required>
               <option value="">Selecione a filial...</option>
               {% for f in filiais %}
               <option value="{{ f.id }}">{{ f.nome }}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="fgroup">
-            <label class="flabel">Entregador</label>
-            <select name="entregador_id" class="finput">
-              <option value="">Atribuir depois...</option>
+          <div class="fg">
+            <label class="fl">Entregador <span class="opt">(opcional)</span></label>
+            <select name="entregador_id" class="fi">
+              <option value="">Atribuir depois</option>
               {% for e in entregadores %}
               <option value="{{ e.id }}">{{ e.username }}</option>
               {% endfor %}
             </select>
-            <p class="hint">Se deixar em branco, aparece como pendente no painel.</p>
+            <p class="hint">Se não atribuído, fica pendente no painel do entregador.</p>
           </div>
         </div>
 
-        <div class="fgroup">
-          <label class="flabel">Veículo</label>
-          <select name="veiculo_id" class="finput">
+        <div class="fg">
+          <label class="fl">Veículo <span class="opt">(opcional)</span></label>
+          <select name="veiculo_id" class="fi">
             <option value="">Não informar</option>
             {% for v in veiculos %}
-            <option value="{{ v.id }}">{{ v.placa }} — {{ v.modelo or '' }}</option>
+            <option value="{{ v.id }}">{{ v.placa }}{% if v.modelo %} — {{ v.modelo }}{% endif %}</option>
             {% endfor %}
           </select>
         </div>
 
-        <div class="fgroup">
-          <label class="flabel">Observação</label>
-          <textarea name="observacao" class="finput" rows="3"
-            placeholder="Ex: Entregar após as 17h, portão azul, ligar antes..."></textarea>
+        <div class="fg">
+          <label class="fl">Observação <span class="opt">(opcional)</span></label>
+          <textarea name="observacao" class="fi" placeholder="Ex: Entregar após as 17h, portão azul, ligar antes..."></textarea>
         </div>
 
       </div>
     </div>
 
-    <div class="ne-actions">
-      <a href="/gestor/log" class="btn-cancel">Cancelar</a>
-      <button type="submit" class="btn-criar" id="btnCriar">
-        <i class="fas fa-plus"></i> Criar Entrega
-      </button>
-    </div>
-
   </form>
 </div>
 
+<!-- STICKY FOOTER -->
+<div class="ne-footer">
+  <a href="/gestor/log" class="btn-cancel">Cancelar</a>
+  <button type="submit" form="formNova" class="btn-submit" id="btnSubmit">
+    <i class="fas fa-plus"></i> Criar Entrega
+  </button>
+</div>
+
 <script>
-var acInput    = document.getElementById('acInput');
-var acResults  = document.getElementById('acResults');
-var clienteId  = document.getElementById('clienteId');
-var clienteNomeNovo = document.getElementById('clienteNomeNovo');
-var clienteTag = document.getElementById('clienteTag');
-var novoFields = document.getElementById('novoClienteFields');
+var acInput       = document.getElementById('acInput');
+var acDropdown    = document.getElementById('acDropdown');
+var clienteIdEl   = document.getElementById('clienteId');
+var clienteNomeEl = document.getElementById('clienteNomeNovo');
+var clienteTag    = document.getElementById('clienteTag');
+var novoExpand    = document.getElementById('novoExpand');
 var novoNomeInput = document.getElementById('novoNomeInput');
-var searchTimer;
 var modoNovo = false;
+var searchTimer;
+
+function initials(nome) {
+  var parts = nome.trim().split(' ');
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return nome.slice(0, 2).toUpperCase();
+}
 
 function clearCliente() {
-  clienteId.value = '';
-  clienteNomeNovo.value = '';
-  clienteTag.innerHTML = '';
+  clienteIdEl.value  = '';
+  clienteNomeEl.value = '';
   modoNovo = false;
-  novoFields.classList.remove('visible');
+  novoExpand.classList.remove('visible');
   novoNomeInput.value = '';
+  clienteTag.innerHTML = '';
+  acInput.style.display = '';
+  acInput.value = '';
+  acInput.focus();
 }
 
 function selecionarCliente(id, nome, rua, numero, bairro, municipio) {
-  clienteId.value = id;
-  clienteNomeNovo.value = '';
+  clienteIdEl.value = id;
+  clienteNomeEl.value = '';
   modoNovo = false;
-  novoFields.classList.remove('visible');
-  acInput.value = '';
-  acResults.classList.remove('open');
+  novoExpand.classList.remove('visible');
+  acDropdown.classList.remove('open');
+  acInput.style.display = 'none';
+
   clienteTag.innerHTML =
-    '<span class="cliente-tag"><i class="fas fa-circle-check"></i> ' + nome +
-    ' <span class="tag-x" onclick="clearCliente()">✕</span></span>';
-  // pre-fill address
+    '<div class="client-selected">' +
+      '<div class="cs-avatar">'+initials(nome)+'</div>' +
+      '<div class="cs-info">' +
+        '<div class="cs-nome">'+nome+'</div>' +
+        '<div class="cs-tipo">Cliente cadastrado</div>' +
+      '</div>' +
+      '<button type="button" class="cs-clear" onclick="clearCliente()">Trocar</button>' +
+    '</div>';
+
   if (rua)       document.getElementById('fRua').value = rua;
   if (numero)    document.getElementById('fNumero').value = numero;
   if (bairro)    document.getElementById('fBairro').value = bairro;
   if (municipio) document.getElementById('fMunicipio').value = municipio;
 }
 
-function ativarModoNovo(nome) {
+function ativarNovo(nome) {
+  clienteIdEl.value = '';
   modoNovo = true;
-  clienteId.value = '';
-  novoFields.classList.add('visible');
+  novoExpand.classList.add('visible');
   novoNomeInput.value = nome;
-  acInput.value = '';
-  acResults.classList.remove('open');
+  clienteNomeEl.value = nome;
+  acDropdown.classList.remove('open');
+  acInput.style.display = 'none';
+
   clienteTag.innerHTML =
-    '<span class="cliente-tag" style="background:rgba(245,158,11,.1);color:#f59e0b;border-color:rgba(245,158,11,.25);">' +
-    '<i class="fas fa-user-plus"></i> Novo: ' + nome +
-    ' <span class="tag-x" onclick="clearCliente()">✕</span></span>';
+    '<div class="client-selected" style="border-color:#fcd34d;background:#fffbeb">' +
+      '<div class="cs-avatar" style="background:var(--amber-dk)">'+initials(nome)+'</div>' +
+      '<div class="cs-info">' +
+        '<div class="cs-nome" id="tagNomeLabel">'+nome+'</div>' +
+        '<div class="cs-tipo" style="color:var(--amber-dk)">Novo cliente (será cadastrado)</div>' +
+      '</div>' +
+      '<button type="button" class="cs-clear" onclick="clearCliente()">Cancelar</button>' +
+    '</div>';
+
+  novoNomeInput.focus();
 }
 
 novoNomeInput.addEventListener('input', function() {
-  clienteNomeNovo.value = novoNomeInput.value;
-  // update tag label
-  var tag = clienteTag.querySelector('.cliente-tag');
-  if (tag) tag.innerHTML = '<i class="fas fa-user-plus"></i> Novo: ' + novoNomeInput.value +
-    ' <span class="tag-x" onclick="clearCliente()">✕</span>';
+  clienteNomeEl.value = novoNomeInput.value;
+  var lbl = document.getElementById('tagNomeLabel');
+  if (lbl) lbl.textContent = novoNomeInput.value || '(sem nome)';
 });
 
 acInput.addEventListener('input', function() {
   var q = acInput.value.trim();
   clearTimeout(searchTimer);
-  if (q.length < 2) { acResults.classList.remove('open'); return; }
-  searchTimer = setTimeout(function() { buscar(q); }, 280);
+  acDropdown.classList.remove('open');
+  if (q.length < 2) return;
+  searchTimer = setTimeout(function(){ buscar(q); }, 260);
 });
 
 acInput.addEventListener('blur', function() {
-  setTimeout(function(){ acResults.classList.remove('open'); }, 200);
+  setTimeout(function(){ acDropdown.classList.remove('open'); }, 180);
+});
+
+acInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') acDropdown.classList.remove('open');
 });
 
 function buscar(q) {
@@ -317,31 +476,49 @@ function buscar(q) {
       var html = '';
       lista.forEach(function(c) {
         var sub = [c.rua, c.bairro, c.municipio].filter(Boolean).join(', ');
-        html += '<div class="ac-item" onclick="selecionarCliente('+c.id+',\''+escape(c.nome)+'\',\''+escape(c.rua)+'\',\''+escape(c.numero)+'\',\''+escape(c.bairro)+'\',\''+escape(c.municipio)+'\')">' +
-                '<span class="ac-item-nome">'+c.nome+'</span>' +
-                (sub ? '<span class="ac-item-sub">'+sub+'</span>' : '') +
-                '</div>';
+        var safeNome = c.nome.replace(/'/g, "\\'");
+        var safeRua  = (c.rua||'').replace(/'/g, "\\'");
+        var safeNum  = (c.numero||'').replace(/'/g, "\\'");
+        var safeBai  = (c.bairro||'').replace(/'/g, "\\'");
+        var safeMun  = (c.municipio||'').replace(/'/g, "\\'");
+        html +=
+          '<div class="ac-item" onclick="selecionarCliente('+c.id+',\''+safeNome+'\',\''+safeRua+'\',\''+safeNum+'\',\''+safeBai+'\',\''+safeMun+'\')">' +
+            '<div class="ac-avatar">'+initials(c.nome)+'</div>' +
+            '<div class="ac-info">' +
+              '<div class="ac-nome">'+c.nome+'</div>' +
+              (sub ? '<div class="ac-sub">'+sub+'</div>' : '') +
+            '</div>' +
+            '<i class="fas fa-chevron-right" style="color:var(--text3);font-size:10px"></i>' +
+          '</div>';
       });
-      html += '<div class="ac-criar" onclick="ativarModoNovo(\''+escape(acInput.value.trim())+'\')"><i class="fas fa-plus-circle"></i> Criar como novo: <strong style="margin-left:3px">'+acInput.value.trim()+'</strong></div>';
-      acResults.innerHTML = html;
-      acResults.classList.add('open');
+      var safeQ = acInput.value.trim().replace(/'/g, "\\'");
+      html +=
+        '<div class="ac-criar" onclick="ativarNovo(\''+safeQ+'\')">' +
+          '<div class="ac-criar-icon"><i class="fas fa-plus"></i></div>' +
+          '<div>' +
+            '<div style="font-weight:700">Novo cliente</div>' +
+            '<div style="font-size:11px;font-weight:400;color:var(--blue);margin-top:1px">Cadastrar "'+acInput.value.trim()+'"</div>' +
+          '</div>' +
+        '</div>';
+      acDropdown.innerHTML = html;
+      acDropdown.classList.add('open');
     })
     .catch(function(){});
 }
 
-// validation before submit
+// form validation
 document.getElementById('formNova').addEventListener('submit', function(e) {
-  var temCliente = clienteId.value || (modoNovo && novoNomeInput.value.trim());
+  var temCliente = clienteIdEl.value || (modoNovo && novoNomeInput.value.trim());
   if (!temCliente) {
     e.preventDefault();
+    acInput.classList.add('error');
     acInput.focus();
-    acInput.style.borderColor = '#ef4444';
-    setTimeout(function(){ acInput.style.borderColor = ''; }, 2000);
+    setTimeout(function(){ acInput.classList.remove('error'); }, 2500);
     return;
   }
-  if (modoNovo) {
-    clienteNomeNovo.value = novoNomeInput.value.trim();
-  }
+  if (modoNovo) clienteNomeEl.value = novoNomeInput.value.trim();
+  document.getElementById('btnSubmit').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+  document.getElementById('btnSubmit').disabled = true;
 });
 </script>
 {% endblock %}
