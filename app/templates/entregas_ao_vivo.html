@@ -118,10 +118,6 @@
 
   <div class="summary-pills" id="summaryPills">
     <span class="s-pill sp-total"><i class="fas fa-truck"></i> {{ total }} em rota</span>
-    {% set cnt_ok   = entregas | selectattr('segundos_parado', 'lt', 90)  | list | length %}
-    {% set cnt_warn = entregas | selectattr('segundos_parado', 'ge', 90)  | selectattr('segundos_parado', 'lt', 150) | list | length %}
-    {% set cnt_stop = entregas | selectattr('segundos_parado', 'ge', 150) | list | length %}
-    {% set cnt_nogps = entregas | selectattr('tem_gps', 'equalto', false) | list | length %}
     {% if cnt_ok   > 0 %}<span class="s-pill sp-ok"><i class="fas fa-circle-check"></i> {{ cnt_ok }} OK</span>{% endif %}
     {% if cnt_warn > 0 %}<span class="s-pill sp-warn"><i class="fas fa-triangle-exclamation"></i> {{ cnt_warn }} atenção</span>{% endif %}
     {% if cnt_stop > 0 %}<span class="s-pill sp-stop"><i class="fas fa-circle-stop"></i> {{ cnt_stop }} parado!</span>{% endif %}
