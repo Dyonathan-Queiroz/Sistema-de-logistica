@@ -295,7 +295,7 @@
       background: var(--s1);
       border-top: 1px solid var(--brd);
       order: 999;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
     }
     .tab {
       display: flex;
@@ -1398,7 +1398,7 @@
       padding: 10px 1.25rem;
       display: flex; align-items: center; gap: 10px;
       font-size: 13px; font-weight: 600;
-      position: sticky; top: 0; z-index: 900;
+      flex-shrink: 0;
     }
     .stop-alert-bar.hidden { display: none; }
     .sab-pulse { animation: sabBlink 1s ease-in-out infinite; font-size: 16px; }
@@ -1458,14 +1458,6 @@
     <button class="gps-retry-btn" onclick="gpsRetry()">
       <i class="fas fa-rotate-right"></i> Tentar Novamente
     </button>
-  </div>
-</div>
-
-<!-- STOP ALERT BAR (aparece em 2m30s parado, some ao mover) -->
-<div class="stop-alert-bar hidden" id="stopAlertBar">
-  <i class="fas fa-triangle-exclamation sab-pulse"></i>
-  <div class="sab-text">
-    Motorista parado <span class="sab-time" id="sabTime"></span>
   </div>
 </div>
 
@@ -1553,6 +1545,14 @@
       <i class="fas fa-sign-out-alt"></i>
     </a>
   </header>
+
+  <!-- STOP ALERT BAR (aparece em 2m30s parado, some ao mover) -->
+  <div class="stop-alert-bar hidden" id="stopAlertBar">
+    <i class="fas fa-triangle-exclamation sab-pulse"></i>
+    <div class="sab-text">
+      Motorista parado <span class="sab-time" id="sabTime"></span>
+    </div>
+  </div>
 
   <!-- ══ STATS ══════════════════════════════════════════ -->
   <div class="stats">
