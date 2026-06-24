@@ -1261,7 +1261,7 @@ async def nova_entrega_form(request: Request, db: Session = Depends(get_db), use
     if user_role not in ("gestor", "operador"):
         return RedirectResponse(url="/login")
     filiais     = db.query(Filial).order_by(Filial.nome).all()
-    entregadores = db.query(Usuario).filter(Usuario.role == "entregador").order_by(Usuario.username).all()
+    entregadores = db.query(Usuario).filter(Usuario.perfil == "entregador").order_by(Usuario.username).all()
     veiculos    = db.query(Veiculo).order_by(Veiculo.placa).all()
     return templates.TemplateResponse(request=request, name="nova_entrega.html", context={
         "filiais": filiais,
