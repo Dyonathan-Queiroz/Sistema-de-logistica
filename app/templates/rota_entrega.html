@@ -89,6 +89,44 @@
     .pop-tipo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
     .pop-tipo.inicio{color:var(--green)}.pop-tipo.rota{color:var(--blue)}.pop-tipo.fim{color:var(--red)}
     .pop-time{font-size:12px;color:var(--secondary)}
+
+    /* LIVE ELEMENTS */
+    .live-bar{
+      position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:1100;
+      display:none;align-items:center;gap:8px;
+      background:rgba(15,17,23,.92);border:1px solid rgba(255,255,255,.12);
+      backdrop-filter:blur(6px);border-radius:8px;
+      padding:8px 16px;font-size:13px;color:#94a3b8;
+      box-shadow:0 4px 20px rgba(0,0,0,.4)
+    }
+    .live-bar.visible{display:flex}
+    .lb-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;animation:livePulse 1.8s ease-in-out infinite}
+    @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.65)}}
+
+    .stop-overlay{
+      position:absolute;top:0;left:0;right:0;
+      z-index:1200;padding:11px 1rem;
+      background:rgba(239,68,68,.15);
+      border-bottom:2px solid rgba(239,68,68,.5);
+      display:none;align-items:center;gap:10px;
+      font-size:13px;font-weight:600;color:#fca5a5;
+      animation:stopPulse 2s ease-in-out infinite
+    }
+    .stop-overlay.visible{display:flex}
+    @keyframes stopPulse{0%,100%{background:rgba(239,68,68,.15)}50%{background:rgba(239,68,68,.25)}}
+
+    .fin-banner{
+      position:absolute;top:0;left:0;right:0;
+      z-index:1200;padding:11px 1rem;
+      background:rgba(34,197,94,.15);
+      border-bottom:2px solid rgba(34,197,94,.4);
+      display:none;align-items:center;gap:10px;
+      font-size:13px;font-weight:600;color:#86efac
+    }
+    .fin-banner.visible{display:flex}
+
+    @keyframes currentPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
+    .current-marker div{animation:currentPulse 1.5s ease-in-out infinite}
   </style>
 </head>
 <body>
@@ -145,7 +183,21 @@
 </div>
 
 <!-- MAP AREA -->
-<div class="map-wrap">
+<div class="map-wrap" style="position:relative">
+  <!-- Live overlays (shown only when em_rota) -->
+  <div class="stop-overlay" id="stopOverlay">
+    <i class="fas fa-circle-stop"></i>
+    <span id="stopMsg">Motorista PARADO</span>
+  </div>
+  <div class="fin-banner" id="finBanner">
+    <i class="fas fa-circle-check"></i> Entrega finalizada — rota completa registrada
+  </div>
+  <div class="live-bar" id="liveBar">
+    <span class="lb-dot"></span>
+    <span>Rastreamento ao vivo</span>
+    <span id="liveTs" style="margin-left:8px;font-size:11px;color:#475569"></span>
+  </div>
+
   {% if pontos %}
   <div id="map"></div>
   <div class="legend">
@@ -170,7 +222,9 @@
 {% if pontos %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
 <script>
-var PONTOS = {{ pontos_json | safe }};
+var PONTOS        = {{ pontos_json | safe }};
+var ENTREGA_ID    = {{ entrega.id }};
+var INITIAL_STATUS= '{{ entrega.status }}';
 
 var map = L.map('map', { zoomControl: true });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -178,48 +232,138 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-function makeIcon(color, size) {
+function makeIcon(color, size, extraClass) {
   return L.divIcon({
-    className: '',
+    className: extraClass || '',
     html: '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>',
     iconSize: [size, size],
     iconAnchor: [size/2, size/2]
   });
 }
 
-var latlngs = [];
-var bounds = L.latLngBounds();
+/* ── initial render ───────────────────────────── */
+var allMarkers = [];
+var polyline   = null;
+var currentMarker = null;
+var bounds     = L.latLngBounds();
+var latlngs    = [];
 
-PONTOS.forEach(function(p, i) {
-  var ll = L.latLng(p.lat, p.lng);
-  latlngs.push(ll);
-  bounds.extend(ll);
+function renderPoints(pontos) {
+  // clear previous
+  allMarkers.forEach(function(m){ map.removeLayer(m); });
+  allMarkers = [];
+  if (polyline)      { map.removeLayer(polyline); polyline = null; }
+  if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
+  latlngs = [];
+  bounds  = L.latLngBounds();
 
-  var color, size, label;
-  if (p.tipo === 'inicio') {
-    color = '#22c55e'; size = 18; label = 'Início da rota';
-  } else if (p.tipo === 'fim') {
-    color = '#ef4444'; size = 18; label = 'Local de entrega';
-  } else {
-    color = '#3b82f6'; size = 10; label = 'Percurso';
-  }
+  pontos.forEach(function(p) {
+    var ll = L.latLng(p.lat, p.lng);
+    latlngs.push(ll);
+    bounds.extend(ll);
 
-  var marker = L.marker(ll, { icon: makeIcon(color, size) }).addTo(map);
-  marker.bindPopup(
-    '<div class="pop-tipo '+p.tipo+'">'+label+'</div>' +
-    '<div class="pop-time">'+p.timestamp+'</div>' +
-    '<div class="pop-time" style="margin-top:2px;color:#94a3b8">'+p.lat.toFixed(6)+', '+p.lng.toFixed(6)+'</div>'
-  );
-});
+    var color, size, label;
+    if      (p.tipo === 'inicio') { color='#22c55e'; size=18; label='Início da rota'; }
+    else if (p.tipo === 'fim')    { color='#ef4444'; size=18; label='Local de entrega'; }
+    else                          { color='#3b82f6'; size=10; label='Percurso'; }
 
-// Draw route polyline
-if (latlngs.length > 1) {
-  L.polyline(latlngs, { color: '#3b82f6', weight: 3, opacity: 0.7, dashArray: '6 4' }).addTo(map);
+    var m = L.marker(ll, { icon: makeIcon(color, size) }).addTo(map);
+    m.bindPopup(
+      '<div class="pop-tipo '+p.tipo+'">'+label+'</div>' +
+      '<div class="pop-time">'+p.ts+'</div>' +
+      '<div class="pop-time" style="margin-top:2px;color:#94a3b8">'+p.lat.toFixed(6)+', '+p.lng.toFixed(6)+'</div>'
+    );
+    allMarkers.push(m);
+  });
+
+  if (latlngs.length > 1)
+    polyline = L.polyline(latlngs, { color:'#3b82f6', weight:3, opacity:.7, dashArray:'6 4' }).addTo(map);
+
+  if (bounds.isValid())
+    map.fitBounds(bounds, { padding:[40,40] });
 }
 
-// Fit map to all points
-if (bounds.isValid()) {
-  map.fitBounds(bounds, { padding: [40, 40] });
+// render the initial server-rendered data (campo 'ts' vem no json)
+// remap fields: pontos_json uses 'timestamp' key, live endpoint uses 'ts'
+var initialPontos = PONTOS.map(function(p){ return { lat:p.lat, lng:p.lng, tipo:p.tipo, ts:p.timestamp }; });
+renderPoints(initialPontos);
+
+/* ── live tracking (only when em_rota) ─────────── */
+var liveTimer = null;
+
+function updateLiveUI(data) {
+  var sp      = data.segundos_parado;
+  var status  = data.status;
+
+  var liveBar   = document.getElementById('liveBar');
+  var stopOv    = document.getElementById('stopOverlay');
+  var finBanner = document.getElementById('finBanner');
+  var liveTs    = document.getElementById('liveTs');
+  var stopMsg   = document.getElementById('stopMsg');
+
+  if (status === 'finalizado') {
+    liveBar.classList.remove('visible');
+    stopOv.classList.remove('visible');
+    finBanner.classList.add('visible');
+    // update status pill in topbar
+    var pill = document.querySelector('.status-pill');
+    if (pill) pill.outerHTML = '<span class="status-pill sp-fin"><span class="sp-dot"></span>Finalizada</span>';
+    stopLive();
+    return;
+  }
+
+  // still em_rota
+  liveBar.classList.add('visible');
+  var now = new Date();
+  liveTs.textContent = 'Atualizado ' + now.getHours().toString().padStart(2,'0') + ':' +
+                       now.getMinutes().toString().padStart(2,'0') + ':' +
+                       now.getSeconds().toString().padStart(2,'0');
+
+  if (sp !== null && sp > 150) {
+    var mins = Math.floor(sp/60), secs = sp % 60;
+    stopMsg.textContent = 'Motorista PARADO há ' + mins + 'min ' + secs + 's';
+    stopOv.classList.add('visible');
+  } else {
+    stopOv.classList.remove('visible');
+  }
+
+  // re-render points
+  renderPoints(data.pontos);
+
+  // amber pulsing current-position marker (last non-fim point)
+  var lastRota = null;
+  for (var i = data.pontos.length - 1; i >= 0; i--) {
+    if (data.pontos[i].tipo !== 'fim') { lastRota = data.pontos[i]; break; }
+  }
+  if (lastRota) {
+    currentMarker = L.marker([lastRota.lat, lastRota.lng], {
+      icon: L.divIcon({
+        className: 'current-marker',
+        html: '<div style="width:16px;height:16px;border-radius:50%;background:#f59e0b;border:2.5px solid #fff;box-shadow:0 0 8px rgba(245,158,11,.7);"></div>',
+        iconSize: [16,16],
+        iconAnchor: [8,8]
+      }),
+      zIndexOffset: 500
+    }).addTo(map);
+    currentMarker.bindPopup('<div class="pop-tipo rota">Posição atual</div><div class="pop-time">'+lastRota.ts+'</div>');
+  }
+}
+
+function fetchLive() {
+  fetch('/gestor/entrega/' + ENTREGA_ID + '/pontos')
+    .then(function(r){ return r.json(); })
+    .then(function(data){ updateLiveUI(data); })
+    .catch(function(){ /* silencioso */ });
+}
+
+function stopLive() {
+  if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+}
+
+if (INITIAL_STATUS === 'em_rota') {
+  document.getElementById('liveBar').classList.add('visible');
+  liveTimer = setInterval(fetchLive, 30000);
+  fetchLive(); // imediato
 }
 </script>
 {% endif %}
