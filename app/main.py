@@ -14,6 +14,7 @@ from collections import defaultdict
 import re
 import os
 import hmac
+import math
 import hashlib
 import secrets
 
@@ -27,6 +28,16 @@ from app.utils import gerar_link_rota
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _haversine_km(pts) -> float:
+    """Soma das distâncias GPS em km usando Haversine."""
+    total = 0.0
+    for i in range(1, len(pts)):
+        la1, lo1 = math.radians(pts[i-1].latitude), math.radians(pts[i-1].longitude)
+        la2, lo2 = math.radians(pts[i].latitude),   math.radians(pts[i].longitude)
+        a = math.sin((la2-la1)/2)**2 + math.cos(la1)*math.cos(la2)*math.sin((lo2-lo1)/2)**2
+        total += 6371 * 2 * math.asin(math.sqrt(a))
+    return round(total, 1)
 
 class PontoRotaIn(BaseModel):
     lat: float
@@ -1400,10 +1411,12 @@ async def dados_ao_vivo(db: Session = Depends(get_db), user_role: str = Cookie(N
         cli = clientes_map.get(e.cliente_id)
         fil = filiais_map.get(e.filial_id)
         ent = usuarios_map.get(e.entregador_id)
-        ultimo = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp.desc()).first()
+        pontos_e = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp).all()
+        ultimo = pontos_e[-1] if pontos_e else None
         segundos_parado = int((agora_dt - ultimo.timestamp).total_seconds()) if ultimo and ultimo.timestamp else None
         minutos_em_rota = int((agora_dt - e.data_aceite).total_seconds() / 60) if e.data_aceite else None
         endereco = f"{e.rua or ''}{', ' + e.numero if e.numero else ''}{' · ' + e.bairro if e.bairro else ''}"
+        distancia_km = _haversine_km(pontos_e) if len(pontos_e) >= 2 else None
         result.append({
             "id": e.id,
             "cupom": e.cupom_fiscal or f"#{e.id}",
@@ -1415,6 +1428,7 @@ async def dados_ao_vivo(db: Session = Depends(get_db), user_role: str = Cookie(N
             "minutos_em_rota": minutos_em_rota,
             "segundos_parado": segundos_parado,
             "tem_gps": ultimo is not None,
+            "distancia_km": distancia_km,
         })
 
     return JSONResponse({"entregas": result, "total": len(result)})
@@ -1435,9 +1449,12 @@ async def pontos_entrega_live(entrega_id: int, db: Session = Depends(get_db), us
     ultimo   = pontos[-1] if pontos else None
     segundos_parado = int((agora_dt - ultimo.timestamp).total_seconds()) if ultimo and ultimo.timestamp else None
 
+    distancia_km = _haversine_km(pontos) if len(pontos) >= 2 else None
+
     return JSONResponse({
         "status": entrega.status,
         "segundos_parado": segundos_parado,
+        "distancia_km": distancia_km,
         "pontos": [
             {"lat": p.latitude, "lng": p.longitude, "tipo": p.tipo,
              "ts": p.timestamp.strftime("%H:%M:%S") if p.timestamp else ""}
