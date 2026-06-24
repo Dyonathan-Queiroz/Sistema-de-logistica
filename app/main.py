@@ -1238,6 +1238,107 @@ async def salvar_edicao_log(entrega_id: int, rua: str = Form(...), numero: str =
     return RedirectResponse(url="/gestor/log", status_code=303)
 
 
+@app.get("/gestor/ao-vivo")
+async def pagina_ao_vivo(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor — painel de entregas em tempo real"""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    em_rota = db.query(Entrega).filter(Entrega.status == "em_rota").order_by(Entrega.data_aceite).all()
+    clientes_map  = {c.id: c for c in db.query(Cliente).all()}
+    filiais_map   = {f.id: f for f in db.query(Filial).all()}
+    usuarios_map  = {u.id: u for u in db.query(Usuario).all()}
+    agora_dt = agora()
+
+    entregas = []
+    for e in em_rota:
+        cli = clientes_map.get(e.cliente_id)
+        fil = filiais_map.get(e.filial_id)
+        ent = usuarios_map.get(e.entregador_id)
+        ultimo = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp.desc()).first()
+        segundos_parado = int((agora_dt - ultimo.timestamp).total_seconds()) if ultimo and ultimo.timestamp else None
+        minutos_em_rota = int((agora_dt - e.data_aceite).total_seconds() / 60) if e.data_aceite else None
+        endereco = f"{e.rua or ''}{', ' + e.numero if e.numero else ''}{' · ' + e.bairro if e.bairro else ''}"
+        entregas.append({
+            "entrega": e,
+            "cliente_nome":    cli.nome     if cli else "—",
+            "filial_nome":     fil.nome     if fil else "—",
+            "entregador_nome": ent.username if ent else "—",
+            "endereco":        endereco.strip(" ·"),
+            "segundos_parado": segundos_parado,
+            "minutos_em_rota": minutos_em_rota,
+            "tem_gps":         ultimo is not None,
+        })
+
+    return templates.TemplateResponse(request=request, name="entregas_ao_vivo.html", context={
+        "entregas": entregas,
+        "total": len(entregas),
+    })
+
+
+@app.get("/gestor/ao-vivo/dados")
+async def dados_ao_vivo(db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor — JSON para auto-refresh da página ao vivo"""
+    if user_role not in ("gestor", "operador"):
+        return JSONResponse({"ok": False}, status_code=401)
+
+    em_rota = db.query(Entrega).filter(Entrega.status == "em_rota").order_by(Entrega.data_aceite).all()
+    clientes_map  = {c.id: c for c in db.query(Cliente).all()}
+    filiais_map   = {f.id: f for f in db.query(Filial).all()}
+    usuarios_map  = {u.id: u for u in db.query(Usuario).all()}
+    agora_dt = agora()
+
+    result = []
+    for e in em_rota:
+        cli = clientes_map.get(e.cliente_id)
+        fil = filiais_map.get(e.filial_id)
+        ent = usuarios_map.get(e.entregador_id)
+        ultimo = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp.desc()).first()
+        segundos_parado = int((agora_dt - ultimo.timestamp).total_seconds()) if ultimo and ultimo.timestamp else None
+        minutos_em_rota = int((agora_dt - e.data_aceite).total_seconds() / 60) if e.data_aceite else None
+        endereco = f"{e.rua or ''}{', ' + e.numero if e.numero else ''}{' · ' + e.bairro if e.bairro else ''}"
+        result.append({
+            "id": e.id,
+            "cupom": e.cupom_fiscal or f"#{e.id}",
+            "cliente":    cli.nome     if cli else "—",
+            "filial":     fil.nome     if fil else "—",
+            "entregador": ent.username if ent else "—",
+            "endereco": endereco.strip(" ·"),
+            "aceito_em": e.data_aceite.strftime("%H:%M") if e.data_aceite else "—",
+            "minutos_em_rota": minutos_em_rota,
+            "segundos_parado": segundos_parado,
+            "tem_gps": ultimo is not None,
+        })
+
+    return JSONResponse({"entregas": result, "total": len(result)})
+
+
+@app.get("/gestor/entrega/{entrega_id}/pontos")
+async def pontos_entrega_live(entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor — JSON com pontos GPS e status atual para polling do mapa"""
+    if user_role not in ("gestor", "operador"):
+        return JSONResponse({"ok": False}, status_code=401)
+
+    entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
+    if not entrega:
+        return JSONResponse({"ok": False}, status_code=404)
+
+    pontos  = db.query(PontoRota).filter(PontoRota.entrega_id == entrega_id).order_by(PontoRota.timestamp).all()
+    agora_dt = agora()
+    ultimo   = pontos[-1] if pontos else None
+    segundos_parado = int((agora_dt - ultimo.timestamp).total_seconds()) if ultimo and ultimo.timestamp else None
+
+    return JSONResponse({
+        "status": entrega.status,
+        "segundos_parado": segundos_parado,
+        "pontos": [
+            {"lat": p.latitude, "lng": p.longitude, "tipo": p.tipo,
+             "ts": p.timestamp.strftime("%H:%M:%S") if p.timestamp else ""}
+            for p in pontos
+        ],
+    })
+
+
 @app.get("/gestor/entrega/{entrega_id}/rota")
 async def rota_entrega_gestor(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor — mapa de rastreamento GPS de uma entrega"""
