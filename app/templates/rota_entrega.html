@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rota #{{ entrega.id }} — Sistema Logístico</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#07090e;--bg2:#0f1117;--bg3:#161b27;
+      --border:rgba(255,255,255,0.08);--border-md:rgba(255,255,255,0.13);
+      --amber:#f59e0b;--text:#f1f5f9;--secondary:#94a3b8;--muted:#64748b;
+      --green:#22c55e;--blue:#3b82f6;--red:#ef4444
+    }
+    html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+
+    /* TOP BAR */
+    .topbar{
+      background:var(--bg2);border-bottom:1px solid var(--border-md);
+      padding:0 1.5rem;height:56px;
+      display:flex;align-items:center;gap:12px;
+      position:sticky;top:0;z-index:1000
+    }
+    .back-btn{
+      display:flex;align-items:center;gap:7px;
+      font-size:13px;font-weight:500;color:var(--secondary);
+      text-decoration:none;padding:6px 10px;border-radius:7px;
+      border:1px solid var(--border);transition:color .15s,border-color .15s
+    }
+    .back-btn:hover{color:var(--text);border-color:var(--border-md)}
+    .topbar-title{font-size:15px;font-weight:600;color:var(--text)}
+    .topbar-sub{font-size:12px;color:var(--muted);margin-left:4px}
+    .status-pill{
+      margin-left:auto;font-size:11px;font-weight:600;
+      padding:4px 11px;border-radius:5px;display:flex;align-items:center;gap:5px
+    }
+    .sp-fin{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.22)}
+    .sp-rota{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.22)}
+    .sp-pend{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.22)}
+    .sp-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+    /* INFO STRIP */
+    .info-strip{
+      background:var(--bg2);border-bottom:1px solid var(--border);
+      padding:14px 1.5rem;
+      display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start
+    }
+    .info-block{display:flex;flex-direction:column;gap:3px}
+    .ib-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+    .ib-value{font-size:13px;font-weight:500;color:var(--text)}
+    .ib-sub{font-size:12px;color:var(--secondary)}
+
+    /* MAP */
+    #map{flex:1;min-height:460px}
+    .map-wrap{display:flex;flex-direction:column;height:calc(100vh - 56px - 80px)}
+
+    /* LEGEND */
+    .legend{
+      background:var(--bg2);border-top:1px solid var(--border);
+      padding:12px 1.5rem;
+      display:flex;flex-wrap:wrap;gap:20px;align-items:center
+    }
+    .leg-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--secondary)}
+    .leg-dot{width:12px;height:12px;border-radius:50%;border:2px solid}
+    .ld-inicio{background:rgba(34,197,94,.25);border-color:var(--green)}
+    .ld-rota{background:rgba(59,130,246,.25);border-color:var(--blue)}
+    .ld-fim{background:rgba(239,68,68,.25);border-color:var(--red)}
+    .leg-count{margin-left:auto;font-size:12px;color:var(--muted)}
+    .leg-osrm{
+      margin-left:auto;display:flex;align-items:center;gap:6px;
+      font-size:11px;font-weight:600;
+    }
+    .leg-osrm.loading{color:var(--amber)}
+    .leg-osrm.ok     {color:var(--green)}
+    .leg-osrm.fail   {color:var(--muted)}
+    .leg-osrm i{font-size:10px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .fa-spin-sm{animation:spin .8s linear infinite;display:inline-block}
+
+    /* NO DATA */
+    .no-data{
+      flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:12px;color:var(--muted);text-align:center;padding:3rem
+    }
+    .no-data i{font-size:2.5rem;color:var(--border-md)}
+    .no-data p{font-size:14px;max-width:320px;line-height:1.6}
+    .no-data a{
+      font-size:13px;font-weight:500;color:var(--amber);
+      text-decoration:none;border:1px solid var(--amber);
+      padding:7px 16px;border-radius:7px;margin-top:4px
+    }
+
+    /* Leaflet dark overrides */
+    .leaflet-tile-pane{filter:brightness(.85) saturate(.7)}
+    .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--bg3);color:var(--text);border:1px solid var(--border-md)}
+    .leaflet-popup-content{font-size:13px;line-height:1.5}
+    .pop-tipo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+    .pop-tipo.inicio{color:var(--green)}.pop-tipo.rota{color:var(--blue)}.pop-tipo.fim{color:var(--red)}
+    .pop-time{font-size:12px;color:var(--secondary)}
+
+    /* LIVE ELEMENTS */
+    .live-bar{
+      position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:1100;
+      display:none;align-items:center;gap:8px;
+      background:rgba(15,17,23,.92);border:1px solid rgba(255,255,255,.12);
+      backdrop-filter:blur(6px);border-radius:8px;
+      padding:8px 16px;font-size:13px;color:#94a3b8;
+      box-shadow:0 4px 20px rgba(0,0,0,.4)
+    }
+    .live-bar.visible{display:flex}
+    .lb-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;animation:livePulse 1.8s ease-in-out infinite}
+    @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.65)}}
+
+    .stop-overlay{
+      position:absolute;top:0;left:0;right:0;
+      z-index:1200;padding:11px 1rem;
+      background:rgba(239,68,68,.15);
+      border-bottom:2px solid rgba(239,68,68,.5);
+      display:none;align-items:center;gap:10px;
+      font-size:13px;font-weight:600;color:#fca5a5;
+      animation:stopPulse 2s ease-in-out infinite
+    }
+    .stop-overlay.visible{display:flex}
+    @keyframes stopPulse{0%,100%{background:rgba(239,68,68,.15)}50%{background:rgba(239,68,68,.25)}}
+
+    .fin-banner{
+      position:absolute;top:0;left:0;right:0;
+      z-index:1200;padding:11px 1rem;
+      background:rgba(34,197,94,.15);
+      border-bottom:2px solid rgba(34,197,94,.4);
+      display:none;align-items:center;gap:10px;
+      font-size:13px;font-weight:600;color:#86efac
+    }
+    .fin-banner.visible{display:flex}
+
+    @keyframes currentPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
+    .current-marker div{animation:currentPulse 1.5s ease-in-out infinite}
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <a href="/gestor/log" class="back-btn"><i class="fas fa-arrow-left"></i> Log de Entregas</a>
+  <span class="topbar-title">Rota da Entrega <span style="color:var(--amber)">#{{ entrega.id }}</span></span>
+  <span class="topbar-sub">{{ entrega.cupom_fiscal or '' }}</span>
+
+  {% if entrega.status == 'finalizado' %}
+  <span class="status-pill sp-fin"><span class="sp-dot"></span>Finalizada</span>
+  {% elif entrega.status == 'em_rota' %}
+  <span class="status-pill sp-rota"><span class="sp-dot"></span>Em Rota</span>
+  {% else %}
+  <span class="status-pill sp-pend"><span class="sp-dot"></span>{{ entrega.status }}</span>
+  {% endif %}
+</div>
+
+<!-- INFO STRIP -->
+<div class="info-strip">
+  <div class="info-block">
+    <div class="ib-label">Cliente</div>
+    <div class="ib-value">{{ cliente.nome if cliente else '—' }}</div>
+    <div class="ib-sub">{{ entrega.rua }}{% if entrega.numero %}, {{ entrega.numero }}{% endif %} · {{ entrega.bairro or '' }}</div>
+  </div>
+  <div class="info-block">
+    <div class="ib-label">Motorista</div>
+    <div class="ib-value">{{ entregador.username if entregador else '—' }}</div>
+    <div class="ib-sub">{{ filial.nome if filial else '—' }}</div>
+  </div>
+  {% if entrega.data_aceite %}
+  <div class="info-block">
+    <div class="ib-label">Saída</div>
+    <div class="ib-value">{{ entrega.data_aceite.strftime('%H:%M') }}</div>
+    <div class="ib-sub">{{ entrega.data_aceite.strftime('%d/%m/%Y') }}</div>
+  </div>
+  {% endif %}
+  {% if entrega.data_finalizacao %}
+  <div class="info-block">
+    <div class="ib-label">Chegada</div>
+    <div class="ib-value">{{ entrega.data_finalizacao.strftime('%H:%M') }}</div>
+    {% if entrega.data_aceite %}
+    {% set dur = (entrega.data_finalizacao - entrega.data_aceite).seconds %}
+    <div class="ib-sub">{{ (dur // 60) }}min de duração</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  <div class="info-block">
+    <div class="ib-label">Pontos GPS</div>
+    <div class="ib-value">{{ pontos|length }}</div>
+    <div class="ib-sub">registrados</div>
+  </div>
+</div>
+
+<!-- MAP AREA -->
+<div class="map-wrap" style="position:relative">
+  <!-- Live overlays (shown only when em_rota) -->
+  <div class="stop-overlay" id="stopOverlay">
+    <i class="fas fa-circle-stop"></i>
+    <span id="stopMsg">Motorista PARADO</span>
+  </div>
+  <div class="fin-banner" id="finBanner">
+    <i class="fas fa-circle-check"></i> Entrega finalizada — rota completa registrada
+  </div>
+  <div class="live-bar" id="liveBar">
+    <span class="lb-dot"></span>
+    <span>Rastreamento ao vivo</span>
+    <span id="liveTs" style="margin-left:8px;font-size:11px;color:#475569"></span>
+  </div>
+
+  {% if pontos %}
+  <div id="map"></div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot ld-inicio"></div>Início da rota</div>
+    <div class="leg-item"><div class="leg-dot ld-rota"></div>Percurso (a cada 10s)</div>
+    <div class="leg-item"><div class="leg-dot ld-fim"></div>Local de entrega</div>
+    <div class="leg-count">{{ pontos|length }} ponto{{ 's' if pontos|length != 1 else '' }}</div>
+    <div class="leg-osrm loading" id="legOsrm">
+      <i class="fas fa-circle-notch fa-spin-sm"></i> Encaixando nas ruas...
+    </div>
+  </div>
+  {% else %}
+  <div class="no-data">
+    <i class="fas fa-map-pin"></i>
+    <p>Nenhum dado de GPS foi registrado para esta entrega.<br>O rastreamento só é capturado quando o motorista permite acesso à localização no celular.</p>
+    {% if entrega.rua %}
+    <a href="https://www.google.com/maps/search/?api=1&query={{ entrega.rua }}+{{ entrega.numero or '' }}+{{ entrega.bairro or '' }}+{{ entrega.municipio or 'Boa Vista' }}" target="_blank">
+      <i class="fas fa-external-link-alt"></i> Ver endereço no Google Maps
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% if pontos %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+<script>
+var PONTOS         = {{ pontos_json | safe }};
+var ENTREGA_ID     = {{ entrega.id }};
+var INITIAL_STATUS = '{{ entrega.status }}';
+
+var map = L.map('map', { zoomControl: true });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap',
+  maxZoom: 19
+}).addTo(map);
+
+function makeIcon(color, size, cls) {
+  return L.divIcon({
+    className: cls || '',
+    html: '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>',
+    iconSize: [size, size], iconAnchor: [size/2, size/2]
+  });
+}
+
+/* ── layer refs ──────────────────────────────── */
+var allMarkers    = [];
+var straightLine  = null;   // dashed fallback
+var matchedLine   = null;   // OSRM street-matched
+var currentMarker = null;
+var bounds        = L.latLngBounds();
+var latlngs       = [];
+var osrmCtrl      = null;   // AbortController for in-flight OSRM request
+var lastPointCount = 0;     // track when new points arrive for live re-match
+
+/* ── OSRM map matching ───────────────────────── */
+function setLegOsrm(state, text) {
+  var el = document.getElementById('legOsrm');
+  if (!el) return;
+  el.className = 'leg-osrm ' + state;
+  var icon = state === 'loading' ? '<i class="fas fa-circle-notch fa-spin-sm"></i> '
+           : state === 'ok'     ? '<i class="fas fa-road"></i> '
+                                 : '<i class="fas fa-minus"></i> ';
+  el.innerHTML = icon + text;
+}
+
+function callOSRM(pontos, onSuccess, onFail) {
+  if (osrmCtrl) { try { osrmCtrl.abort(); } catch(e){} }
+
+  var pts = pontos.filter(function(p){ return p.lat && p.lng; });
+  if (pts.length < 2) { onFail && onFail(); return; }
+
+  // sample to ≤ 100 points (public OSRM hard limit)
+  var sampled = pts;
+  if (pts.length > 100) {
+    sampled = [];
+    var step = (pts.length - 1) / 98;
+    for (var i = 0; i < 99; i++) sampled.push(pts[Math.round(i * step)]);
+    sampled.push(pts[pts.length - 1]);
+  }
+
+  var coords  = sampled.map(function(p){ return p.lng + ',' + p.lat; }).join(';');
+  var radii   = sampled.map(function(){ return '30'; }).join(';');
+  var url = 'https://router.project-osrm.org/match/v1/driving/' + coords
+          + '?overview=full&geometries=geojson&radiuses=' + radii;
+
+  osrmCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var opts = osrmCtrl ? { signal: osrmCtrl.signal } : {};
+
+  setLegOsrm('loading', 'Encaixando nas ruas...');
+
+  fetch(url, opts)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.code !== 'Ok' || !data.matchings || !data.matchings.length) {
+        setLegOsrm('fail', 'Rota aproximada (sem dados OSRM)');
+        onFail && onFail(); return;
+      }
+      var lls = [];
+      data.matchings.forEach(function(m){
+        m.geometry.coordinates.forEach(function(c){ lls.push(L.latLng(c[1], c[0])); });
+      });
+      onSuccess(lls);
+    })
+    .catch(function(e){
+      if (e && e.name === 'AbortError') return;
+      setLegOsrm('fail', 'Rota aproximada (OSRM indisponível)');
+      onFail && onFail();
+    });
+}
+
+function applyOSRM(pontos) {
+  callOSRM(
+    pontos,
+    function(lls) {  // success → draw matched line, hide straight
+      if (matchedLine) { map.removeLayer(matchedLine); matchedLine = null; }
+      matchedLine = L.polyline(lls, { color:'#3b82f6', weight:4, opacity:.85 }).addTo(map);
+      if (straightLine) straightLine.setStyle({ opacity: 0 }); // hide dashed
+      setLegOsrm('ok', 'Rota real por ruas (OSRM)');
+    },
+    function() {      // fail → keep dashed line visible
+      if (straightLine) straightLine.setStyle({ opacity: .6 });
+    }
+  );
+}
+
+/* ── render GPS points ───────────────────────── */
+function renderPoints(pontos) {
+  allMarkers.forEach(function(m){ map.removeLayer(m); });
+  allMarkers = [];
+  if (straightLine)  { map.removeLayer(straightLine);  straightLine  = null; }
+  if (matchedLine)   { map.removeLayer(matchedLine);   matchedLine   = null; }
+  if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
+  latlngs = []; bounds = L.latLngBounds();
+
+  pontos.forEach(function(p) {
+    var ll = L.latLng(p.lat, p.lng);
+    latlngs.push(ll); bounds.extend(ll);
+
+    var color, size, label;
+    if      (p.tipo === 'inicio') { color='#22c55e'; size=18; label='Início da rota'; }
+    else if (p.tipo === 'fim')    { color='#ef4444'; size=18; label='Local de entrega'; }
+    else                          { color='#3b82f6'; size=10; label='Percurso'; }
+
+    var m = L.marker(ll, { icon: makeIcon(color, size) }).addTo(map);
+    m.bindPopup(
+      '<div class="pop-tipo '+p.tipo+'">'+label+'</div>' +
+      '<div class="pop-time">'+p.ts+'</div>' +
+      '<div class="pop-time" style="margin-top:2px;color:#94a3b8">'+p.lat.toFixed(6)+', '+p.lng.toFixed(6)+'</div>'
+    );
+    allMarkers.push(m);
+  });
+
+  // dashed fallback line (hidden once OSRM loads)
+  if (latlngs.length > 1)
+    straightLine = L.polyline(latlngs, { color:'#3b82f6', weight:2, opacity:.35, dashArray:'6 4' }).addTo(map);
+
+  if (bounds.isValid()) map.fitBounds(bounds, { padding:[40,40] });
+
+  // call OSRM only when point count changes (avoid redundant calls on live refresh)
+  if (pontos.length !== lastPointCount && pontos.length >= 2) {
+    lastPointCount = pontos.length;
+    applyOSRM(pontos);
+  }
+}
+
+// initial render
+var initialPontos = PONTOS.map(function(p){ return { lat:p.lat, lng:p.lng, tipo:p.tipo, ts:p.timestamp }; });
+renderPoints(initialPontos);
+
+/* ── live tracking (gestor view) ─────────────── */
+var liveTimer = null;
+
+function updateLiveUI(data) {
+  var sp = data.segundos_parado, status = data.status;
+  var liveBar   = document.getElementById('liveBar');
+  var stopOv    = document.getElementById('stopOverlay');
+  var finBanner = document.getElementById('finBanner');
+  var liveTs    = document.getElementById('liveTs');
+  var stopMsg   = document.getElementById('stopMsg');
+
+  if (status === 'finalizado') {
+    liveBar.classList.remove('visible');
+    stopOv.classList.remove('visible');
+    finBanner.classList.add('visible');
+    var pill = document.querySelector('.status-pill');
+    if (pill) pill.outerHTML = '<span class="status-pill sp-fin"><span class="sp-dot"></span>Finalizada</span>';
+    stopLive();
+    return;
+  }
+
+  liveBar.classList.add('visible');
+  var now = new Date();
+  liveTs.textContent = 'Atualizado ' + now.getHours().toString().padStart(2,'0') + ':' +
+                       now.getMinutes().toString().padStart(2,'0') + ':' +
+                       now.getSeconds().toString().padStart(2,'0');
+
+  if (sp !== null && sp > 150) {
+    stopMsg.textContent = 'Motorista PARADO há ' + Math.floor(sp/60) + 'min ' + (sp%60) + 's';
+    stopOv.classList.add('visible');
+  } else {
+    stopOv.classList.remove('visible');
+  }
+
+  renderPoints(data.pontos);
+
+  // pulsing amber marker for current position
+  var lastRota = null;
+  for (var i = data.pontos.length - 1; i >= 0; i--) {
+    if (data.pontos[i].tipo !== 'fim') { lastRota = data.pontos[i]; break; }
+  }
+  if (lastRota) {
+    currentMarker = L.marker([lastRota.lat, lastRota.lng], {
+      icon: L.divIcon({
+        className: 'current-marker',
+        html: '<div style="width:16px;height:16px;border-radius:50%;background:#f59e0b;border:2.5px solid #fff;box-shadow:0 0 8px rgba(245,158,11,.7);"></div>',
+        iconSize:[16,16], iconAnchor:[8,8]
+      }),
+      zIndexOffset: 500
+    }).addTo(map);
+    currentMarker.bindPopup('<div class="pop-tipo rota">Posição atual</div><div class="pop-time">'+lastRota.ts+'</div>');
+  }
+}
+
+function fetchLive() {
+  fetch('/gestor/entrega/' + ENTREGA_ID + '/pontos')
+    .then(function(r){ return r.json(); })
+    .then(function(data){ updateLiveUI(data); })
+    .catch(function(){});
+}
+
+function stopLive() {
+  if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+}
+
+if (INITIAL_STATUS === 'em_rota') {
+  document.getElementById('liveBar').classList.add('visible');
+  liveTimer = setInterval(fetchLive, 30000);
+  fetchLive();
+}
+</script>
+{% endif %}
+</body>
+</html>

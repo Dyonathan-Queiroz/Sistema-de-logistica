@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}Ao Vivo — Sistema Logístico{% endblock %}
+{% block nav_ao_vivo %}active{% endblock %}
+
+{% block content %}
+<style>
+  .aovivo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem}
+  .aovivo-title{font-size:1.25rem;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:.6rem}
+  .live-badge{
+    display:inline-flex;align-items:center;gap:.35rem;
+    font-size:11px;font-weight:700;letter-spacing:.05em;
+    background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);
+    padding:3px 9px;border-radius:5px
+  }
+  .live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:livePulse 1.8s ease-in-out infinite}
+  @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.65)}}
+
+  .aovivo-meta{font-size:13px;color:#64748b}
+  .refresh-btn{
+    font-size:12px;font-weight:500;color:#94a3b8;
+    background:transparent;border:1px solid rgba(255,255,255,.1);
+    padding:6px 12px;border-radius:7px;cursor:pointer;
+    display:flex;align-items:center;gap:6px;transition:color .15s,border-color .15s
+  }
+  .refresh-btn:hover{color:#f1f5f9;border-color:rgba(255,255,255,.2)}
+  .refresh-btn.spinning i{animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* CARDS GRID */
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+
+  .delivery-card{
+    background:#0f1117;border:1px solid rgba(255,255,255,.08);
+    border-radius:10px;overflow:hidden;transition:border-color .2s
+  }
+  .delivery-card:hover{border-color:rgba(255,255,255,.15)}
+
+  .card-top{
+    padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);
+    display:flex;align-items:flex-start;justify-content:space-between;gap:8px
+  }
+  .card-id{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:3px}
+  .card-cupom{font-size:15px;font-weight:700;color:#f1f5f9}
+
+  .status-gps{
+    font-size:11px;font-weight:700;letter-spacing:.04em;
+    padding:3px 8px;border-radius:5px;white-space:nowrap;flex-shrink:0
+  }
+  .gps-ok    {background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
+  .gps-warn  {background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}
+  .gps-stop  {background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25);animation:alertPulse 2s ease-in-out infinite}
+  .gps-none  {background:rgba(100,116,139,.1);color:#64748b;border:1px solid rgba(100,116,139,.2)}
+  @keyframes alertPulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+  .card-body{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+  .cb-row{display:flex;align-items:flex-start;gap:8px;font-size:13px}
+  .cb-icon{color:#64748b;width:14px;flex-shrink:0;margin-top:1px}
+  .cb-text{color:#cbd5e1;line-height:1.4}
+  .cb-sub{font-size:11px;color:#64748b;margin-top:1px}
+
+  .card-footer{
+    padding:10px 16px;border-top:1px solid rgba(255,255,255,.06);
+    display:flex;align-items:center;justify-content:space-between;gap:8px
+  }
+  .time-chip{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:11px;font-weight:600;color:#94a3b8
+  }
+  .time-chip i{font-size:10px}
+  .btn-ver-mapa{
+    font-size:12px;font-weight:500;
+    background:rgba(59,130,246,.1);color:#60a5fa;
+    border:1px solid rgba(59,130,246,.22);
+    padding:5px 12px;border-radius:6px;text-decoration:none;
+    transition:background .15s,border-color .15s
+  }
+  .btn-ver-mapa:hover{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.4);color:#93c5fd}
+
+  /* LEFT COLOR BAR */
+  .delivery-card.ok   {border-left:3px solid #22c55e}
+  .delivery-card.warn {border-left:3px solid #f59e0b}
+  .delivery-card.stop {border-left:3px solid #ef4444}
+  .delivery-card.nogps{border-left:3px solid #334155}
+
+  /* EMPTY STATE */
+  .empty-state{
+    text-align:center;padding:4rem 2rem;color:#64748b
+  }
+  .empty-state i{font-size:3rem;margin-bottom:1rem;display:block;color:rgba(255,255,255,.1)}
+  .empty-state p{font-size:14px;line-height:1.6}
+
+  /* COUNTER PILLS */
+  .summary-pills{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem}
+  .s-pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:5px;display:flex;align-items:center;gap:5px}
+  .sp-total{background:rgba(255,255,255,.05);color:#94a3b8;border:1px solid rgba(255,255,255,.08)}
+  .sp-ok   {background:rgba(34,197,94,.08);color:#22c55e;border:1px solid rgba(34,197,94,.15)}
+  .sp-warn {background:rgba(245,158,11,.08);color:#f59e0b;border:1px solid rgba(245,158,11,.15)}
+  .sp-stop {background:rgba(239,68,68,.08);color:#ef4444;border:1px solid rgba(239,68,68,.18)}
+
+  /* Timestamp */
+  #updated-at{font-size:12px;color:#475569}
+</style>
+
+<div class="container-fluid py-4 px-4">
+
+  <div class="aovivo-header">
+    <div class="aovivo-title">
+      <span class="live-badge"><span class="live-dot"></span>AO VIVO</span>
+      Entregas em Rota
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="updated-at"></span>
+      <button class="refresh-btn" id="btnRefresh" onclick="recarregar()">
+        <i class="fas fa-rotate-right"></i> Atualizar
+      </button>
+    </div>
+  </div>
+
+  <div class="summary-pills" id="summaryPills">
+    <span class="s-pill sp-total"><i class="fas fa-truck"></i> {{ total }} em rota</span>
+    {% if cnt_ok   > 0 %}<span class="s-pill sp-ok"><i class="fas fa-circle-check"></i> {{ cnt_ok }} OK</span>{% endif %}
+    {% if cnt_warn > 0 %}<span class="s-pill sp-warn"><i class="fas fa-triangle-exclamation"></i> {{ cnt_warn }} atenção</span>{% endif %}
+    {% if cnt_stop > 0 %}<span class="s-pill sp-stop"><i class="fas fa-circle-stop"></i> {{ cnt_stop }} parado!</span>{% endif %}
+  </div>
+
+  <div class="cards-grid" id="cardsGrid">
+    {% if entregas %}
+      {% for item in entregas %}
+        {% set sp = item.segundos_parado %}
+        {% if not item.tem_gps %}
+          {% set card_cls = 'nogps' %}
+          {% set gps_cls = 'gps-none' %}
+          {% set gps_txt = 'Sem GPS' %}
+        {% elif sp is none %}
+          {% set card_cls = 'nogps' %}
+          {% set gps_cls = 'gps-none' %}
+          {% set gps_txt = 'Sem GPS' %}
+        {% elif sp < 90 %}
+          {% set card_cls = 'ok' %}
+          {% set gps_cls = 'gps-ok' %}
+          {% set gps_txt = 'Em movimento' %}
+        {% elif sp < 150 %}
+          {% set card_cls = 'warn' %}
+          {% set gps_cls = 'gps-warn' %}
+          {% set gps_txt = (sp // 60)|string + 'm ' + (sp % 60)|string + 's parado' %}
+        {% else %}
+          {% set card_cls = 'stop' %}
+          {% set gps_cls = 'gps-stop' %}
+          {% set gps_txt = 'PARADO ' + (sp // 60)|string + 'm' %}
+        {% endif %}
+        <div class="delivery-card {{ card_cls }}" data-id="{{ item.entrega.id }}">
+          <div class="card-top">
+            <div>
+              <div class="card-id">Entrega #{{ item.entrega.id }}</div>
+              <div class="card-cupom">{{ item.entrega.cupom_fiscal or ('Pedido #' ~ item.entrega.id) }}</div>
+            </div>
+            <span class="status-gps {{ gps_cls }}">{{ gps_txt }}</span>
+          </div>
+          <div class="card-body">
+            <div class="cb-row">
+              <i class="fas fa-user cb-icon"></i>
+              <div>
+                <div class="cb-text">{{ item.cliente_nome }}</div>
+                <div class="cb-sub">cliente</div>
+              </div>
+            </div>
+            {% if item.endereco %}
+            <div class="cb-row">
+              <i class="fas fa-map-pin cb-icon"></i>
+              <div class="cb-text">{{ item.endereco }}</div>
+            </div>
+            {% endif %}
+            <div class="cb-row">
+              <i class="fas fa-motorcycle cb-icon"></i>
+              <div>
+                <div class="cb-text">{{ item.entregador_nome }}</div>
+                <div class="cb-sub">{{ item.filial_nome }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <span class="time-chip">
+              <i class="fas fa-clock"></i>
+              {% if item.minutos_em_rota is not none %}
+                {{ item.minutos_em_rota }}min em rota
+                {% if item.entrega.data_aceite %}· saiu {{ item.entrega.data_aceite.strftime('%H:%M') }}{% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </span>
+            <a href="/gestor/entrega/{{ item.entrega.id }}/rota" class="btn-ver-mapa">
+              <i class="fas fa-map"></i> Ver Mapa
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state" style="grid-column:1/-1">
+        <i class="fas fa-satellite-dish"></i>
+        <p>Nenhuma entrega em rota no momento.<br>Os cards aparecem aqui automaticamente assim que um motorista aceitar uma entrega.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+var REFRESH_INTERVAL = 30000;
+var refreshTimer;
+
+function formatTime(d) {
+  var h = d.getHours().toString().padStart(2,'0');
+  var m = d.getMinutes().toString().padStart(2,'0');
+  var s = d.getSeconds().toString().padStart(2,'0');
+  return h + ':' + m + ':' + s;
+}
+
+function renderCards(data) {
+  var grid = document.getElementById('cardsGrid');
+  if (!data.entregas || data.entregas.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-satellite-dish"></i><p>Nenhuma entrega em rota no momento.</p></div>';
+    return;
+  }
+
+  var html = '';
+  var cntOk=0, cntWarn=0, cntStop=0;
+  data.entregas.forEach(function(e) {
+    var sp = e.segundos_parado;
+    var cardCls, gpsCls, gpsTxt;
+    if (!e.tem_gps || sp === null) {
+      cardCls='nogps'; gpsCls='gps-none'; gpsTxt='Sem GPS';
+    } else if (sp < 90) {
+      cardCls='ok'; gpsCls='gps-ok'; gpsTxt='Em movimento'; cntOk++;
+    } else if (sp < 150) {
+      cardCls='warn'; gpsCls='gps-warn'; gpsTxt=Math.floor(sp/60)+'m '+(sp%60)+'s parado'; cntWarn++;
+    } else {
+      cardCls='stop'; gpsCls='gps-stop'; gpsTxt='PARADO '+Math.floor(sp/60)+'m'; cntStop++;
+    }
+    html += '<div class="delivery-card '+cardCls+'" data-id="'+e.id+'">';
+    html += '<div class="card-top">';
+    html += '<div><div class="card-id">Entrega #'+e.id+'</div>';
+    html += '<div class="card-cupom">'+(e.cupom||'Pedido #'+e.id)+'</div></div>';
+    html += '<span class="status-gps '+gpsCls+'">'+gpsTxt+'</span></div>';
+    html += '<div class="card-body">';
+    html += '<div class="cb-row"><i class="fas fa-user cb-icon"></i><div><div class="cb-text">'+e.cliente+'</div><div class="cb-sub">cliente</div></div></div>';
+    if (e.endereco) html += '<div class="cb-row"><i class="fas fa-map-pin cb-icon"></i><div class="cb-text">'+e.endereco+'</div></div>';
+    html += '<div class="cb-row"><i class="fas fa-motorcycle cb-icon"></i><div><div class="cb-text">'+e.entregador+'</div><div class="cb-sub">'+e.filial+'</div></div></div>';
+    html += '</div><div class="card-footer">';
+    html += '<span class="time-chip"><i class="fas fa-clock"></i> '+(e.minutos_em_rota !== null ? e.minutos_em_rota+'min em rota · saiu '+e.aceito_em : '—')+'</span>';
+    html += '<a href="/gestor/entrega/'+e.id+'/rota" class="btn-ver-mapa"><i class="fas fa-map"></i> Ver Mapa</a>';
+    html += '</div></div>';
+  });
+  grid.innerHTML = html;
+
+  // update pills
+  var pills = document.getElementById('summaryPills');
+  var total = data.total;
+  var p = '<span class="s-pill sp-total"><i class="fas fa-truck"></i> '+total+' em rota</span>';
+  if(cntOk)   p += '<span class="s-pill sp-ok"><i class="fas fa-circle-check"></i> '+cntOk+' OK</span>';
+  if(cntWarn) p += '<span class="s-pill sp-warn"><i class="fas fa-triangle-exclamation"></i> '+cntWarn+' atenção</span>';
+  if(cntStop) p += '<span class="s-pill sp-stop"><i class="fas fa-circle-stop"></i> '+cntStop+' parado!</span>';
+  pills.innerHTML = p;
+}
+
+function recarregar() {
+  var btn = document.getElementById('btnRefresh');
+  btn.classList.add('spinning');
+  fetch('/gestor/ao-vivo/dados')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      renderCards(data);
+      document.getElementById('updated-at').textContent = 'Atualizado às ' + formatTime(new Date());
+    })
+    .catch(function(){ /* silencioso */ })
+    .finally(function(){ btn.classList.remove('spinning'); });
+}
+
+function startRefresh() {
+  refreshTimer = setInterval(recarregar, REFRESH_INTERVAL);
+}
+
+document.getElementById('updated-at').textContent = 'Atualizado às ' + formatTime(new Date());
+startRefresh();
+</script>
+{% endblock %}

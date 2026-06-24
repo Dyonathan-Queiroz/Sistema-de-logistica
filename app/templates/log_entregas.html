@@ -352,6 +352,14 @@
             {% endif %}
           </td>
           <td class="td-btn" data-label="">
+            {% if item.entrega.id in ids_com_rota %}
+            <a href="/gestor/entrega/{{ item.entrega.id }}/rota"
+               class="btn btn-sm btn-outline-info"
+               style="font-size:12px;margin-right:4px;"
+               title="Ver rota no mapa">
+              <i class="fas fa-map-marker-alt"></i> Rota
+            </a>
+            {% endif %}
             <button type="button"
               class="btn btn-sm {% if item.entrega.status == 'erro_entrega' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}"
               style="font-size:12px;"
