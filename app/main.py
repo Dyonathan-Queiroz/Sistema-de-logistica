@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Form, Depends, Cookie, HTTPException, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy import func, case as sql_case, or_
@@ -21,12 +21,17 @@ from app.database import get_db
 from app.models import (
     Entrega, Usuario, Veiculo, Cliente, Filial,
     Checklist, TurnoEntrega, Abastecimento, Manutencao, PneuControle, MotoristaScore,
-    Oficina, PecaCatalogo,
+    Oficina, PecaCatalogo, PontoRota,
 )
 from app.utils import gerar_link_rota
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+class PontoRotaIn(BaseModel):
+    lat: float
+    lng: float
+    tipo: str = "rota"
 
 
 # ---------------------------------------------------------------------------
@@ -629,7 +634,14 @@ async def dashboard_entregador(request: Request, db: Session = Depends(get_db), 
 
 
 @app.post("/entregador/aceitar/{entrega_id}")
-async def aceitar_entrega(entrega_id: int, db: Session = Depends(get_db), user_id: str = Cookie(None), user_role: str = Cookie(None)):
+async def aceitar_entrega(
+    entrega_id: int,
+    lat: str = Form(None),
+    lng: str = Form(None),
+    db: Session = Depends(get_db),
+    user_id: str = Cookie(None),
+    user_role: str = Cookie(None),
+):
     """entregador"""
     if user_role != "entregador":
         return RedirectResponse(url="/login")
@@ -640,18 +652,25 @@ async def aceitar_entrega(entrega_id: int, db: Session = Depends(get_db), user_i
     if not turno_check:
         return RedirectResponse(url="/entregador?erro=sem_turno", status_code=303)
 
+    if not lat or not lng:
+        return RedirectResponse(url=f"/entregador/entrega/{entrega_id}?erro=gps_obrigatorio", status_code=303)
+
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if entrega and entrega.status == "pendente" and uid:
         entrega.status = "em_rota"
         entrega.entregador_id = uid
         entrega.data_aceite = agora()
+        try:
+            db.add(PontoRota(entrega_id=entrega_id, latitude=float(lat), longitude=float(lng), tipo="inicio"))
+        except (ValueError, TypeError):
+            pass
         db.commit()
 
     return RedirectResponse(url="/entregador?aba=emrota", status_code=303)
 
 
 @app.get("/entregador/entrega/{entrega_id}")
-async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
+async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None), erro: str = None):
     """entregador"""
     if user_role != "entregador":
         return RedirectResponse(url="/login")
@@ -693,24 +712,63 @@ async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depen
         "nome_cliente": cliente.nome if cliente else "",
         "municipio_cliente": municipio_cliente,
         "estado_cliente": estado_cliente,
+        "erro": erro,
     })
 
 
 @app.post("/entregador/finalizar/{entrega_id}")
-async def finalizar_entrega(entrega_id: int, db: Session = Depends(get_db), user_id: str = Cookie(None), user_role: str = Cookie(None)):
+async def finalizar_entrega(
+    entrega_id: int,
+    lat: str = Form(None),
+    lng: str = Form(None),
+    db: Session = Depends(get_db),
+    user_id: str = Cookie(None),
+    user_role: str = Cookie(None),
+):
     """entregador"""
     if user_role != "entregador":
         return RedirectResponse(url="/login")
 
     uid = int(user_id) if user_id and user_id.isdigit() else None
 
+    if not lat or not lng:
+        return RedirectResponse(url=f"/entregador/entrega/{entrega_id}?erro=gps_obrigatorio", status_code=303)
+
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if entrega and entrega.status == "em_rota" and entrega.entregador_id == uid:
         entrega.status = "finalizado"
         entrega.data_finalizacao = agora()
+        try:
+            db.add(PontoRota(entrega_id=entrega_id, latitude=float(lat), longitude=float(lng), tipo="fim"))
+        except (ValueError, TypeError):
+            pass
         db.commit()
 
     return RedirectResponse(url="/entregador", status_code=303)
+
+
+@app.post("/entregador/rastrear/{entrega_id}")
+async def rastrear_entrega(
+    entrega_id: int,
+    body: PontoRotaIn,
+    db: Session = Depends(get_db),
+    user_id: str = Cookie(None),
+    user_role: str = Cookie(None),
+):
+    """entregador — recebe ponto GPS periódico durante a rota"""
+    if user_role != "entregador":
+        return JSONResponse({"ok": False}, status_code=401)
+
+    uid = int(user_id) if user_id and user_id.isdigit() else None
+    entrega = db.query(Entrega).filter(
+        Entrega.id == entrega_id,
+        Entrega.entregador_id == uid,
+        Entrega.status == "em_rota",
+    ).first()
+    if entrega:
+        db.add(PontoRota(entrega_id=entrega_id, latitude=body.lat, longitude=body.lng, tipo="rota"))
+        db.commit()
+    return JSONResponse({"ok": True})
 
 
 @app.post("/entregas/{entrega_id}/reportar-erro")
@@ -1087,6 +1145,12 @@ async def log_entregas_page(request: Request, db: Session = Depends(get_db), use
 
     entregas_raw = lista_q.offset((page - 1) * _PER_PAGE).limit(_PER_PAGE).all()
 
+    ids_pagina = [e.id for e in entregas_raw]
+    ids_com_rota = set(
+        row.entrega_id for row in db.query(PontoRota.entrega_id)
+        .filter(PontoRota.entrega_id.in_(ids_pagina)).distinct().all()
+    ) if ids_pagina else set()
+
     clientes_map = {c.id: c for c in db.query(Cliente).all()}
     filiais_map = {f.id: f for f in db.query(Filial).all()}
     usuarios_map = {u.id: u for u in db.query(Usuario).all()}
@@ -1122,6 +1186,7 @@ async def log_entregas_page(request: Request, db: Session = Depends(get_db), use
 
     return templates.TemplateResponse(request=request, name="log_entregas.html", context={
         "entregas": entregas,
+        "ids_com_rota": ids_com_rota,
         "total": total,
         "page": page,
         "total_pages": total_pages,
@@ -1176,6 +1241,246 @@ async def salvar_edicao_log(entrega_id: int, rua: str = Form(...), numero: str =
 
     db.commit()
     return RedirectResponse(url="/gestor/log", status_code=303)
+
+
+# ── ENTREGA MANUAL ────────────────────────────────────────────────────────────
+
+@app.get("/gestor/clientes/buscar")
+async def buscar_clientes(q: str = "", db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """JSON autocomplete — retorna até 10 clientes que contenham 'q' no nome."""
+    if user_role not in ("gestor", "operador"):
+        return JSONResponse({"ok": False}, status_code=401)
+    q = q.strip()
+    if not q or len(q) < 2:
+        return JSONResponse([])
+    resultados = db.query(Cliente).filter(Cliente.nome.ilike(f"%{q}%")).limit(10).all()
+    return JSONResponse([
+        {"id": c.id, "nome": c.nome, "rua": c.rua or "", "numero": c.numero or "",
+         "bairro": c.bairro or "", "municipio": c.municipio or ""}
+        for c in resultados
+    ])
+
+
+@app.get("/gestor/entrega/nova")
+async def nova_entrega_form(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+    filiais     = db.query(Filial).order_by(Filial.nome).all()
+    entregadores = db.query(Usuario).filter(Usuario.perfil == "entregador").order_by(Usuario.username).all()
+    veiculos    = db.query(Veiculo).order_by(Veiculo.placa).all()
+    return templates.TemplateResponse(request=request, name="nova_entrega.html", context={
+        "filiais": filiais,
+        "entregadores": entregadores,
+        "veiculos": veiculos,
+    })
+
+
+@app.post("/gestor/entrega/nova")
+async def nova_entrega_salvar(
+    request: Request,
+    db: Session = Depends(get_db),
+    user_role: str = Cookie(None),
+    user_id: str = Cookie(None),
+    # cliente
+    cliente_id: str = Form(""),
+    cliente_nome_novo: str = Form(""),
+    # endereço
+    rua: str = Form(""),
+    numero: str = Form(""),
+    bairro: str = Form(""),
+    municipio: str = Form(""),
+    cep: str = Form(""),
+    # logística
+    filial_id: str = Form(""),
+    entregador_id: str = Form(""),
+    veiculo_id: str = Form(""),
+    observacao: str = Form(""),
+):
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    # resolve cliente
+    cid = None
+    if cliente_id and cliente_id.isdigit():
+        cid = int(cliente_id)
+    elif cliente_nome_novo.strip():
+        novo = Cliente(
+            nome=cliente_nome_novo.strip(),
+            rua=rua.strip() or None,
+            numero=numero.strip() or None,
+            bairro=bairro.strip() or None,
+            municipio=municipio.strip() or None,
+        )
+        db.add(novo)
+        db.flush()
+        cid = novo.id
+
+    entrega = Entrega(
+        cliente_id   = cid,
+        filial_id    = int(filial_id) if filial_id.isdigit() else None,
+        operador_id  = int(user_id)  if user_id and user_id.isdigit() else None,
+        entregador_id= int(entregador_id) if entregador_id.isdigit() else None,
+        rua          = rua.strip()       or None,
+        numero       = numero.strip()    or None,
+        bairro       = bairro.strip()    or None,
+        municipio    = municipio.strip() or None,
+        cep          = cep.strip()       or None,
+        observacao   = observacao.strip() or None,
+        status       = "pendente",
+        origem       = "manual",
+    )
+    db.add(entrega)
+    db.commit()
+    return RedirectResponse(url=f"/gestor/log?origem=manual", status_code=303)
+
+
+# ── AO VIVO ───────────────────────────────────────────────────────────────────
+
+@app.get("/gestor/ao-vivo")
+async def pagina_ao_vivo(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor — painel de entregas em tempo real"""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    em_rota = db.query(Entrega).filter(Entrega.status == "em_rota").order_by(Entrega.data_aceite).all()
+    clientes_map  = {c.id: c for c in db.query(Cliente).all()}
+    filiais_map   = {f.id: f for f in db.query(Filial).all()}
+    usuarios_map  = {u.id: u for u in db.query(Usuario).all()}
+    agora_dt = agora()
+
+    entregas = []
+    for e in em_rota:
+        cli = clientes_map.get(e.cliente_id)
+        fil = filiais_map.get(e.filial_id)
+        ent = usuarios_map.get(e.entregador_id)
+        ultimo = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp.desc()).first()
+        segundos_parado = int((agora_dt - ultimo.timestamp).total_seconds()) if ultimo and ultimo.timestamp else None
+        minutos_em_rota = int((agora_dt - e.data_aceite).total_seconds() / 60) if e.data_aceite else None
+        endereco = f"{e.rua or ''}{', ' + e.numero if e.numero else ''}{' · ' + e.bairro if e.bairro else ''}"
+        entregas.append({
+            "entrega": e,
+            "cliente_nome":    cli.nome     if cli else "—",
+            "filial_nome":     fil.nome     if fil else "—",
+            "entregador_nome": ent.username if ent else "—",
+            "endereco":        endereco.strip(" ·"),
+            "segundos_parado": segundos_parado,
+            "minutos_em_rota": minutos_em_rota,
+            "tem_gps":         ultimo is not None,
+        })
+
+    sp = lambda e: e["segundos_parado"]
+    cnt_ok   = sum(1 for e in entregas if e["tem_gps"] and sp(e) is not None and sp(e) < 90)
+    cnt_warn = sum(1 for e in entregas if e["tem_gps"] and sp(e) is not None and 90 <= sp(e) < 150)
+    cnt_stop = sum(1 for e in entregas if e["tem_gps"] and sp(e) is not None and sp(e) >= 150)
+
+    return templates.TemplateResponse(request=request, name="entregas_ao_vivo.html", context={
+        "entregas": entregas,
+        "total": len(entregas),
+        "cnt_ok":   cnt_ok,
+        "cnt_warn": cnt_warn,
+        "cnt_stop": cnt_stop,
+    })
+
+
+@app.get("/gestor/ao-vivo/dados")
+async def dados_ao_vivo(db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor — JSON para auto-refresh da página ao vivo"""
+    if user_role not in ("gestor", "operador"):
+        return JSONResponse({"ok": False}, status_code=401)
+
+    em_rota = db.query(Entrega).filter(Entrega.status == "em_rota").order_by(Entrega.data_aceite).all()
+    clientes_map  = {c.id: c for c in db.query(Cliente).all()}
+    filiais_map   = {f.id: f for f in db.query(Filial).all()}
+    usuarios_map  = {u.id: u for u in db.query(Usuario).all()}
+    agora_dt = agora()
+
+    result = []
+    for e in em_rota:
+        cli = clientes_map.get(e.cliente_id)
+        fil = filiais_map.get(e.filial_id)
+        ent = usuarios_map.get(e.entregador_id)
+        ultimo = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp.desc()).first()
+        segundos_parado = int((agora_dt - ultimo.timestamp).total_seconds()) if ultimo and ultimo.timestamp else None
+        minutos_em_rota = int((agora_dt - e.data_aceite).total_seconds() / 60) if e.data_aceite else None
+        endereco = f"{e.rua or ''}{', ' + e.numero if e.numero else ''}{' · ' + e.bairro if e.bairro else ''}"
+        result.append({
+            "id": e.id,
+            "cupom": e.cupom_fiscal or f"#{e.id}",
+            "cliente":    cli.nome     if cli else "—",
+            "filial":     fil.nome     if fil else "—",
+            "entregador": ent.username if ent else "—",
+            "endereco": endereco.strip(" ·"),
+            "aceito_em": e.data_aceite.strftime("%H:%M") if e.data_aceite else "—",
+            "minutos_em_rota": minutos_em_rota,
+            "segundos_parado": segundos_parado,
+            "tem_gps": ultimo is not None,
+        })
+
+    return JSONResponse({"entregas": result, "total": len(result)})
+
+
+@app.get("/gestor/entrega/{entrega_id}/pontos")
+async def pontos_entrega_live(entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor — JSON com pontos GPS e status atual para polling do mapa"""
+    if user_role not in ("gestor", "operador"):
+        return JSONResponse({"ok": False}, status_code=401)
+
+    entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
+    if not entrega:
+        return JSONResponse({"ok": False}, status_code=404)
+
+    pontos  = db.query(PontoRota).filter(PontoRota.entrega_id == entrega_id).order_by(PontoRota.timestamp).all()
+    agora_dt = agora()
+    ultimo   = pontos[-1] if pontos else None
+    segundos_parado = int((agora_dt - ultimo.timestamp).total_seconds()) if ultimo and ultimo.timestamp else None
+
+    return JSONResponse({
+        "status": entrega.status,
+        "segundos_parado": segundos_parado,
+        "pontos": [
+            {"lat": p.latitude, "lng": p.longitude, "tipo": p.tipo,
+             "ts": p.timestamp.strftime("%H:%M:%S") if p.timestamp else ""}
+            for p in pontos
+        ],
+    })
+
+
+@app.get("/gestor/entrega/{entrega_id}/rota")
+async def rota_entrega_gestor(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor — mapa de rastreamento GPS de uma entrega"""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
+    if not entrega:
+        return RedirectResponse(url="/gestor/log")
+
+    pontos = db.query(PontoRota).filter(PontoRota.entrega_id == entrega_id).order_by(PontoRota.timestamp).all()
+    cliente    = db.query(Cliente).filter(Cliente.id == entrega.cliente_id).first()
+    entregador = db.query(Usuario).filter(Usuario.id == entrega.entregador_id).first() if entrega.entregador_id else None
+    filial     = db.query(Filial).filter(Filial.id == entrega.filial_id).first()
+
+    import json
+    pontos_json = json.dumps([
+        {
+            "lat": p.latitude,
+            "lng": p.longitude,
+            "tipo": p.tipo,
+            "timestamp": p.timestamp.strftime("%d/%m/%Y %H:%M:%S") if p.timestamp else "",
+        }
+        for p in pontos
+    ])
+
+    return templates.TemplateResponse(request=request, name="rota_entrega.html", context={
+        "entrega": entrega,
+        "pontos": pontos,
+        "pontos_json": pontos_json,
+        "cliente": cliente,
+        "entregador": entregador,
+        "filial": filial,
+    })
+
+
 @app.get("/gestao-funcionario")
 async def pagina_gestao_funcionario(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
@@ -2160,12 +2465,10 @@ async def frota_configuracoes_page(request: Request, user_id: str = Cookie(defau
     pecas = db.query(PecaCatalogo).filter(PecaCatalogo.ativo == True).order_by(PecaCatalogo.categoria, PecaCatalogo.nome).all()
     return templates.TemplateResponse(request=request, name="frota_configuracoes.html", context={"usuario": usuario, "oficinas": oficinas, "pecas": pecas})
 @app.get("/frota/score/ranking")
-async def frota_score_ranking(user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
-    """
-    Ranking de motoristas ordenado por score_atual (desc).
-    total_entregas é mantido automaticamente pelo trigger trg_entrega_finalizada.
-    """
-    _exigir_perfil(user_id, db, ('gestor', 'operador'))
+async def frota_score_ranking(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
+    """Ranking de motoristas ordenado por score_atual (desc)."""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
 
     scores = db.query(MotoristaScore).order_by(
         MotoristaScore.score_atual.desc(),
@@ -2174,17 +2477,21 @@ async def frota_score_ranking(user_id: str = Cookie(default=None), db: Session =
 
     usuarios_map = {u.id: u.username for u in db.query(Usuario).all()}
 
-    return [
+    ranking = [
         {
             "posicao": idx + 1,
             "motorista_id": s.motorista_id,
             "username": usuarios_map.get(s.motorista_id, "—"),
             "score_atual": s.score_atual,
             "total_entregas": s.total_entregas,
-            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+            "updated_at": s.updated_at,
         }
         for idx, s in enumerate(scores)
     ]
+
+    return templates.TemplateResponse(request=request, name="ranking_motoristas.html", context={
+        "ranking": ranking,
+    })
 
 
 @app.get("/frota/dashboard/consolidado-turno/{turno_id}")

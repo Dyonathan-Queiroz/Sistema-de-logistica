@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, Text, JSON, Numeric, Date, Enum as SAEnum, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, JSON, Numeric, Date, Enum as SAEnum, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from .database import Base
 from .utils import agora
@@ -62,6 +62,18 @@ class Entrega(Base):
     nro_checkout = Column(Integer, nullable=True)   # NROCHECKOUT — número do checkout PDV
     seq_docto    = Column(Integer, nullable=True)   # SEQDOCTO    — sequencial do documento
     seq_pessoa   = Column(Integer, nullable=True)   # SEQPESSOA   — sequencial do cliente
+
+    origem = Column(String(20), default="pdv")      # 'pdv' | 'manual'
+
+class PontoRota(Base):
+    """Pontos GPS coletados durante uma entrega: início, percurso e chegada."""
+    __tablename__ = "pontos_rota"
+    id         = Column(Integer, primary_key=True, index=True)
+    entrega_id = Column(Integer, ForeignKey("entregas.id"), index=True, nullable=False)
+    latitude   = Column(Float, nullable=False)
+    longitude  = Column(Float, nullable=False)
+    timestamp  = Column(DateTime, default=agora)
+    tipo       = Column(String(12), default="rota")  # inicio | rota | fim
 
 class Veiculo(Base):
     __tablename__ = "veiculos"

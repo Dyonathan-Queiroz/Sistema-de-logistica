@@ -178,6 +178,15 @@
             background: rgba(248,81,73,.08);
             color: #f87171;
         }
+        .nav-live-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #22c55e; margin-left: auto; flex-shrink: 0;
+            animation: liveDotPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes liveDotPulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:.3; transform:scale(.7); }
+        }
 
         .sidebar-footer {
             padding: 14px 18px;
@@ -542,6 +551,13 @@
         </a>
         <a href="/gestor/log" class="nav-link {% block nav_log %}{% endblock %}">
             <i class="fas fa-history"></i> Log de Entregas
+        </a>
+        <a href="/gestor/ao-vivo" class="nav-link {% block nav_ao_vivo %}{% endblock %}">
+            <i class="fas fa-satellite-dish"></i> Ao Vivo
+            <span class="nav-live-dot"></span>
+        </a>
+        <a href="/gestor/entrega/nova" class="nav-link {% block nav_nova_entrega %}{% endblock %}">
+            <i class="fas fa-plus-circle"></i> Nova Entrega
         </a>
 
         <div class="nav-section-label">Gestão</div>
