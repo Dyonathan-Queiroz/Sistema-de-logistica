@@ -2,7 +2,7 @@
   "name": "Sistema Logístico Gavião",
   "short_name": "Gavião",
   "description": "Sistema de entregas — Supermercado Gavião",
-  "start_url": "/entregador/dashboard",
+  "start_url": "/entregador",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -27,7 +27,7 @@
   "shortcuts": [
     {
       "name": "Entregas Disponíveis",
-      "url": "/entregador/dashboard",
+      "url": "/entregador",
       "description": "Ver entregas disponíveis"
     }
   ]
