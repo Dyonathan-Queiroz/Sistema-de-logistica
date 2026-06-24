@@ -188,6 +188,11 @@
                 —
               {% endif %}
             </span>
+            {% if item.distancia_km is not none %}
+            <span class="time-chip" style="color:var(--amber)">
+              <i class="fas fa-road"></i> ~{{ item.distancia_km }} km
+            </span>
+            {% endif %}
             <a href="/gestor/entrega/{{ item.entrega.id }}/rota" class="btn-ver-mapa">
               <i class="fas fa-map"></i> Ver Mapa
             </a>
@@ -247,6 +252,8 @@ function renderCards(data) {
     html += '<div class="cb-row"><i class="fas fa-motorcycle cb-icon"></i><div><div class="cb-text">'+e.entregador+'</div><div class="cb-sub">'+e.filial+'</div></div></div>';
     html += '</div><div class="card-footer">';
     html += '<span class="time-chip"><i class="fas fa-clock"></i> '+(e.minutos_em_rota !== null ? e.minutos_em_rota+'min em rota · saiu '+e.aceito_em : '—')+'</span>';
+    if (e.distancia_km !== null && e.distancia_km !== undefined)
+      html += '<span class="time-chip" style="color:var(--amber)"><i class="fas fa-road"></i> ~'+e.distancia_km+' km</span>';
     html += '<a href="/gestor/entrega/'+e.id+'/rota" class="btn-ver-mapa"><i class="fas fa-map"></i> Ver Mapa</a>';
     html += '</div></div>';
   });
