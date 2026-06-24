@@ -9,30 +9,20 @@ load_dotenv()
 
 
 def _build_database_url() -> str | None:
-    """
-    Monta a URL de conexão a partir das variáveis de ambiente.
+    # Tenta DATABASE_URL, MYSQL_URL e MYSQL_PRIVATE_URL (todos que Railway pode injetar)
+    for key in ("DATABASE_URL", "MYSQL_URL", "MYSQL_PRIVATE_URL"):
+        raw = os.getenv(key)
+        if raw:
+            if raw.startswith("mysql://"):
+                raw = raw.replace("mysql://", "mysql+pymysql://", 1)
+            return raw
 
-    Prioridade:
-      1. DATABASE_URL  — Railway injeta automaticamente quando o plugin MySQL está ativo
-      2. Variáveis individuais (MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLPORT, MYSQLDATABASE)
-         — Railway também expõe esses valores; útil quando DATABASE_URL não está disponível
-
-    Usa sqlalchemy.engine.URL.create() para tratar senhas com caracteres especiais
-    (%, @, :, etc.) sem precisar de URL-encoding manual.
-    """
-    raw = os.getenv("DATABASE_URL")
-    if raw:
-        # Railway entrega mysql:// sem driver — SQLAlchemy precisa de mysql+pymysql://
-        if raw.startswith("mysql://"):
-            raw = raw.replace("mysql://", "mysql+pymysql://", 1)
-        return raw
-
-    # Fallback: variáveis individuais do Railway
-    host = os.getenv("MYSQLHOST")
-    user = os.getenv("MYSQLUSER")
-    password = os.getenv("MYSQLPASSWORD", "")
-    port = os.getenv("MYSQLPORT", "3306")
-    database = os.getenv("MYSQLDATABASE")
+    # Fallback: variáveis individuais — Railway usa dois formatos (com e sem underscore)
+    host     = os.getenv("MYSQLHOST")     or os.getenv("MYSQL_HOST")
+    user     = os.getenv("MYSQLUSER")     or os.getenv("MYSQL_USER")
+    password = os.getenv("MYSQLPASSWORD") or os.getenv("MYSQL_PASSWORD") or ""
+    port     = os.getenv("MYSQLPORT")     or os.getenv("MYSQL_PORT")     or "3306"
+    database = os.getenv("MYSQLDATABASE") or os.getenv("MYSQL_DATABASE")
 
     if host and user and database:
         # URL.create() faz o encoding correto de senhas com caracteres especiais
