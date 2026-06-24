@@ -1238,6 +1238,99 @@ async def salvar_edicao_log(entrega_id: int, rua: str = Form(...), numero: str =
     return RedirectResponse(url="/gestor/log", status_code=303)
 
 
+# ── ENTREGA MANUAL ────────────────────────────────────────────────────────────
+
+@app.get("/gestor/clientes/buscar")
+async def buscar_clientes(q: str = "", db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """JSON autocomplete — retorna até 10 clientes que contenham 'q' no nome."""
+    if user_role not in ("gestor", "operador"):
+        return JSONResponse({"ok": False}, status_code=401)
+    q = q.strip()
+    if not q or len(q) < 2:
+        return JSONResponse([])
+    resultados = db.query(Cliente).filter(Cliente.nome.ilike(f"%{q}%")).limit(10).all()
+    return JSONResponse([
+        {"id": c.id, "nome": c.nome, "rua": c.rua or "", "numero": c.numero or "",
+         "bairro": c.bairro or "", "municipio": c.municipio or ""}
+        for c in resultados
+    ])
+
+
+@app.get("/gestor/entrega/nova")
+async def nova_entrega_form(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+    filiais     = db.query(Filial).order_by(Filial.nome).all()
+    entregadores = db.query(Usuario).filter(Usuario.role == "entregador").order_by(Usuario.username).all()
+    veiculos    = db.query(Veiculo).order_by(Veiculo.placa).all()
+    return templates.TemplateResponse(request=request, name="nova_entrega.html", context={
+        "filiais": filiais,
+        "entregadores": entregadores,
+        "veiculos": veiculos,
+    })
+
+
+@app.post("/gestor/entrega/nova")
+async def nova_entrega_salvar(
+    request: Request,
+    db: Session = Depends(get_db),
+    user_role: str = Cookie(None),
+    user_id: str = Cookie(None),
+    # cliente
+    cliente_id: str = Form(""),
+    cliente_nome_novo: str = Form(""),
+    # endereço
+    rua: str = Form(""),
+    numero: str = Form(""),
+    bairro: str = Form(""),
+    municipio: str = Form(""),
+    cep: str = Form(""),
+    # logística
+    filial_id: str = Form(""),
+    entregador_id: str = Form(""),
+    veiculo_id: str = Form(""),
+    observacao: str = Form(""),
+):
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
+
+    # resolve cliente
+    cid = None
+    if cliente_id and cliente_id.isdigit():
+        cid = int(cliente_id)
+    elif cliente_nome_novo.strip():
+        novo = Cliente(
+            nome=cliente_nome_novo.strip(),
+            rua=rua.strip() or None,
+            numero=numero.strip() or None,
+            bairro=bairro.strip() or None,
+            municipio=municipio.strip() or None,
+        )
+        db.add(novo)
+        db.flush()
+        cid = novo.id
+
+    entrega = Entrega(
+        cliente_id   = cid,
+        filial_id    = int(filial_id) if filial_id.isdigit() else None,
+        operador_id  = int(user_id)  if user_id and user_id.isdigit() else None,
+        entregador_id= int(entregador_id) if entregador_id.isdigit() else None,
+        rua          = rua.strip()       or None,
+        numero       = numero.strip()    or None,
+        bairro       = bairro.strip()    or None,
+        municipio    = municipio.strip() or None,
+        cep          = cep.strip()       or None,
+        observacao   = observacao.strip() or None,
+        status       = "pendente",
+        origem       = "manual",
+    )
+    db.add(entrega)
+    db.commit()
+    return RedirectResponse(url=f"/gestor/log?origem=manual", status_code=303)
+
+
+# ── AO VIVO ───────────────────────────────────────────────────────────────────
+
 @app.get("/gestor/ao-vivo")
 async def pagina_ao_vivo(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor — painel de entregas em tempo real"""
