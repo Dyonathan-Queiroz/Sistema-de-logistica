@@ -1,0 +1,34 @@
+{
+  "name": "Sistema Logístico Gavião",
+  "short_name": "Gavião",
+  "description": "Sistema de entregas — Supermercado Gavião",
+  "start_url": "/entregador/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070A10",
+  "theme_color": "#f59e0b",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/static/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["business", "logistics"],
+  "shortcuts": [
+    {
+      "name": "Entregas Disponíveis",
+      "url": "/entregador/dashboard",
+      "description": "Ver entregas disponíveis"
+    }
+  ]
+}

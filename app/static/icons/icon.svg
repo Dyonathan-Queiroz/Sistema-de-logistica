@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#070A10"/>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#141C2E"/>
+      <stop offset="100%" stop-color="#070A10"/>
+    </linearGradient>
+  </defs>
+  <!-- Truck icon -->
+  <g transform="translate(256,256)" fill="none">
+    <!-- Truck body -->
+    <rect x="-130" y="-60" width="200" height="110" rx="12" fill="#f59e0b"/>
+    <!-- Cabin -->
+    <rect x="70" y="-60" width="90" height="80" rx="12" fill="#d97706"/>
+    <!-- Windshield -->
+    <rect x="80" y="-48" width="68" height="52" rx="6" fill="#070A10" opacity="0.5"/>
+    <!-- Wheels -->
+    <circle cx="-70" cy="60" r="28" fill="#1B2540"/>
+    <circle cx="-70" cy="60" r="14" fill="#f59e0b"/>
+    <circle cx="110" cy="60" r="28" fill="#1B2540"/>
+    <circle cx="110" cy="60" r="14" fill="#f59e0b"/>
+    <!-- Undercarriage -->
+    <rect x="-130" y="40" width="260" height="20" rx="4" fill="#d97706"/>
+  </g>
+</svg>
