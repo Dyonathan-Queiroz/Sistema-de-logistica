@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Ranking de Motoristas{% endblock %}
+
+{% block content %}
+<style>
+  .rk-page { padding: 32px 32px 60px; max-width: 860px; }
+
+  /* HEADER */
+  .rk-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; gap: 16px; flex-wrap: wrap; }
+  .rk-header-left { display: flex; align-items: center; gap: 14px; }
+  .rk-icon {
+    width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+    background: var(--amber-light); color: var(--amber-dk);
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .rk-title { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -.4px; }
+  .rk-sub   { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .rk-back {
+    font-size: 13px; font-weight: 600; color: var(--text2);
+    background: var(--card-bg); border: 1.5px solid var(--brd2);
+    padding: 8px 16px; border-radius: 8px; text-decoration: none;
+    display: flex; align-items: center; gap: 6px;
+    transition: border-color .15s, color .15s;
+  }
+  .rk-back:hover { color: var(--text); border-color: var(--text3); text-decoration: none; }
+
+  /* PODIUM (top 3) */
+  .podium {
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: 12px; margin-bottom: 28px;
+  }
+  .podium-col {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    flex: 1; max-width: 180px;
+  }
+  .podium-avatar {
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #fff; font-size: 18px; flex-shrink: 0;
+  }
+  .podium-col.p1 .podium-avatar { width: 64px; height: 64px; background: linear-gradient(135deg,#f59e0b,#d97706); font-size: 22px; }
+  .podium-col.p2 .podium-avatar { width: 52px; height: 52px; background: linear-gradient(135deg,#94a3b8,#64748b); }
+  .podium-col.p3 .podium-avatar { width: 48px; height: 48px; background: linear-gradient(135deg,#d97706,#92400e); }
+
+  .podium-name { font-size: 13px; font-weight: 700; color: var(--text); text-align: center; }
+  .podium-score { font-size: 12px; color: var(--text2); }
+
+  .podium-block {
+    width: 100%; border-radius: 10px 10px 0 0;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-end; padding: 12px 8px; gap: 4px;
+  }
+  .podium-col.p1 .podium-block { height: 100px; background: linear-gradient(180deg,#fef3c7,#fde68a); border: 1.5px solid #fcd34d; }
+  .podium-col.p2 .podium-block { height: 72px;  background: linear-gradient(180deg,#f1f5f9,#e2e8f0); border: 1.5px solid #cbd5e1; }
+  .podium-col.p3 .podium-block { height: 56px;  background: linear-gradient(180deg,#fef3c7,#fed7aa); border: 1.5px solid #fdba74; }
+
+  .podium-pos {
+    font-size: 20px; font-weight: 900; line-height: 1;
+  }
+  .podium-col.p1 .podium-pos { color: #d97706; }
+  .podium-col.p2 .podium-pos { color: #64748b; }
+  .podium-col.p3 .podium-pos { color: #92400e; }
+
+  /* RANKING TABLE */
+  .rk-card {
+    background: var(--card-bg); border: 1px solid var(--brd);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .rk-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 20px; border-bottom: 1px solid var(--brd);
+    transition: background .12s;
+  }
+  .rk-row:last-child { border-bottom: none; }
+  .rk-row:hover { background: #fafafa; }
+
+  .rk-pos {
+    width: 28px; flex-shrink: 0; text-align: center;
+    font-size: 13px; font-weight: 800; color: var(--text3);
+  }
+  .rk-pos.gold   { color: #d97706; }
+  .rk-pos.silver { color: #64748b; }
+  .rk-pos.bronze { color: #92400e; }
+
+  .rk-avatar {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; color: #fff;
+  }
+
+  .rk-info { flex: 1; min-width: 0; }
+  .rk-username { font-size: 14px; font-weight: 700; color: var(--text); }
+  .rk-meta     { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  .rk-score-col { text-align: right; flex-shrink: 0; min-width: 110px; }
+  .rk-bar-wrap { height: 6px; background: var(--brd); border-radius: 3px; margin-bottom: 4px; overflow: hidden; }
+  .rk-bar      { height: 100%; border-radius: 3px; transition: width .4s ease; }
+  .rk-score-val { font-size: 12px; font-weight: 700; }
+
+  .score-high   .rk-bar { background: var(--green); }
+  .score-mid    .rk-bar { background: var(--amber); }
+  .score-low    .rk-bar { background: var(--danger); }
+  .score-high   .rk-score-val { color: var(--green); }
+  .score-mid    .rk-score-val { color: var(--orange); }
+  .score-low    .rk-score-val { color: var(--danger); }
+
+  .rk-entregas { font-size: 12px; color: var(--text3); text-align: right; flex-shrink: 0; min-width: 60px; }
+  .rk-entregas strong { font-weight: 700; color: var(--text2); font-size: 14px; display: block; }
+
+  /* EMPTY */
+  .rk-empty { text-align: center; padding: 48px 24px; color: var(--text3); }
+  .rk-empty i { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+  .rk-empty p { font-size: 14px; }
+
+  /* AVATAR COLORS */
+  .av-0{background:#6366f1}.av-1{background:#0ea5e9}.av-2{background:#10b981}
+  .av-3{background:#f59e0b}.av-4{background:#ef4444}.av-5{background:#8b5cf6}
+  .av-6{background:#ec4899}.av-7{background:#14b8a6}.av-8{background:#f97316}.av-9{background:#64748b}
+</style>
+
+<div class="rk-page">
+
+  <!-- HEADER -->
+  <div class="rk-header">
+    <div class="rk-header-left">
+      <div class="rk-icon"><i class="fas fa-trophy"></i></div>
+      <div>
+        <div class="rk-title">Ranking de Motoristas</div>
+        <div class="rk-sub">Score baseado em pontualidade, avaliações e total de entregas</div>
+      </div>
+    </div>
+    <a href="/frota/dashboard" class="rk-back"><i class="fas fa-arrow-left"></i> Voltar</a>
+  </div>
+
+  {% if ranking %}
+
+    <!-- PODIUM (top 3) -->
+    {% if ranking|length >= 2 %}
+    <div class="podium">
+      {# 2nd place #}
+      {% set p2 = ranking[1] %}
+      <div class="podium-col p2">
+        <div class="podium-avatar av-{{ loop.index0 % 10 }}">{{ p2.username[:2].upper() }}</div>
+        <div class="podium-name">{{ p2.username }}</div>
+        <div class="podium-score">{{ p2.score_atual }} pts</div>
+        <div class="podium-block"><span class="podium-pos">2°</span></div>
+      </div>
+
+      {# 1st place #}
+      {% set p1 = ranking[0] %}
+      <div class="podium-col p1">
+        <div style="font-size:22px;margin-bottom:-4px">🏆</div>
+        <div class="podium-avatar av-{{ 3 }}">{{ p1.username[:2].upper() }}</div>
+        <div class="podium-name">{{ p1.username }}</div>
+        <div class="podium-score">{{ p1.score_atual }} pts</div>
+        <div class="podium-block"><span class="podium-pos">1°</span></div>
+      </div>
+
+      {# 3rd place #}
+      {% if ranking|length >= 3 %}
+      {% set p3 = ranking[2] %}
+      <div class="podium-col p3">
+        <div class="podium-avatar av-{{ 5 }}">{{ p3.username[:2].upper() }}</div>
+        <div class="podium-name">{{ p3.username }}</div>
+        <div class="podium-score">{{ p3.score_atual }} pts</div>
+        <div class="podium-block"><span class="podium-pos">3°</span></div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- LISTA COMPLETA -->
+    <div class="rk-card">
+      {% for m in ranking %}
+        {% set score_cls = 'score-high' if m.score_atual >= 70 else ('score-mid' if m.score_atual >= 40 else 'score-low') %}
+        <div class="rk-row {{ score_cls }}">
+
+          <div class="rk-pos {% if m.posicao == 1 %}gold{% elif m.posicao == 2 %}silver{% elif m.posicao == 3 %}bronze{% endif %}">
+            {% if m.posicao == 1 %}🥇{% elif m.posicao == 2 %}🥈{% elif m.posicao == 3 %}🥉{% else %}{{ m.posicao }}°{% endif %}
+          </div>
+
+          <div class="rk-avatar av-{{ loop.index0 % 10 }}">{{ m.username[:2].upper() }}</div>
+
+          <div class="rk-info">
+            <div class="rk-username">{{ m.username }}</div>
+            <div class="rk-meta">
+              Atualizado {{ m.updated_at.strftime('%d/%m %H:%M') if m.updated_at else '—' }}
+            </div>
+          </div>
+
+          <div class="rk-score-col">
+            <div class="rk-bar-wrap">
+              <div class="rk-bar" style="width:{{ m.score_atual }}%"></div>
+            </div>
+            <div class="rk-score-val">{{ m.score_atual }} pts</div>
+          </div>
+
+          <div class="rk-entregas">
+            <strong>{{ m.total_entregas }}</strong>
+            entregas
+          </div>
+
+        </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <div class="rk-empty">
+      <i class="fas fa-trophy"></i>
+      <p>Nenhum dado de score registrado ainda.<br>Os motoristas aparecem aqui após finalizarem entregas.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
