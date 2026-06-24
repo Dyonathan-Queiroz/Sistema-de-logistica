@@ -577,7 +577,7 @@ function toggleErro() {
 
   gpsInit();
 
-  // Rastreamento contínuo enquanto em_rota (a cada 30s)
+  // Rastreamento contínuo enquanto em_rota (a cada 10s)
   if (STATUS === 'em_rota' && navigator.geolocation) {
     trackTimer = setInterval(function () {
       navigator.geolocation.getCurrentPosition(
@@ -589,7 +589,7 @@ function toggleErro() {
         function (err) { gpsShowError(err.code); },
         { timeout: 8000, enableHighAccuracy: true }
       );
-    }, 30000);
+    }, 10000);
     window.addEventListener('beforeunload', function () { clearInterval(trackTimer); });
   }
 

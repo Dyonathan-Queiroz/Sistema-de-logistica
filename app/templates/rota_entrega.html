@@ -68,6 +68,16 @@
     .ld-rota{background:rgba(59,130,246,.25);border-color:var(--blue)}
     .ld-fim{background:rgba(239,68,68,.25);border-color:var(--red)}
     .leg-count{margin-left:auto;font-size:12px;color:var(--muted)}
+    .leg-osrm{
+      margin-left:auto;display:flex;align-items:center;gap:6px;
+      font-size:11px;font-weight:600;
+    }
+    .leg-osrm.loading{color:var(--amber)}
+    .leg-osrm.ok     {color:var(--green)}
+    .leg-osrm.fail   {color:var(--muted)}
+    .leg-osrm i{font-size:10px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .fa-spin-sm{animation:spin .8s linear infinite;display:inline-block}
 
     /* NO DATA */
     .no-data{
@@ -202,9 +212,12 @@
   <div id="map"></div>
   <div class="legend">
     <div class="leg-item"><div class="leg-dot ld-inicio"></div>Início da rota</div>
-    <div class="leg-item"><div class="leg-dot ld-rota"></div>Percurso (a cada 30s)</div>
+    <div class="leg-item"><div class="leg-dot ld-rota"></div>Percurso (a cada 10s)</div>
     <div class="leg-item"><div class="leg-dot ld-fim"></div>Local de entrega</div>
-    <div class="leg-count">{{ pontos|length }} ponto{{ 's' if pontos|length != 1 else '' }} registrado{{ 's' if pontos|length != 1 else '' }}</div>
+    <div class="leg-count">{{ pontos|length }} ponto{{ 's' if pontos|length != 1 else '' }}</div>
+    <div class="leg-osrm loading" id="legOsrm">
+      <i class="fas fa-circle-notch fa-spin-sm"></i> Encaixando nas ruas...
+    </div>
   </div>
   {% else %}
   <div class="no-data">
@@ -222,9 +235,9 @@
 {% if pontos %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
 <script>
-var PONTOS        = {{ pontos_json | safe }};
-var ENTREGA_ID    = {{ entrega.id }};
-var INITIAL_STATUS= '{{ entrega.status }}';
+var PONTOS         = {{ pontos_json | safe }};
+var ENTREGA_ID     = {{ entrega.id }};
+var INITIAL_STATUS = '{{ entrega.status }}';
 
 var map = L.map('map', { zoomControl: true });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -232,35 +245,107 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-function makeIcon(color, size, extraClass) {
+function makeIcon(color, size, cls) {
   return L.divIcon({
-    className: extraClass || '',
+    className: cls || '',
     html: '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>',
-    iconSize: [size, size],
-    iconAnchor: [size/2, size/2]
+    iconSize: [size, size], iconAnchor: [size/2, size/2]
   });
 }
 
-/* ── initial render ───────────────────────────── */
-var allMarkers = [];
-var polyline   = null;
+/* ── layer refs ──────────────────────────────── */
+var allMarkers    = [];
+var straightLine  = null;   // dashed fallback
+var matchedLine   = null;   // OSRM street-matched
 var currentMarker = null;
-var bounds     = L.latLngBounds();
-var latlngs    = [];
+var bounds        = L.latLngBounds();
+var latlngs       = [];
+var osrmCtrl      = null;   // AbortController for in-flight OSRM request
+var lastPointCount = 0;     // track when new points arrive for live re-match
 
+/* ── OSRM map matching ───────────────────────── */
+function setLegOsrm(state, text) {
+  var el = document.getElementById('legOsrm');
+  if (!el) return;
+  el.className = 'leg-osrm ' + state;
+  var icon = state === 'loading' ? '<i class="fas fa-circle-notch fa-spin-sm"></i> '
+           : state === 'ok'     ? '<i class="fas fa-road"></i> '
+                                 : '<i class="fas fa-minus"></i> ';
+  el.innerHTML = icon + text;
+}
+
+function callOSRM(pontos, onSuccess, onFail) {
+  if (osrmCtrl) { try { osrmCtrl.abort(); } catch(e){} }
+
+  var pts = pontos.filter(function(p){ return p.lat && p.lng; });
+  if (pts.length < 2) { onFail && onFail(); return; }
+
+  // sample to ≤ 100 points (public OSRM hard limit)
+  var sampled = pts;
+  if (pts.length > 100) {
+    sampled = [];
+    var step = (pts.length - 1) / 98;
+    for (var i = 0; i < 99; i++) sampled.push(pts[Math.round(i * step)]);
+    sampled.push(pts[pts.length - 1]);
+  }
+
+  var coords  = sampled.map(function(p){ return p.lng + ',' + p.lat; }).join(';');
+  var radii   = sampled.map(function(){ return '30'; }).join(';');
+  var url = 'https://router.project-osrm.org/match/v1/driving/' + coords
+          + '?overview=full&geometries=geojson&radiuses=' + radii;
+
+  osrmCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var opts = osrmCtrl ? { signal: osrmCtrl.signal } : {};
+
+  setLegOsrm('loading', 'Encaixando nas ruas...');
+
+  fetch(url, opts)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.code !== 'Ok' || !data.matchings || !data.matchings.length) {
+        setLegOsrm('fail', 'Rota aproximada (sem dados OSRM)');
+        onFail && onFail(); return;
+      }
+      var lls = [];
+      data.matchings.forEach(function(m){
+        m.geometry.coordinates.forEach(function(c){ lls.push(L.latLng(c[1], c[0])); });
+      });
+      onSuccess(lls);
+    })
+    .catch(function(e){
+      if (e && e.name === 'AbortError') return;
+      setLegOsrm('fail', 'Rota aproximada (OSRM indisponível)');
+      onFail && onFail();
+    });
+}
+
+function applyOSRM(pontos) {
+  callOSRM(
+    pontos,
+    function(lls) {  // success → draw matched line, hide straight
+      if (matchedLine) { map.removeLayer(matchedLine); matchedLine = null; }
+      matchedLine = L.polyline(lls, { color:'#3b82f6', weight:4, opacity:.85 }).addTo(map);
+      if (straightLine) straightLine.setStyle({ opacity: 0 }); // hide dashed
+      setLegOsrm('ok', 'Rota real por ruas (OSRM)');
+    },
+    function() {      // fail → keep dashed line visible
+      if (straightLine) straightLine.setStyle({ opacity: .6 });
+    }
+  );
+}
+
+/* ── render GPS points ───────────────────────── */
 function renderPoints(pontos) {
-  // clear previous
   allMarkers.forEach(function(m){ map.removeLayer(m); });
   allMarkers = [];
-  if (polyline)      { map.removeLayer(polyline); polyline = null; }
+  if (straightLine)  { map.removeLayer(straightLine);  straightLine  = null; }
+  if (matchedLine)   { map.removeLayer(matchedLine);   matchedLine   = null; }
   if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
-  latlngs = [];
-  bounds  = L.latLngBounds();
+  latlngs = []; bounds = L.latLngBounds();
 
   pontos.forEach(function(p) {
     var ll = L.latLng(p.lat, p.lng);
-    latlngs.push(ll);
-    bounds.extend(ll);
+    latlngs.push(ll); bounds.extend(ll);
 
     var color, size, label;
     if      (p.tipo === 'inicio') { color='#22c55e'; size=18; label='Início da rota'; }
@@ -276,25 +361,28 @@ function renderPoints(pontos) {
     allMarkers.push(m);
   });
 
+  // dashed fallback line (hidden once OSRM loads)
   if (latlngs.length > 1)
-    polyline = L.polyline(latlngs, { color:'#3b82f6', weight:3, opacity:.7, dashArray:'6 4' }).addTo(map);
+    straightLine = L.polyline(latlngs, { color:'#3b82f6', weight:2, opacity:.35, dashArray:'6 4' }).addTo(map);
 
-  if (bounds.isValid())
-    map.fitBounds(bounds, { padding:[40,40] });
+  if (bounds.isValid()) map.fitBounds(bounds, { padding:[40,40] });
+
+  // call OSRM only when point count changes (avoid redundant calls on live refresh)
+  if (pontos.length !== lastPointCount && pontos.length >= 2) {
+    lastPointCount = pontos.length;
+    applyOSRM(pontos);
+  }
 }
 
-// render the initial server-rendered data (campo 'ts' vem no json)
-// remap fields: pontos_json uses 'timestamp' key, live endpoint uses 'ts'
+// initial render
 var initialPontos = PONTOS.map(function(p){ return { lat:p.lat, lng:p.lng, tipo:p.tipo, ts:p.timestamp }; });
 renderPoints(initialPontos);
 
-/* ── live tracking (only when em_rota) ─────────── */
+/* ── live tracking (gestor view) ─────────────── */
 var liveTimer = null;
 
 function updateLiveUI(data) {
-  var sp      = data.segundos_parado;
-  var status  = data.status;
-
+  var sp = data.segundos_parado, status = data.status;
   var liveBar   = document.getElementById('liveBar');
   var stopOv    = document.getElementById('stopOverlay');
   var finBanner = document.getElementById('finBanner');
@@ -305,14 +393,12 @@ function updateLiveUI(data) {
     liveBar.classList.remove('visible');
     stopOv.classList.remove('visible');
     finBanner.classList.add('visible');
-    // update status pill in topbar
     var pill = document.querySelector('.status-pill');
     if (pill) pill.outerHTML = '<span class="status-pill sp-fin"><span class="sp-dot"></span>Finalizada</span>';
     stopLive();
     return;
   }
 
-  // still em_rota
   liveBar.classList.add('visible');
   var now = new Date();
   liveTs.textContent = 'Atualizado ' + now.getHours().toString().padStart(2,'0') + ':' +
@@ -320,17 +406,15 @@ function updateLiveUI(data) {
                        now.getSeconds().toString().padStart(2,'0');
 
   if (sp !== null && sp > 150) {
-    var mins = Math.floor(sp/60), secs = sp % 60;
-    stopMsg.textContent = 'Motorista PARADO há ' + mins + 'min ' + secs + 's';
+    stopMsg.textContent = 'Motorista PARADO há ' + Math.floor(sp/60) + 'min ' + (sp%60) + 's';
     stopOv.classList.add('visible');
   } else {
     stopOv.classList.remove('visible');
   }
 
-  // re-render points
   renderPoints(data.pontos);
 
-  // amber pulsing current-position marker (last non-fim point)
+  // pulsing amber marker for current position
   var lastRota = null;
   for (var i = data.pontos.length - 1; i >= 0; i--) {
     if (data.pontos[i].tipo !== 'fim') { lastRota = data.pontos[i]; break; }
@@ -340,8 +424,7 @@ function updateLiveUI(data) {
       icon: L.divIcon({
         className: 'current-marker',
         html: '<div style="width:16px;height:16px;border-radius:50%;background:#f59e0b;border:2.5px solid #fff;box-shadow:0 0 8px rgba(245,158,11,.7);"></div>',
-        iconSize: [16,16],
-        iconAnchor: [8,8]
+        iconSize:[16,16], iconAnchor:[8,8]
       }),
       zIndexOffset: 500
     }).addTo(map);
@@ -353,7 +436,7 @@ function fetchLive() {
   fetch('/gestor/entrega/' + ENTREGA_ID + '/pontos')
     .then(function(r){ return r.json(); })
     .then(function(data){ updateLiveUI(data); })
-    .catch(function(){ /* silencioso */ });
+    .catch(function(){});
 }
 
 function stopLive() {
@@ -363,7 +446,7 @@ function stopLive() {
 if (INITIAL_STATUS === 'em_rota') {
   document.getElementById('liveBar').classList.add('visible');
   liveTimer = setInterval(fetchLive, 30000);
-  fetchLive(); // imediato
+  fetchLive();
 }
 </script>
 {% endif %}
