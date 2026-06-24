@@ -2570,6 +2570,85 @@
     if (e.target === this) fecharEncerrar();
   });
 
+  /* ── GPS TRACKING PERIÓDICO (entregas em rota) ──────── */
+  var GPS_ENTREGAS = {{ em_rota | map(attribute='id') | list | tojson }};
+  var _gpsTrackTimer = null;
+  var GPS_INTERVAL_S = 15; // segundos entre envios
+
+  function _metrosEntre(la1, lo1, la2, lo2) {
+    var dLat = (la2 - la1) * 111000;
+    var dLng = (lo2 - lo1) * 111000 * Math.cos(la1 * Math.PI / 180);
+    return Math.sqrt(dLat * dLat + dLng * dLng);
+  }
+
+  function _lerGpsEstado(eid) {
+    try { return JSON.parse(localStorage.getItem('gps_e_' + eid) || 'null'); } catch(e) { return null; }
+  }
+  function _salvarGpsEstado(eid, s) {
+    try { localStorage.setItem('gps_e_' + eid, JSON.stringify(s)); } catch(e) {}
+  }
+
+  function _enviarGps(eid, lat, lng, tipo) {
+    fetch('/entregador/rastrear/' + eid, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat: lat, lng: lng, tipo: tipo })
+    }).catch(function() {});
+  }
+
+  function _processarGps(pos) {
+    var lat  = pos.coords.latitude;
+    var lng  = pos.coords.longitude;
+    var agora = Date.now();
+
+    GPS_ENTREGAS.forEach(function(eid) {
+      var st = _lerGpsEstado(eid);
+
+      if (!st) {
+        // Primeiro tick — salva posição inicial sem enviar (inicio já foi gravado no aceitar)
+        _salvarGpsEstado(eid, { lat: lat, lng: lng, movedAt: agora, stopStart: null, stoppedSent: false });
+        return;
+      }
+
+      var dist = _metrosEntre(st.lat, st.lng, lat, lng);
+
+      if (dist > 15) {
+        // Moveu — envia ponto de rota e reseta parada
+        _enviarGps(eid, lat, lng, 'rota');
+        _salvarGpsEstado(eid, { lat: lat, lng: lng, movedAt: agora, stopStart: null, stoppedSent: false });
+      } else {
+        // Parado — inicia ou continua contagem
+        var stopStart    = st.stopStart || agora;
+        var paradoHa     = agora - stopStart;
+        var stoppedSent  = st.stoppedSent || false;
+
+        if (paradoHa > 120000 && !stoppedSent) {
+          // Parado há +2min — envia marcador de parada (uma vez)
+          _enviarGps(eid, lat, lng, 'parado');
+          _salvarGpsEstado(eid, { lat: st.lat, lng: st.lng, movedAt: st.movedAt, stopStart: stopStart, stoppedSent: true });
+        } else {
+          _salvarGpsEstado(eid, { lat: st.lat, lng: st.lng, movedAt: st.movedAt, stopStart: stopStart, stoppedSent: stoppedSent });
+        }
+      }
+    });
+  }
+
+  function iniciarRastreamento() {
+    if (!GPS_ENTREGAS.length || _gpsTrackTimer) return;
+    function _tick() {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        _processarGps,
+        function() {}, // erro silencioso em background
+        { timeout: 8000, maximumAge: 10000, enableHighAccuracy: true }
+      );
+    }
+    _tick(); // envia imediatamente
+    _gpsTrackTimer = setInterval(_tick, GPS_INTERVAL_S * 1000);
+  }
+
+  iniciarRastreamento();
+
   // GPS no aceitar entrega — OBRIGATÓRIO (sem fallback)
   document.querySelectorAll('.form-aceitar').forEach(function(form) {
     form.addEventListener('submit', function(e) {

@@ -766,7 +766,8 @@ async def rastrear_entrega(
         Entrega.status == "em_rota",
     ).first()
     if entrega:
-        db.add(PontoRota(entrega_id=entrega_id, latitude=body.lat, longitude=body.lng, tipo="rota"))
+        tipo_val = body.tipo if body.tipo in ("rota", "parado") else "rota"
+        db.add(PontoRota(entrega_id=entrega_id, latitude=body.lat, longitude=body.lng, tipo=tipo_val))
         db.commit()
     return JSONResponse({"ok": True})
 
