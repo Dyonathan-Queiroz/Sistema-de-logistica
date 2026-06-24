@@ -652,14 +652,16 @@ async def aceitar_entrega(
     if not turno_check:
         return RedirectResponse(url="/entregador?erro=sem_turno", status_code=303)
 
+    if not lat or not lng:
+        return RedirectResponse(url=f"/entregador/entrega/{entrega_id}?erro=gps_obrigatorio", status_code=303)
+
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if entrega and entrega.status == "pendente" and uid:
         entrega.status = "em_rota"
         entrega.entregador_id = uid
         entrega.data_aceite = agora()
         try:
-            if lat and lng:
-                db.add(PontoRota(entrega_id=entrega_id, latitude=float(lat), longitude=float(lng), tipo="inicio"))
+            db.add(PontoRota(entrega_id=entrega_id, latitude=float(lat), longitude=float(lng), tipo="inicio"))
         except (ValueError, TypeError):
             pass
         db.commit()
@@ -668,7 +670,7 @@ async def aceitar_entrega(
 
 
 @app.get("/entregador/entrega/{entrega_id}")
-async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
+async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None), erro: str = None):
     """entregador"""
     if user_role != "entregador":
         return RedirectResponse(url="/login")
@@ -710,6 +712,7 @@ async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depen
         "nome_cliente": cliente.nome if cliente else "",
         "municipio_cliente": municipio_cliente,
         "estado_cliente": estado_cliente,
+        "erro": erro,
     })
 
 
@@ -728,13 +731,15 @@ async def finalizar_entrega(
 
     uid = int(user_id) if user_id and user_id.isdigit() else None
 
+    if not lat or not lng:
+        return RedirectResponse(url=f"/entregador/entrega/{entrega_id}?erro=gps_obrigatorio", status_code=303)
+
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if entrega and entrega.status == "em_rota" and entrega.entregador_id == uid:
         entrega.status = "finalizado"
         entrega.data_finalizacao = agora()
         try:
-            if lat and lng:
-                db.add(PontoRota(entrega_id=entrega_id, latitude=float(lat), longitude=float(lng), tipo="fim"))
+            db.add(PontoRota(entrega_id=entrega_id, latitude=float(lat), longitude=float(lng), tipo="fim"))
         except (ValueError, TypeError):
             pass
         db.commit()
@@ -1363,9 +1368,17 @@ async def pagina_ao_vivo(request: Request, db: Session = Depends(get_db), user_r
             "tem_gps":         ultimo is not None,
         })
 
+    sp = lambda e: e["segundos_parado"]
+    cnt_ok   = sum(1 for e in entregas if e["tem_gps"] and sp(e) is not None and sp(e) < 90)
+    cnt_warn = sum(1 for e in entregas if e["tem_gps"] and sp(e) is not None and 90 <= sp(e) < 150)
+    cnt_stop = sum(1 for e in entregas if e["tem_gps"] and sp(e) is not None and sp(e) >= 150)
+
     return templates.TemplateResponse(request=request, name="entregas_ao_vivo.html", context={
         "entregas": entregas,
         "total": len(entregas),
+        "cnt_ok":   cnt_ok,
+        "cnt_warn": cnt_warn,
+        "cnt_stop": cnt_stop,
     })
 
 

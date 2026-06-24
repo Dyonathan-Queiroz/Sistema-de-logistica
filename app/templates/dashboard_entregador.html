@@ -1183,9 +1183,86 @@
 
     /* ── FOOTER ──────────────────────────────────────────── */
     .footer { display: none; }
+
+    /* ── GPS BAR ─────────────────────────────────────────── */
+    .gps-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 16px; font-size: 12px; font-weight: 600;
+      position: sticky; top: 0; z-index: 500;
+      transition: background .3s, color .3s;
+    }
+    .gps-bar.checking { background: rgba(37,99,235,.12); color: #93c5fd; }
+    .gps-bar.ok       { background: rgba(22,163,74,.12);  color: #86efac; }
+    .gps-bar.blocked  { background: rgba(220,38,38,.15);  color: #fca5a5; cursor: pointer; }
+    .gps-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .gps-bar.checking .gps-dot { background: #60a5fa; animation: gpsPulse 1.4s ease-in-out infinite; }
+    .gps-bar.ok       .gps-dot { background: #4ade80; }
+    .gps-bar.blocked  .gps-dot { background: #f87171; animation: gpsPulse 1s ease-in-out infinite; }
+    @keyframes gpsPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+    .gps-bar .gps-action {
+      margin-left: auto; font-size: 11px; text-decoration: underline; cursor: pointer; opacity: .8;
+    }
+
+    /* ── GPS OVERLAY (blocking modal) ───────────────────── */
+    .gps-overlay {
+      position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0,0,0,.85);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .gps-overlay.hidden { display: none; }
+    .gps-overlay-card {
+      background: #111827; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 18px; padding: 28px 24px; max-width: 360px; width: 100%;
+      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    }
+    .gps-overlay-icon {
+      width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 16px;
+      background: rgba(220,38,38,.15); color: #f87171;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+    .gps-overlay-title { font-size: 18px; font-weight: 800; color: #f1f5f9; margin-bottom: 10px; }
+    .gps-overlay-msg   { font-size: 13px; color: #94a3b8; line-height: 1.6; margin-bottom: 20px; }
+    .gps-overlay-steps {
+      text-align: left; background: rgba(255,255,255,.04);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 20px;
+    }
+    .gps-overlay-steps li {
+      font-size: 12px; color: #94a3b8; line-height: 1.7; list-style: none; padding-left: 4px;
+    }
+    .gps-overlay-steps li::before { content: '→ '; color: #f59e0b; font-weight: 700; }
+    .gps-retry-btn {
+      width: 100%; padding: 12px; border-radius: 10px; border: none; cursor: pointer;
+      background: #2563eb; color: #fff; font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: filter .15s;
+    }
+    .gps-retry-btn:hover { filter: brightness(1.1); }
   </style>
 </head>
 <body>
+
+<!-- GPS STATUS BAR -->
+<div class="gps-bar checking" id="gpsBar" onclick="gpsOverlayOpen()">
+  <span class="gps-dot"></span>
+  <span id="gpsMsg">Verificando localização...</span>
+  <span class="gps-action" id="gpsAction" style="display:none">Saiba como ativar →</span>
+</div>
+
+<!-- GPS BLOCKING OVERLAY -->
+<div class="gps-overlay hidden" id="gpsOverlay">
+  <div class="gps-overlay-card">
+    <div class="gps-overlay-icon"><i class="fas fa-map-marker-slash"></i></div>
+    <div class="gps-overlay-title">GPS Obrigatório</div>
+    <p class="gps-overlay-msg" id="gpsOverlayMsg">Para aceitar ou finalizar entregas o GPS deve estar ativo e permitido.</p>
+    <ul class="gps-overlay-steps" id="gpsOverlaySteps"></ul>
+    <button class="gps-retry-btn" onclick="gpsRetry()">
+      <i class="fas fa-rotate-right"></i> Tentar Novamente
+    </button>
+  </div>
+</div>
 
 {% if erro == 'sem_turno' %}
 <div class="toast-erro" id="toastErro">
@@ -2136,22 +2213,109 @@
   })();
   {% endif %}
 
-  // GPS no aceitar entrega
+  // ── GPS OBRIGATÓRIO ─────────────────────────────────────
+  var gpsOk = false;
+
+  function gpsSetBar(state, msg) {
+    var bar    = document.getElementById('gpsBar');
+    var msgEl  = document.getElementById('gpsMsg');
+    var action = document.getElementById('gpsAction');
+    bar.className = 'gps-bar ' + state;
+    msgEl.textContent = msg;
+    action.style.display = (state === 'blocked') ? '' : 'none';
+  }
+
+  function gpsOverlayOpen() {
+    if (!gpsOk) document.getElementById('gpsOverlay').classList.remove('hidden');
+  }
+  function gpsOverlayClose() {
+    document.getElementById('gpsOverlay').classList.add('hidden');
+  }
+
+  function gpsShowError(code) {
+    var msgEl   = document.getElementById('gpsOverlayMsg');
+    var stepsEl = document.getElementById('gpsOverlaySteps');
+    gpsOk = false;
+
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      gpsSetBar('blocked', 'GPS requer HTTPS — toque para detalhes');
+      msgEl.textContent = 'O GPS só funciona em conexão segura (HTTPS).';
+      stepsEl.innerHTML =
+        '<li>Acesse o sistema pelo link HTTPS fornecido pelo supervisor</li>' +
+        '<li>Não use o endereço IP diretamente (http://192.168...)</li>';
+    } else if (code === 1) {
+      gpsSetBar('blocked', 'GPS bloqueado — toque para ativar');
+      msgEl.textContent = 'Você negou o acesso à localização. Siga os passos para liberar:';
+      stepsEl.innerHTML =
+        '<li>Toque no ícone de cadeado na barra do navegador</li>' +
+        '<li>Selecione "Permissões do site" → Localização</li>' +
+        '<li>Escolha "Permitir" e recarregue a página</li>';
+    } else if (code === 2) {
+      gpsSetBar('blocked', 'GPS indisponível — toque para detalhes');
+      msgEl.textContent = 'Não foi possível obter sua localização.';
+      stepsEl.innerHTML =
+        '<li>Verifique se o GPS do celular está ativado</li>' +
+        '<li>Saia para um local com melhor sinal</li>' +
+        '<li>Tente novamente em alguns segundos</li>';
+    } else {
+      gpsSetBar('blocked', 'GPS com timeout — toque para detalhes');
+      msgEl.textContent = 'A localização demorou demais para responder.';
+      stepsEl.innerHTML =
+        '<li>Verifique se o GPS do celular está ativado</li>' +
+        '<li>Tente novamente em alguns segundos</li>';
+    }
+    document.getElementById('gpsOverlay').classList.remove('hidden');
+  }
+
+  function gpsRetry() {
+    gpsSetBar('checking', 'Verificando localização...');
+    document.getElementById('gpsOverlay').classList.add('hidden');
+    gpsInit();
+  }
+
+  function gpsInit() {
+    if (!navigator.geolocation) {
+      gpsShowError(99);
+      return;
+    }
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      gpsShowError(0);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        gpsOk = true;
+        gpsSetBar('ok', 'GPS ativo · ' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4));
+        gpsOverlayClose();
+      },
+      function(err) { gpsShowError(err.code); },
+      { timeout: 10000, maximumAge: 60000, enableHighAccuracy: true }
+    );
+  }
+
+  gpsInit();
+
+  // GPS no aceitar entrega — OBRIGATÓRIO (sem fallback)
   document.querySelectorAll('.form-aceitar').forEach(function(form) {
     form.addEventListener('submit', function(e) {
-      if (!navigator.geolocation) return;
       e.preventDefault();
       var f = this;
-      var timeout = setTimeout(function() { f.submit(); }, 5000);
+      var btn = f.querySelector('button[type="submit"]');
+      var orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Obtendo GPS...';
       navigator.geolocation.getCurrentPosition(
         function(pos) {
-          clearTimeout(timeout);
           f.querySelector('[name="lat"]').value = pos.coords.latitude;
           f.querySelector('[name="lng"]').value = pos.coords.longitude;
           f.submit();
         },
-        function() { clearTimeout(timeout); f.submit(); },
-        { timeout: 4000, maximumAge: 0, enableHighAccuracy: true }
+        function(err) {
+          btn.disabled = false;
+          btn.innerHTML = orig;
+          gpsShowError(err.code);
+        },
+        { timeout: 10000, maximumAge: 0, enableHighAccuracy: true }
       );
     });
   });
