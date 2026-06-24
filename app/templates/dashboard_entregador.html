@@ -1194,26 +1194,41 @@
     /* ── FOOTER ──────────────────────────────────────────── */
     .footer { display: none; }
 
-    /* ── GPS BAR ─────────────────────────────────────────── */
+    /* ── GPS BAR (só aparece quando bloqueado) ──────────── */
     .gps-bar {
-      display: flex; align-items: center; gap: 8px;
+      display: none; align-items: center; gap: 8px;
       padding: 9px 16px; font-size: 12px; font-weight: 600;
-      position: sticky; top: 0; z-index: 500;
       transition: background .3s, color .3s;
     }
-    .gps-bar.checking { background: rgba(37,99,235,.12); color: #93c5fd; }
-    .gps-bar.ok       { background: rgba(22,163,74,.12);  color: #86efac; }
-    .gps-bar.blocked  { background: rgba(220,38,38,.15);  color: #fca5a5; cursor: pointer; }
-    .gps-dot {
-      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-    }
-    .gps-bar.checking .gps-dot { background: #60a5fa; animation: gpsPulse 1.4s ease-in-out infinite; }
-    .gps-bar.ok       .gps-dot { background: #4ade80; }
-    .gps-bar.blocked  .gps-dot { background: #f87171; animation: gpsPulse 1s ease-in-out infinite; }
+    .gps-bar.blocked { display: flex; background: rgba(220,38,38,.15); color: #fca5a5; cursor: pointer; }
+    .gps-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .gps-bar.blocked .gps-dot { background: #f87171; animation: gpsPulse 1s ease-in-out infinite; }
     @keyframes gpsPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
     .gps-bar .gps-action {
       margin-left: auto; font-size: 11px; text-decoration: underline; cursor: pointer; opacity: .8;
     }
+
+    /* ── GPS SATÉLITE — ícone no header ─────────────────── */
+    .gps-sat {
+      font-size: 17px; padding: 5px; border-radius: 8px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+    .gps-sat.checking {
+      color: #60a5fa;
+      animation: gpsSatSpin 2s linear infinite;
+    }
+    .gps-sat.ok {
+      color: #0df5a0;
+      filter: drop-shadow(0 0 6px rgba(13,245,160,.6));
+      animation: gpsSatPulse 2.2s ease-in-out infinite;
+    }
+    .gps-sat.blocked {
+      color: #f87171;
+      animation: gpsSatPulse .8s ease-in-out infinite;
+    }
+    @keyframes gpsSatPulse { 0%,100%{opacity:1} 50%{opacity:.15} }
+    @keyframes gpsSatSpin  { to{transform:rotate(360deg)} }
 
     /* ── GPS OVERLAY (blocking modal) ───────────────────── */
     .gps-overlay {
@@ -1541,6 +1556,9 @@
         {% endif %}
       </div>
     </div>
+    <span class="gps-sat checking" id="gpsSatIcon" onclick="gpsOverlayOpen()" title="GPS">
+      <i class="fas fa-satellite-dish"></i>
+    </span>
     <a href="/logout" class="btn-sair" title="Sair">
       <i class="fas fa-sign-out-alt"></i>
     </a>
@@ -2484,12 +2502,14 @@
   var gpsOk = false;
 
   function gpsSetBar(state, msg) {
-    var bar    = document.getElementById('gpsBar');
-    var msgEl  = document.getElementById('gpsMsg');
-    var action = document.getElementById('gpsAction');
+    var bar     = document.getElementById('gpsBar');
+    var msgEl   = document.getElementById('gpsMsg');
+    var action  = document.getElementById('gpsAction');
+    var satIcon = document.getElementById('gpsSatIcon');
     bar.className = 'gps-bar ' + state;
     msgEl.textContent = msg;
     action.style.display = (state === 'blocked') ? '' : 'none';
+    if (satIcon) satIcon.className = 'gps-sat ' + state;
   }
 
   function gpsOverlayOpen() {
