@@ -783,6 +783,38 @@ async def rastrear_entrega(
     return JSONResponse({"ok": True})
 
 
+@app.post("/entregador/alerta/{entrega_id}")
+async def alerta_entregador(
+    entrega_id: int,
+    db: Session = Depends(get_db),
+    user_id: str = Cookie(None),
+    user_role: str = Cookie(None),
+):
+    """entregador — dispara alerta de emergência ('preciso de ajuda')"""
+    if user_role != "entregador":
+        return JSONResponse({"ok": False}, status_code=401)
+
+    uid = int(user_id) if user_id and user_id.isdigit() else None
+    entrega = db.query(Entrega).filter(
+        Entrega.id == entrega_id,
+        Entrega.entregador_id == uid,
+        Entrega.status == "em_rota",
+    ).first()
+    if entrega:
+        ultimo = db.query(PontoRota).filter(
+            PontoRota.entrega_id == entrega_id
+        ).order_by(PontoRota.timestamp.desc()).first()
+        if ultimo:
+            db.add(PontoRota(
+                entrega_id=entrega_id,
+                latitude=ultimo.latitude,
+                longitude=ultimo.longitude,
+                tipo="alerta",
+            ))
+            db.commit()
+    return JSONResponse({"ok": True})
+
+
 @app.post("/entregas/{entrega_id}/reportar-erro")
 async def reportar_erro(entrega_id: int, motivo: str = Form(...), db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
     """entregador"""

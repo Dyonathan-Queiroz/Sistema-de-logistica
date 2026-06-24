@@ -405,6 +405,7 @@ function renderPoints(pontos) {
     if      (p.tipo === 'inicio') { color='#22c55e'; size=18; label='Início da rota'; }
     else if (p.tipo === 'fim')    { color='#ef4444'; size=18; label='Local de entrega'; }
     else if (p.tipo === 'parado') { color='#f59e0b'; size=14; label='Parada detectada'; }
+    else if (p.tipo === 'alerta') { color='#DC2626'; size=18; label='⚠️ Pediu ajuda'; }
     else                          { color='#3b82f6'; size=10; label='Percurso'; }
 
     var m = L.marker(ll, { icon: makeIcon(color, size) }).addTo(map);
