@@ -1240,6 +1240,146 @@
       transition: filter .15s;
     }
     .gps-retry-btn:hover { filter: brightness(1.1); }
+
+    /* ── FADE-IN PAGE ────────────────────────────────────── */
+    @keyframes pgFadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .shell { animation: pgFadeIn 0.22s ease-out both; }
+
+    /* ── REFRESH TICKER ──────────────────────────────────── */
+    .refresh-ticker {
+      position: fixed;
+      bottom: 68px;
+      right: 10px;
+      z-index: 400;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      background: rgba(13,18,32,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text3);
+      backdrop-filter: blur(8px);
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .refresh-ticker.hidden { opacity: 0; }
+    .rt-ring {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(245,158,11,0.2);
+      border-top-color: var(--amber);
+      position: relative;
+      flex-shrink: 0;
+    }
+    .rt-ring svg {
+      position: absolute;
+      inset: -2px;
+      width: 18px; height: 18px;
+    }
+    .rt-ring circle {
+      fill: none;
+      stroke: var(--amber);
+      stroke-width: 2;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    /* ── ENCERRAR OVERLAY ────────────────────────────────── */
+    .enc-overlay {
+      position: fixed; inset: 0; z-index: 9500;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: flex-end; justify-content: center;
+      padding: 0 0 16px;
+      animation: pgFadeIn 0.18s ease-out;
+    }
+    .enc-overlay.hidden { display: none; }
+    .enc-sheet {
+      background: var(--s1);
+      border: 1px solid var(--brd2);
+      border-radius: 20px 20px 16px 16px;
+      width: 100%; max-width: 430px;
+      padding: 20px 20px 24px;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+    }
+    .enc-handle {
+      width: 36px; height: 4px;
+      background: var(--s3);
+      border-radius: 2px;
+      margin: 0 auto 18px;
+    }
+    .enc-icon {
+      width: 52px; height: 52px;
+      border-radius: 16px;
+      background: var(--d-dim);
+      color: var(--danger);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin: 0 auto 14px;
+    }
+    .enc-title {
+      font-family: var(--fcond);
+      font-size: 20px; font-weight: 800;
+      color: var(--text);
+      text-align: center; margin-bottom: 6px;
+    }
+    .enc-sub {
+      font-size: 13px; color: var(--text2);
+      text-align: center; line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .enc-stats {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-bottom: 18px;
+    }
+    .enc-stat {
+      background: var(--bg);
+      border: 1px solid var(--brd);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+    }
+    .enc-stat-val {
+      font-family: var(--fcond);
+      font-size: 22px; font-weight: 900;
+      color: var(--amber);
+    }
+    .enc-stat-lbl {
+      font-size: 10px; color: var(--text3);
+      font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.4px; margin-top: 2px;
+    }
+    .enc-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .enc-btn {
+      display: flex; align-items: center; justify-content: center;
+      gap: 7px; padding: 13px; min-height: 46px;
+      border-radius: 12px; border: none; cursor: pointer;
+      font-family: var(--fcond); font-size: 14px; font-weight: 800;
+      letter-spacing: 0.3px; text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .enc-btn:active { opacity: 0.75; }
+    .enc-cancel { background: var(--s2); color: var(--text2); border: 1px solid var(--brd2); }
+    .enc-confirm { background: var(--danger); color: #fff; box-shadow: 0 4px 14px rgba(220,38,38,0.3); }
+
+    /* ── TURNO ENCERRANDO (mensagem pós-clique) ──────────── */
+    .enc-loading {
+      text-align: center; padding: 8px 0 4px;
+    }
+    .enc-loading i {
+      font-size: 28px; color: var(--danger); margin-bottom: 10px; display: block;
+    }
+    .enc-loading p {
+      font-size: 13px; color: var(--text2); line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -1261,6 +1401,39 @@
     <button class="gps-retry-btn" onclick="gpsRetry()">
       <i class="fas fa-rotate-right"></i> Tentar Novamente
     </button>
+  </div>
+</div>
+
+<!-- ENCERRAR TURNO OVERLAY -->
+<div class="enc-overlay hidden" id="encOverlay">
+  <div class="enc-sheet">
+    <div class="enc-handle"></div>
+    <div id="encConteudo">
+      <div class="enc-icon"><i class="fas fa-stop-circle"></i></div>
+      <div class="enc-title">Encerrar Turno?</div>
+      <p class="enc-sub">Você será direcionado ao checklist de fim de turno.<br>Certifique-se de não ter entregas pendentes.</p>
+      <div class="enc-stats">
+        <div class="enc-stat">
+          <div class="enc-stat-val">{{ em_rota|length }}</div>
+          <div class="enc-stat-lbl">Em Rota</div>
+        </div>
+        <div class="enc-stat">
+          <div class="enc-stat-val">{{ finalizadas_hoje|length }}</div>
+          <div class="enc-stat-lbl">Finalizadas hoje</div>
+        </div>
+      </div>
+      <div class="enc-btns">
+        <button class="enc-btn enc-cancel" onclick="fecharEncerrar()">
+          <i class="fas fa-arrow-left"></i> Voltar
+        </button>
+        {% if veiculo_motorista %}
+        <a href="/frota/checklist?tipo=fim&veiculo_id={{ veiculo_motorista.id }}"
+           class="enc-btn enc-confirm" onclick="confirmarEncerrar()">
+          <i class="fas fa-flag-checkered"></i> Encerrar
+        </a>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1323,10 +1496,9 @@
         <div class="tbanner-title">Turno ativo · {{ veiculo_motorista.placa }}</div>
         <div class="tbanner-sub">{{ veiculo_motorista.modelo }} · {{ veiculo_motorista.tipo }} — iniciado hoje</div>
       </div>
-      <a href="/frota/checklist?tipo=fim&veiculo_id={{ veiculo_motorista.id }}"
-         class="tbanner-btn vermelho">
+      <button class="tbanner-btn vermelho" onclick="abrirEncerrar()">
         <i class="fas fa-lock"></i> Encerrar
-      </a>
+      </button>
     </div>
     {% else %}
     <div class="turno-banner sem-turno">
@@ -1820,11 +1992,9 @@
           <a href="/frota/turno" class="turno-btn btn-verde">
             <i class="fas fa-eye"></i> Ver Turno
           </a>
-          <a href="/frota/checklist?tipo=fim&veiculo_id={{ veiculo_motorista.id }}"
-             class="turno-btn btn-red"
-             onclick="return confirm('Encerrar turno e fazer checklist de fim?')">
+          <button class="turno-btn btn-red" onclick="abrirEncerrar()">
             <i class="fas fa-stop-circle"></i> Encerrar
-          </a>
+          </button>
         </div>
       </div>
 
@@ -1891,6 +2061,20 @@
 
   <div class="footer">⚡ Criado por <b>Dyonathan Henrique</b></div>
 </div>
+
+{% if turno_ativo %}
+<!-- TICKER DE REFRESH -->
+<div class="refresh-ticker" id="refreshTicker">
+  <div class="rt-ring">
+    <svg viewBox="0 0 18 18">
+      <circle id="rtCircle" cx="9" cy="9" r="7"
+              stroke-dasharray="44"
+              stroke-dashoffset="0"/>
+    </svg>
+  </div>
+  <span id="rtLabel">30s</span>
+</div>
+{% endif %}
 
 <script>
   /* ── Acordeão ───────────────────────────────────────── */
@@ -2294,6 +2478,87 @@
   }
 
   gpsInit();
+
+  /* ── AUTO-REFRESH (só quando turno ativo) ─────────────── */
+  var TURNO_ATIVO = {{ 'true' if turno_ativo else 'false' }};
+  var _refreshTimer    = null;
+  var _countdownTimer  = null;
+  var _countdown       = 30;
+  var _encerrandoTurno = false;
+  var CIRCUMFERENCE    = 44; // 2π × r=7
+
+  function _atualizarTicker() {
+    var lbl    = document.getElementById('rtLabel');
+    var circle = document.getElementById('rtCircle');
+    if (!lbl || !circle) return;
+    lbl.textContent = _countdown + 's';
+    var offset = CIRCUMFERENCE * (1 - _countdown / 30);
+    circle.style.strokeDashoffset = offset;
+  }
+
+  function _fazerRefresh() {
+    if (_encerrandoTurno) return;
+    var shell = document.querySelector('.shell');
+    if (shell) { shell.style.transition = 'opacity 0.2s'; shell.style.opacity = '0.55'; }
+    var ticker = document.getElementById('refreshTicker');
+    if (ticker) ticker.classList.add('hidden');
+    setTimeout(function() { window.location.reload(); }, 200);
+  }
+
+  function _pararRefresh() {
+    clearInterval(_refreshTimer);
+    clearInterval(_countdownTimer);
+    var ticker = document.getElementById('refreshTicker');
+    if (ticker) ticker.classList.add('hidden');
+  }
+
+  function _iniciarRefresh() {
+    if (!TURNO_ATIVO) return;
+    _countdown = 30;
+    _atualizarTicker();
+
+    _countdownTimer = setInterval(function() {
+      _countdown--;
+      if (_countdown < 0) _countdown = 0;
+      _atualizarTicker();
+    }, 1000);
+
+    _refreshTimer = setInterval(function() {
+      _countdown = 30;
+      _fazerRefresh();
+    }, 30000);
+  }
+
+  _iniciarRefresh();
+
+  /* ── OVERLAY ENCERRAR TURNO ───────────────────────────── */
+  function abrirEncerrar() {
+    _pararRefresh();
+    document.getElementById('encOverlay').classList.remove('hidden');
+  }
+
+  function fecharEncerrar() {
+    document.getElementById('encOverlay').classList.add('hidden');
+    _iniciarRefresh();
+  }
+
+  function confirmarEncerrar() {
+    _encerrandoTurno = true;
+    var conteudo = document.getElementById('encConteudo');
+    if (conteudo) {
+      conteudo.innerHTML =
+        '<div class="enc-loading">' +
+        '<i class="fas fa-spinner fa-spin"></i>' +
+        '<div class="enc-title" style="margin-bottom:8px;">Encerrando Turno...</div>' +
+        '<p>Você está sendo redirecionado para o<br><strong style="color:var(--text);">checklist de fim de turno</strong>.<br>Aguarde um momento.</p>' +
+        '</div>';
+    }
+  }
+
+  // Fechar overlay clicando fora do sheet
+  document.getElementById('encOverlay').addEventListener('click', function(e) {
+    if (e.target === this) fecharEncerrar();
+  });
 
   // GPS no aceitar entrega — OBRIGATÓRIO (sem fallback)
   document.querySelectorAll('.form-aceitar').forEach(function(form) {
