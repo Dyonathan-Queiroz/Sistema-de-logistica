@@ -2465,12 +2465,10 @@ async def frota_configuracoes_page(request: Request, user_id: str = Cookie(defau
     pecas = db.query(PecaCatalogo).filter(PecaCatalogo.ativo == True).order_by(PecaCatalogo.categoria, PecaCatalogo.nome).all()
     return templates.TemplateResponse(request=request, name="frota_configuracoes.html", context={"usuario": usuario, "oficinas": oficinas, "pecas": pecas})
 @app.get("/frota/score/ranking")
-async def frota_score_ranking(user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
-    """
-    Ranking de motoristas ordenado por score_atual (desc).
-    total_entregas é mantido automaticamente pelo trigger trg_entrega_finalizada.
-    """
-    _exigir_perfil(user_id, db, ('gestor', 'operador'))
+async def frota_score_ranking(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
+    """Ranking de motoristas ordenado por score_atual (desc)."""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
 
     scores = db.query(MotoristaScore).order_by(
         MotoristaScore.score_atual.desc(),
@@ -2479,17 +2477,21 @@ async def frota_score_ranking(user_id: str = Cookie(default=None), db: Session =
 
     usuarios_map = {u.id: u.username for u in db.query(Usuario).all()}
 
-    return [
+    ranking = [
         {
             "posicao": idx + 1,
             "motorista_id": s.motorista_id,
             "username": usuarios_map.get(s.motorista_id, "—"),
             "score_atual": s.score_atual,
             "total_entregas": s.total_entregas,
-            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+            "updated_at": s.updated_at,
         }
         for idx, s in enumerate(scores)
     ]
+
+    return templates.TemplateResponse(request=request, name="ranking_motoristas.html", context={
+        "ranking": ranking,
+    })
 
 
 @app.get("/frota/dashboard/consolidado-turno/{turno_id}")
