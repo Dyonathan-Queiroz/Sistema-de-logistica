@@ -63,6 +63,8 @@ class Entrega(Base):
     seq_docto    = Column(Integer, nullable=True)   # SEQDOCTO    — sequencial do documento
     seq_pessoa   = Column(Integer, nullable=True)   # SEQPESSOA   — sequencial do cliente
 
+    origem = Column(String(20), default="pdv")      # 'pdv' | 'manual'
+
 class PontoRota(Base):
     """Pontos GPS coletados durante uma entrega: início, percurso e chegada."""
     __tablename__ = "pontos_rota"
