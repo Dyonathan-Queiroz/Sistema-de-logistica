@@ -2146,8 +2146,8 @@
 </div>
 
 {% if turno_ativo %}
-<!-- TICKER DE REFRESH -->
-<div class="refresh-ticker" id="refreshTicker">
+<!-- TICKER DE REFRESH (desativado) -->
+<div class="refresh-ticker hidden" id="refreshTicker">
   <div class="rt-ring">
     <svg viewBox="0 0 18 18">
       <circle id="rtCircle" cx="9" cy="9" r="7"
@@ -2615,7 +2615,7 @@
     }, 30000);
   }
 
-  _iniciarRefresh();
+  // auto-refresh removido — entregador atualiza manualmente se precisar
 
   /* ── OVERLAY ENCERRAR TURNO ───────────────────────────── */
   function abrirEncerrar() {
@@ -2625,7 +2625,6 @@
 
   function fecharEncerrar() {
     document.getElementById('encOverlay').classList.add('hidden');
-    _iniciarRefresh();
   }
 
   function confirmarEncerrar() {
@@ -2710,7 +2709,6 @@
 
   function bemEstouBem() {
     document.getElementById('bemOverlay').classList.add('hidden');
-    _iniciarRefresh();
   }
   function bemPrecisoAjuda() {
     var eid = document.getElementById('bemEntregaId').value;
@@ -2718,7 +2716,6 @@
       fetch('/entregador/alerta/' + eid, { method: 'POST' }).catch(function(){});
     }
     document.getElementById('bemOverlay').classList.add('hidden');
-    _iniciarRefresh();
   }
 
   // ── processamento GPS ──
