@@ -29,3 +29,4 @@ urllib3==2.6.3
 uvicorn==0.46.0
 python-dotenv==1.2.2
 python-multipart
+APScheduler==3.11.0

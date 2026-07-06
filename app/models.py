@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, JSON, Numeric, Date, Enum as SAEnum, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, JSON, Numeric, Date, Enum as SAEnum, UniqueConstraint, Index, LargeBinary
 from sqlalchemy.orm import relationship
 from .database import Base
 from .utils import agora
@@ -285,6 +285,18 @@ class PecaCatalogo(Base):
     categoria = Column(String(50),  nullable=True)
     unidade   = Column(String(20),  nullable=True, default="un")
     ativo     = Column(Boolean,     nullable=False, default=True)
+
+
+class BackupLog(Base):
+    """Histórico de backups gerados do banco de dados."""
+    __tablename__ = "backup_logs"
+    id         = Column(Integer, primary_key=True, index=True)
+    tipo       = Column(String(20), nullable=False, default="manual")  # "manual" | "auto"
+    criado_em  = Column(DateTime, nullable=False, default=agora)
+    tamanho_kb = Column(Integer, nullable=True)
+    status     = Column(String(20), nullable=False, default="ok")  # "ok" | "erro"
+    obs        = Column(String(255), nullable=True)
+    dados_gz   = Column(LargeBinary, nullable=True)  # SQL comprimido (backups automáticos)
 
 
 class MotoristaScore(Base):
