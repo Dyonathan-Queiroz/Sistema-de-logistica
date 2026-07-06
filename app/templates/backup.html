@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Backup — Sistema Logístico{% endblock %}
+{% block nav_backup %}active{% endblock %}
+
+{% block content %}
+<style>
+  .bk-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.75rem}
+  .bk-title{font-size:1.25rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.6rem}
+  .bk-title i{color:var(--amber)}
+
+  .bk-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+  @media(max-width:640px){.bk-stats{grid-template-columns:1fr}}
+  .bk-stat{background:var(--card-bg);border:1px solid var(--brd);border-radius:var(--radius-lg);
+            padding:18px 20px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-sm)}
+  .bk-stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;
+                justify-content:center;font-size:17px;flex-shrink:0}
+  .bk-stat-icon.amber{background:var(--amber-light);color:var(--amber-dk)}
+  .bk-stat-icon.blue {background:var(--blue-light); color:var(--blue)}
+  .bk-stat-icon.green{background:var(--green-lt);   color:var(--green)}
+  .bk-stat-val{font-size:20px;font-weight:800;color:var(--text);line-height:1.1}
+  .bk-stat-lbl{font-size:12px;color:var(--text2);margin-top:2px;font-weight:500}
+
+  .bk-download-card{background:var(--card-bg);border:1px solid var(--brd);border-radius:var(--radius-lg);
+                     padding:24px 28px;margin-bottom:1.5rem;box-shadow:var(--shadow);
+                     display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+  .bk-dl-info h3{font-size:1rem;font-weight:700;color:var(--text);margin:0 0 4px}
+  .bk-dl-info p{font-size:13px;color:var(--text2);margin:0;line-height:1.5}
+  .btn-download{display:inline-flex;align-items:center;gap:8px;
+                background:var(--amber);color:#000;font-weight:700;font-size:13.5px;
+                padding:10px 22px;border-radius:9px;border:none;cursor:pointer;
+                text-decoration:none;transition:background .15s,box-shadow .15s}
+  .btn-download:hover{background:var(--amber-dk);box-shadow:0 4px 14px rgba(245,158,11,.35);color:#000;text-decoration:none}
+  .btn-download i{font-size:14px}
+
+  .bk-info-card{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);
+                padding:14px 18px;margin-bottom:1.5rem;display:flex;gap:12px;align-items:flex-start}
+  .bk-info-card.smtp-ok{background:#f0fdf4;border-color:#bbf7d0}
+  .bk-info-card i{margin-top:1px;flex-shrink:0}
+  .bk-info-card .bk-info-text{font-size:13px;color:var(--text2);line-height:1.55}
+  .bk-info-card .bk-info-text strong{color:var(--text)}
+
+  .bk-table-card{background:var(--card-bg);border:1px solid var(--brd);border-radius:var(--radius-lg);
+                  box-shadow:var(--shadow);overflow:hidden}
+  .bk-table-header{padding:16px 20px;border-bottom:1px solid var(--brd);
+                    display:flex;align-items:center;justify-content:space-between}
+  .bk-table-header h4{font-size:14px;font-weight:700;color:var(--text);margin:0;
+                        display:flex;align-items:center;gap:7px}
+  .bk-table-header h4 i{color:var(--amber);font-size:13px}
+  .bk-table{width:100%;border-collapse:collapse}
+  .bk-table th{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;
+                color:var(--text3);background:#fafbfc;border-bottom:2px solid var(--brd);
+                padding:10px 16px;text-align:left;white-space:nowrap}
+  .bk-table td{font-size:13px;color:var(--text);padding:11px 16px;
+                border-bottom:1px solid var(--brd);vertical-align:middle}
+  .bk-table tbody tr:last-child td{border-bottom:none}
+  .bk-table tbody tr:hover td{background:#f8f9fa}
+
+  .tipo-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;
+               font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.03em}
+  .tipo-manual{background:rgba(37,99,235,.08);color:var(--blue);border:1px solid rgba(37,99,235,.18)}
+  .tipo-auto  {background:rgba(22,163,74,.08);color:var(--green);border:1px solid rgba(22,163,74,.18)}
+
+  .status-ok   {color:var(--green);font-weight:600}
+  .status-erro {color:var(--danger);font-weight:600}
+
+  .btn-sm-dl{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;
+              padding:5px 11px;border-radius:6px;border:1px solid rgba(37,99,235,.25);
+              background:rgba(37,99,235,.06);color:var(--blue);text-decoration:none;
+              transition:background .12s}
+  .btn-sm-dl:hover{background:rgba(37,99,235,.12);color:var(--blue);text-decoration:none}
+  .btn-sm-del{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;
+               padding:5px 10px;border-radius:6px;border:1px solid rgba(220,38,38,.2);
+               background:transparent;color:var(--danger);cursor:pointer;transition:background .12s}
+  .btn-sm-del:hover{background:rgba(220,38,38,.06)}
+
+  .empty-bk{padding:3rem 2rem;text-align:center;color:var(--text3)}
+  .empty-bk i{font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.3}
+  .empty-bk p{font-size:13px;margin:0}
+
+  .bk-smtp-env{font-family:monospace;font-size:12px;background:#f1f5f9;
+                border:1px solid var(--brd);border-radius:6px;padding:10px 14px;
+                color:var(--text2);margin-top:8px;display:block;line-height:1.8}
+</style>
+
+<div class="container-fluid py-4 px-4">
+
+  <div class="bk-header">
+    <div class="bk-title">
+      <i class="fas fa-database"></i> Backup do Banco de Dados
+    </div>
+    <a href="/gestor/backup/gerar" class="btn-download">
+      <i class="fas fa-download"></i> Gerar Backup Agora
+    </a>
+  </div>
+
+  <!-- STATS -->
+  {% set ultimo = logs[0] if logs else none %}
+  {% set total_ok = logs | selectattr('status','eq','ok') | list | length %}
+  <div class="bk-stats">
+    <div class="bk-stat">
+      <div class="bk-stat-icon amber"><i class="fas fa-clock"></i></div>
+      <div>
+        <div class="bk-stat-val">
+          {% if ultimo %}{{ ultimo.criado_em.strftime('%d/%m/%Y') }}{% else %}—{% endif %}
+        </div>
+        <div class="bk-stat-lbl">Último backup</div>
+      </div>
+    </div>
+    <div class="bk-stat">
+      <div class="bk-stat-icon blue"><i class="fas fa-calendar-alt"></i></div>
+      <div>
+        <div class="bk-stat-val">{{ proximo_backup or '—' }}</div>
+        <div class="bk-stat-lbl">Próximo automático</div>
+      </div>
+    </div>
+    <div class="bk-stat">
+      <div class="bk-stat-icon green"><i class="fas fa-check-circle"></i></div>
+      <div>
+        <div class="bk-stat-val">{{ logs | length }}</div>
+        <div class="bk-stat-lbl">Backups registrados</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOWNLOAD CARD -->
+  <div class="bk-download-card">
+    <div class="bk-dl-info">
+      <h3><i class="fas fa-file-code" style="color:var(--amber);margin-right:6px"></i>Download Manual</h3>
+      <p>Gera um arquivo <strong>.sql</strong> completo com todas as tabelas e dados.<br>
+         Compatível com MySQL/MariaDB. Utilize para restaurar em qualquer servidor.</p>
+    </div>
+    <a href="/gestor/backup/gerar" class="btn-download">
+      <i class="fas fa-download"></i> Baixar .sql agora
+    </a>
+  </div>
+
+  <!-- INFO SMTP -->
+  {% if smtp_ok %}
+  <div class="bk-info-card smtp-ok">
+    <i class="fas fa-envelope-circle-check" style="color:var(--green);font-size:16px"></i>
+    <div class="bk-info-text">
+      <strong>E-mail configurado.</strong> O backup trimestral automático será enviado para o endereço configurado em <code>BACKUP_EMAIL_TO</code>.
+    </div>
+  </div>
+  {% else %}
+  <div class="bk-info-card">
+    <i class="fas fa-circle-info" style="color:var(--amber-dk);font-size:16px"></i>
+    <div class="bk-info-text">
+      <strong>Backup automático trimestral ativo</strong> — roda em 1º de jan, abr, jul e out às 02h e salva o arquivo comprimido aqui no histórico abaixo.<br>
+      Para receber o backup também por <strong>e-mail</strong>, defina estas variáveis no Railway:
+      <code class="bk-smtp-env">BACKUP_SMTP_HOST=smtp.gmail.com
+BACKUP_SMTP_PORT=587
+BACKUP_SMTP_USER=seu@email.com
+BACKUP_SMTP_PASS=senha_de_app
+BACKUP_EMAIL_TO=destino@email.com</code>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- HISTÓRICO -->
+  <div class="bk-table-card">
+    <div class="bk-table-header">
+      <h4><i class="fas fa-history"></i> Histórico de Backups</h4>
+      <span style="font-size:12px;color:var(--text3)">Últimos 30 registros</span>
+    </div>
+    {% if logs %}
+    <div style="overflow-x:auto">
+    <table class="bk-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Data / Hora</th>
+          <th>Tipo</th>
+          <th>Tamanho</th>
+          <th>Status</th>
+          <th>Obs</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="color:var(--text3);font-weight:600">{{ log.id }}</td>
+          <td>
+            <span style="font-weight:600">{{ log.criado_em.strftime('%d/%m/%Y') }}</span>
+            <span style="color:var(--text3);margin-left:4px">{{ log.criado_em.strftime('%H:%M') }}</span>
+          </td>
+          <td>
+            {% if log.tipo == 'auto' %}
+              <span class="tipo-badge tipo-auto"><i class="fas fa-robot"></i> Automático</span>
+            {% else %}
+              <span class="tipo-badge tipo-manual"><i class="fas fa-hand-pointer"></i> Manual</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.tamanho_kb %}
+              {% if log.tamanho_kb >= 1024 %}
+                {{ (log.tamanho_kb / 1024) | round(1) }} MB
+              {% else %}
+                {{ log.tamanho_kb }} KB
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if log.status == 'ok' %}
+              <span class="status-ok"><i class="fas fa-check-circle"></i> OK</span>
+            {% else %}
+              <span class="status-erro"><i class="fas fa-times-circle"></i> Erro</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text2);font-size:12px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            {{ log.obs or '—' }}
+          </td>
+          <td>
+            <div style="display:flex;gap:6px;align-items:center">
+              {% if log.dados_gz %}
+                <a href="/gestor/backup/{{ log.id }}/baixar" class="btn-sm-dl">
+                  <i class="fas fa-download"></i> Baixar
+                </a>
+              {% endif %}
+              <form method="post" action="/gestor/backup/{{ log.id }}/excluir"
+                    onsubmit="return confirm('Excluir este registro de backup?')">
+                <button type="submit" class="btn-sm-del">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-bk">
+      <i class="fas fa-database"></i>
+      <p>Nenhum backup realizado ainda.<br>Clique em <strong>"Gerar Backup Agora"</strong> para criar o primeiro.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

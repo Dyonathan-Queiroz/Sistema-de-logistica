@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Form, Depends, Cookie, HTTPException, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy import func, case as sql_case, or_
@@ -11,6 +11,16 @@ from typing import Optional, List
 from datetime import date, datetime, timedelta
 from app.utils import agora
 from collections import defaultdict
+from contextlib import asynccontextmanager
+from io import StringIO
+from decimal import Decimal
+import json as _json
+import gzip
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders as _email_encoders
 import re
 import os
 import hmac
@@ -18,15 +28,130 @@ import math
 import hashlib
 import secrets
 
-from app.database import get_db
+from app.database import get_db, SessionLocal, engine
 from app.models import (
     Entrega, Usuario, Veiculo, Cliente, Filial,
     Checklist, TurnoEntrega, Abastecimento, Manutencao, PneuControle, MotoristaScore,
-    Oficina, PecaCatalogo, PontoRota,
+    Oficina, PecaCatalogo, PontoRota, BackupLog,
 )
+from apscheduler.schedulers.background import BackgroundScheduler
 from app.utils import gerar_link_rota
 
-app = FastAPI()
+# ─── BACKUP ──────────────────────────────────────────────────────────────────
+_scheduler = BackgroundScheduler(timezone="America/Manaus")
+
+
+def _gerar_sql_dump(sess: Session) -> tuple:
+    """Gera dump SQL completo do banco. Retorna (sql_str, size_kb)."""
+    from sqlalchemy import text, inspect as sa_inspect
+    buf = StringIO()
+    now_s = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    buf.write(f"-- Backup: Sistema Logístico — {now_s}\n")
+    buf.write("-- ================================================\n\n")
+    buf.write("SET FOREIGN_KEY_CHECKS=0;\n\n")
+    with engine.connect() as conn:
+        tables = [r[0] for r in conn.execute(text("SHOW TABLES")).fetchall()]
+        for tbl in tables:
+            buf.write(f"-- ── {tbl} ──\n")
+            create = conn.execute(text(f"SHOW CREATE TABLE `{tbl}`")).fetchone()
+            buf.write(f"DROP TABLE IF EXISTS `{tbl}`;\n{create[1]};\n\n")
+            rows = conn.execute(text(f"SELECT * FROM `{tbl}`")).fetchall()
+            for row in rows:
+                vals = []
+                for v in row:
+                    if v is None:
+                        vals.append("NULL")
+                    elif isinstance(v, bool):
+                        vals.append("1" if v else "0")
+                    elif isinstance(v, datetime):
+                        vals.append(f"'{v.strftime('%Y-%m-%d %H:%M:%S')}'")
+                    elif isinstance(v, date):
+                        vals.append(f"'{v.strftime('%Y-%m-%d')}'")
+                    elif isinstance(v, Decimal):
+                        vals.append(str(v))
+                    elif isinstance(v, (int, float)):
+                        vals.append(str(v))
+                    elif isinstance(v, bytes):
+                        vals.append(f"0x{v.hex()}")
+                    elif isinstance(v, (dict, list)):
+                        esc = _json.dumps(v, ensure_ascii=False).replace("\\", "\\\\").replace("'", "\\'")
+                        vals.append(f"'{esc}'")
+                    else:
+                        esc = str(v).replace("\\", "\\\\").replace("'", "\\'")
+                        vals.append(f"'{esc}'")
+                buf.write(f"INSERT INTO `{tbl}` VALUES ({','.join(vals)});\n")
+            buf.write("\n")
+    buf.write("SET FOREIGN_KEY_CHECKS=1;\n")
+    content = buf.getvalue()
+    return content, max(1, len(content.encode()) // 1024)
+
+
+def _tentar_email_backup(sql_content: str, size_kb: int):
+    """Envia backup por e-mail se SMTP estiver configurado nas variáveis de ambiente."""
+    smtp_host = os.getenv("BACKUP_SMTP_HOST")
+    smtp_user = os.getenv("BACKUP_SMTP_USER")
+    smtp_pass = os.getenv("BACKUP_SMTP_PASS")
+    dest      = os.getenv("BACKUP_EMAIL_TO")
+    if not all([smtp_host, smtp_user, smtp_pass, dest]):
+        return
+    smtp_port = int(os.getenv("BACKUP_SMTP_PORT", "587"))
+    nome_arq  = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+    msg = MIMEMultipart()
+    msg["From"], msg["To"] = smtp_user, dest
+    msg["Subject"] = f"Backup automático — Sistema Logístico ({size_kb} KB)"
+    msg.attach(MIMEText(
+        f"Backup trimestral gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}.\n\n"
+        f"Tamanho: {size_kb} KB\n\nArquivo SQL anexado.", "plain"
+    ))
+    part = MIMEBase("application", "octet-stream")
+    part.set_payload(sql_content.encode("utf-8"))
+    _email_encoders.encode_base64(part)
+    part.add_header("Content-Disposition", f'attachment; filename="{nome_arq}"')
+    msg.attach(part)
+    with smtplib.SMTP(smtp_host, smtp_port) as srv:
+        srv.starttls()
+        srv.login(smtp_user, smtp_pass)
+        srv.sendmail(smtp_user, dest, msg.as_string())
+
+
+def _backup_auto():
+    """Executa trimestralmente — gera dump, comprime e salva no banco."""
+    if SessionLocal is None:
+        return
+    db = SessionLocal()
+    try:
+        sql_content, size_kb = _gerar_sql_dump(db)
+        dados = gzip.compress(sql_content.encode("utf-8"), compresslevel=9)
+        log = BackupLog(tipo="auto", tamanho_kb=size_kb, status="ok",
+                        dados_gz=dados, obs="Backup trimestral automático")
+        db.add(log)
+        db.commit()
+        try:
+            _tentar_email_backup(sql_content, size_kb)
+        except Exception:
+            pass
+    except Exception as exc:
+        db.rollback()
+        log = BackupLog(tipo="auto", status="erro", obs=str(exc)[:250])
+        db.add(log)
+        db.commit()
+    finally:
+        db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if engine is not None:
+        BackupLog.__table__.create(engine, checkfirst=True)
+    _scheduler.add_job(_backup_auto, "cron", month="1,4,7,10", day=1,
+                       hour=2, minute=0, id="backup_trimestral", replace_existing=True)
+    _scheduler.start()
+    yield
+    _scheduler.shutdown(wait=False)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+app = FastAPI(lifespan=lifespan)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def _haversine_km(pts) -> float:
@@ -3553,3 +3678,74 @@ async def frota_analise_eficiencia_turno(turno_id: str, user_id: str = Cookie(de
         'custo_por_entrega': custo_por_entrega,
         'aviso': 'Turno sem entregas — CPE indisponível' if total_cupons == 0 else None,
     }
+
+
+# ─── BACKUP DO BANCO DE DADOS ─────────────────────────────────────────────────
+
+@app.get("/gestor/backup")
+async def pagina_backup(request: Request, db: Session = Depends(get_db),
+                        user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role != "gestor":
+        return RedirectResponse(url="/login")
+    logs = db.query(BackupLog).order_by(BackupLog.criado_em.desc()).limit(30).all()
+    proximo = None
+    try:
+        job = _scheduler.get_job("backup_trimestral")
+        if job and job.next_run_time:
+            proximo = job.next_run_time.strftime("%d/%m/%Y às %H:%M")
+    except Exception:
+        pass
+    smtp_ok = bool(os.getenv("BACKUP_SMTP_HOST") and os.getenv("BACKUP_SMTP_USER"))
+    return templates.TemplateResponse("backup.html", {
+        "request": request,
+        "logs": logs,
+        "proximo_backup": proximo,
+        "smtp_ok": smtp_ok,
+    })
+
+
+@app.get("/gestor/backup/gerar")
+async def gerar_backup(db: Session = Depends(get_db),
+                       user_role: str = Cookie(None)):
+    if user_role != "gestor":
+        return RedirectResponse(url="/login")
+    sql_content, size_kb = _gerar_sql_dump(db)
+    log = BackupLog(tipo="manual", tamanho_kb=size_kb, status="ok",
+                    obs="Download manual pelo gestor")
+    db.add(log)
+    db.commit()
+    nome = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+    return StreamingResponse(
+        iter([sql_content]),
+        media_type="application/sql",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
+
+@app.get("/gestor/backup/{backup_id}/baixar")
+async def baixar_backup_auto(backup_id: int, db: Session = Depends(get_db),
+                             user_role: str = Cookie(None)):
+    if user_role != "gestor":
+        return RedirectResponse(url="/login")
+    log = db.query(BackupLog).filter(BackupLog.id == backup_id).first()
+    if not log or not log.dados_gz:
+        raise HTTPException(status_code=404, detail="Backup não encontrado ou sem arquivo armazenado")
+    content = gzip.decompress(log.dados_gz).decode("utf-8")
+    nome = f"backup_auto_{log.criado_em.strftime('%Y%m%d_%H%M%S')}.sql"
+    return StreamingResponse(
+        iter([content]),
+        media_type="application/sql",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
+
+@app.post("/gestor/backup/{backup_id}/excluir")
+async def excluir_backup(backup_id: int, db: Session = Depends(get_db),
+                         user_role: str = Cookie(None)):
+    if user_role != "gestor":
+        return RedirectResponse(url="/login")
+    log = db.query(BackupLog).filter(BackupLog.id == backup_id).first()
+    if log:
+        db.delete(log)
+        db.commit()
+    return RedirectResponse(url="/gestor/backup", status_code=303)
