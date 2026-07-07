@@ -3681,12 +3681,25 @@ async def frota_analise_eficiencia_turno(turno_id: str, user_id: str = Cookie(de
 
 
 # ─── BACKUP DO BANCO DE DADOS ─────────────────────────────────────────────────
+# Acesso restrito: apenas o usuário cujo username bate com BACKUP_OWNER (Railway).
+# O link NÃO aparece no sidebar — acesso só via URL direta pelo responsável.
+
+def _checar_dono_backup(user_id: str, db: Session):
+    """Levanta 403 se o usuário logado não for o dono do sistema (BACKUP_OWNER)."""
+    dono = os.getenv("BACKUP_OWNER", "").strip().lower()
+    if not dono:
+        raise HTTPException(status_code=403, detail="BACKUP_OWNER não configurado no servidor.")
+    usuario = db.query(Usuario).filter(Usuario.id == int(user_id)).first() if user_id else None
+    if not usuario or usuario.username.strip().lower() != dono:
+        raise HTTPException(status_code=403, detail="Acesso restrito ao responsável do sistema.")
+
 
 @app.get("/gestor/backup")
 async def pagina_backup(request: Request, db: Session = Depends(get_db),
                         user_role: str = Cookie(None), user_id: str = Cookie(None)):
     if user_role != "gestor":
         return RedirectResponse(url="/login")
+    _checar_dono_backup(user_id, db)
     logs = db.query(BackupLog).order_by(BackupLog.criado_em.desc()).limit(30).all()
     proximo = None
     try:
@@ -3706,12 +3719,13 @@ async def pagina_backup(request: Request, db: Session = Depends(get_db),
 
 @app.get("/gestor/backup/gerar")
 async def gerar_backup(db: Session = Depends(get_db),
-                       user_role: str = Cookie(None)):
+                       user_role: str = Cookie(None), user_id: str = Cookie(None)):
     if user_role != "gestor":
         return RedirectResponse(url="/login")
+    _checar_dono_backup(user_id, db)
     sql_content, size_kb = _gerar_sql_dump(db)
     log = BackupLog(tipo="manual", tamanho_kb=size_kb, status="ok",
-                    obs="Download manual pelo gestor")
+                    obs="Download manual pelo responsável")
     db.add(log)
     db.commit()
     nome = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
@@ -3724,9 +3738,10 @@ async def gerar_backup(db: Session = Depends(get_db),
 
 @app.get("/gestor/backup/{backup_id}/baixar")
 async def baixar_backup_auto(backup_id: int, db: Session = Depends(get_db),
-                             user_role: str = Cookie(None)):
+                             user_role: str = Cookie(None), user_id: str = Cookie(None)):
     if user_role != "gestor":
         return RedirectResponse(url="/login")
+    _checar_dono_backup(user_id, db)
     log = db.query(BackupLog).filter(BackupLog.id == backup_id).first()
     if not log or not log.dados_gz:
         raise HTTPException(status_code=404, detail="Backup não encontrado ou sem arquivo armazenado")
@@ -3741,9 +3756,10 @@ async def baixar_backup_auto(backup_id: int, db: Session = Depends(get_db),
 
 @app.post("/gestor/backup/{backup_id}/excluir")
 async def excluir_backup(backup_id: int, db: Session = Depends(get_db),
-                         user_role: str = Cookie(None)):
+                         user_role: str = Cookie(None), user_id: str = Cookie(None)):
     if user_role != "gestor":
         return RedirectResponse(url="/login")
+    _checar_dono_backup(user_id, db)
     log = db.query(BackupLog).filter(BackupLog.id == backup_id).first()
     if log:
         db.delete(log)
