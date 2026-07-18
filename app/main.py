@@ -188,21 +188,48 @@ if not SECRET_KEY:
     )
     SECRET_KEY = secrets.token_hex(32)
 
-# Rate limit de login: máx 5 tentativas falhas por IP em 60 segundos
-_falhas_login: dict = {}
+# ── Rate limit e bloqueio de login ───────────────────────────────────────────
+# Por IP: máx 5 tentativas em 60 s
+# Por conta: bloqueio de 5 min após 10 falhas acumuladas
+_falhas_login: dict = {}          # ip        → [monotonic timestamps]
+_falhas_conta: dict = {}          # username  → [monotonic timestamps]
+_bloqueio_conta: dict = {}        # username  → monotonic unlock time
 
-def _checar_limite_login(ip: str) -> None:
-    agora_ts = _time.monotonic()
-    tentativas = [t for t in _falhas_login.get(ip, []) if agora_ts - t < 60]
-    if len(tentativas) >= 5:
-        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
-    _falhas_login[ip] = tentativas
+_LOGIN_JANELA_S   = 60
+_LOGIN_MAX_IP     = 5
+_CONTA_JANELA_S   = 300           # janela de 5 min para acumular falhas
+_CONTA_MAX_FALHAS = 10
+_CONTA_BLOQUEIO_S = 300           # bloqueio de 5 min
 
-def _registrar_falha_login(ip: str) -> None:
+
+def _checar_limite_login(ip: str, username: str) -> None:
     agora_ts = _time.monotonic()
-    tentativas = [t for t in _falhas_login.get(ip, []) if agora_ts - t < 60]
-    tentativas.append(agora_ts)
-    _falhas_login[ip] = tentativas
+    # Verifica bloqueio da conta primeiro
+    desbloqueio = _bloqueio_conta.get(username, 0)
+    if agora_ts < desbloqueio:
+        restante = int(desbloqueio - agora_ts)
+        raise HTTPException(status_code=429,
+                            detail=f"Conta bloqueada. Tente novamente em {restante}s.")
+    # Verifica limite por IP
+    tentativas_ip = [t for t in _falhas_login.get(ip, []) if agora_ts - t < _LOGIN_JANELA_S]
+    if len(tentativas_ip) >= _LOGIN_MAX_IP:
+        raise HTTPException(status_code=429,
+                            detail="Muitas tentativas deste dispositivo. Aguarde 1 minuto.")
+    _falhas_login[ip] = tentativas_ip
+
+
+def _registrar_falha_login(ip: str, username: str) -> None:
+    agora_ts = _time.monotonic()
+    # Registra falha por IP
+    tentativas_ip = [t for t in _falhas_login.get(ip, []) if agora_ts - t < _LOGIN_JANELA_S]
+    tentativas_ip.append(agora_ts)
+    _falhas_login[ip] = tentativas_ip
+    # Registra falha por conta e bloqueia se necessário
+    falhas_conta = [t for t in _falhas_conta.get(username, []) if agora_ts - t < _CONTA_JANELA_S]
+    falhas_conta.append(agora_ts)
+    _falhas_conta[username] = falhas_conta
+    if len(falhas_conta) >= _CONTA_MAX_FALHAS:
+        _bloqueio_conta[username] = agora_ts + _CONTA_BLOQUEIO_S
 
 # Cookies só trafegam por HTTPS quando COOKIE_SECURE=true (produção atrás de
 # TLS, como na Railway). Em desenvolvimento local (http://localhost) deixe a
@@ -236,6 +263,26 @@ def _exigir_perfil(user_id: Optional[str], db: Session, perfis: tuple) -> Usuari
     if usuario.perfil not in perfis:
         raise HTTPException(status_code=403, detail="Acesso restrito")
     return usuario
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    """Adiciona cabeçalhos de segurança HTTP em todas as respostas."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), payment=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.jsdelivr.net https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+        "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+        "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com; "
+        "connect-src 'self' https://router.project-osrm.org; "
+        "frame-ancestors 'none'"
+    )
+    return response
 
 
 @app.middleware("http")
@@ -546,14 +593,14 @@ async def login(
     db: Session = Depends(get_db),
 ):
     ip = request.client.host if request.client else "unknown"
-    _checar_limite_login(ip)
+    _checar_limite_login(ip, username)
 
     user = db.query(Usuario).filter(Usuario.username == username).first()
     # Verifica senha sempre (mesmo sem usuário) para evitar timing attack
     senha_hash = user.senha if user and user.senha else "$2b$12$invalidhashpaddinginvalid"
     senha_ok = pwd_context.verify(password, senha_hash)
     if not user or not senha_ok:
-        _registrar_falha_login(ip)
+        _registrar_falha_login(ip, username)
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -1694,9 +1741,15 @@ async def pagina_gestao_funcionario(request: Request, db: Session = Depends(get_
 
 
 @app.post("/salvar-funcionario")
-async def salvar_funcionario(username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
+async def salvar_funcionario(request: Request, username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role != 'gestor':
         return RedirectResponse(url="/login")
+    if len(senha) < 8:
+        funcionarios = db.query(Usuario).all()
+        filiais = db.query(Filial).order_by(Filial.nome).all()
+        return templates.TemplateResponse(request=request, name="gestao_funcionarios.html",
+                                          context={"funcionarios": funcionarios, "filiais": filiais,
+                                                   "erro": "A senha deve ter no mínimo 8 caracteres."})
     novo = Usuario(username=username, perfil=perfil, senha=pwd_context.hash(senha), filial_id=filial_id if filial_id else None)
     db.add(novo)
     try:
@@ -1733,6 +1786,8 @@ async def processar_funcionario(func_id: int, acao: str = Form(...), username: s
             func.perfil = perfil
             func.filial_id = filial_id if filial_id else None
             if nova_senha and nova_senha.strip():
+                if len(nova_senha.strip()) < 8:
+                    return RedirectResponse(url=f"/editar-funcionario/{func_id}?erro=senha_curta", status_code=303)
                 func.senha = pwd_context.hash(nova_senha)
         db.commit()
     return RedirectResponse(url="/gestao-funcionario", status_code=303)
