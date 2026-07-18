@@ -27,6 +27,7 @@ import hmac
 import math
 import hashlib
 import secrets
+import time as _time
 
 from app.database import get_db, SessionLocal, engine
 from app.models import (
@@ -180,9 +181,28 @@ class PontoRotaIn(BaseModel):
 # assinatura em toda requisição e descarta cookies adulterados.
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    # Fallback efêmero: mantém o app funcional, mas as sessões expiram a cada
-    # reinício do processo. Defina SECRET_KEY no .env para produção.
+    import logging as _logging
+    _logging.warning(
+        "SECRET_KEY não definida! Usando chave efêmera — sessões expiram a cada restart. "
+        "Defina SECRET_KEY nas variáveis de ambiente (Railway) para produção."
+    )
     SECRET_KEY = secrets.token_hex(32)
+
+# Rate limit de login: máx 5 tentativas falhas por IP em 60 segundos
+_falhas_login: dict = {}
+
+def _checar_limite_login(ip: str) -> None:
+    agora_ts = _time.monotonic()
+    tentativas = [t for t in _falhas_login.get(ip, []) if agora_ts - t < 60]
+    if len(tentativas) >= 5:
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
+    _falhas_login[ip] = tentativas
+
+def _registrar_falha_login(ip: str) -> None:
+    agora_ts = _time.monotonic()
+    tentativas = [t for t in _falhas_login.get(ip, []) if agora_ts - t < 60]
+    tentativas.append(agora_ts)
+    _falhas_login[ip] = tentativas
 
 # Cookies só trafegam por HTTPS quando COOKIE_SECURE=true (produção atrás de
 # TLS, como na Railway). Em desenvolvimento local (http://localhost) deixe a
@@ -200,7 +220,7 @@ def _assinar_sessao(role: str, uid: str, filial: str) -> str:
 def _set_cookies_sessao(res: Response, role: str, uid: str, filial: str) -> None:
     """Grava os cookies de sessão já assinados e com flags de segurança."""
     sig = _assinar_sessao(role, uid, filial)
-    opts = dict(httponly=True, samesite="lax", secure=_COOKIE_SECURE)
+    opts = dict(httponly=True, samesite="lax", secure=_COOKIE_SECURE, max_age=43200)
     res.set_cookie("user_role", role, **opts)
     res.set_cookie("user_id", uid, **opts)
     res.set_cookie("user_filial_id", filial, **opts)
@@ -525,8 +545,15 @@ async def login(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    ip = request.client.host if request.client else "unknown"
+    _checar_limite_login(ip)
+
     user = db.query(Usuario).filter(Usuario.username == username).first()
-    if not user or not user.senha or not pwd_context.verify(password, user.senha):
+    # Verifica senha sempre (mesmo sem usuário) para evitar timing attack
+    senha_hash = user.senha if user and user.senha else "$2b$12$invalidhashpaddinginvalid"
+    senha_ok = pwd_context.verify(password, senha_hash)
+    if not user or not senha_ok:
+        _registrar_falha_login(ip)
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -1803,7 +1830,7 @@ async def api_buscar_cliente(documento: str, db: Session = Depends(get_db), user
 
 @app.put("/clientes/{documento}")
 async def api_atualizar_cliente(documento: str, dados: dict, db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _resolver_usuario(user_id, db)  # exige sessão autenticada válida
+    _exigir_perfil(user_id, db, ("gestor", "operador"))
     cliente = db.query(Cliente).filter(Cliente.documento == documento).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
@@ -1816,7 +1843,7 @@ async def api_atualizar_cliente(documento: str, dados: dict, db: Session = Depen
 
 @app.post("/clientes/")
 async def api_cadastrar_cliente(dados: dict, db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _resolver_usuario(user_id, db)  # exige sessão autenticada válida
+    _exigir_perfil(user_id, db, ("gestor", "operador"))
     novo = Cliente(
         nome=dados.get("nome"),
         documento=dados.get("documento"),
@@ -1839,7 +1866,7 @@ async def api_cadastrar_cliente(dados: dict, db: Session = Depends(get_db), user
 
 @app.post("/entregas/")
 async def api_lancar_entrega(dados: dict, db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _resolver_usuario(user_id, db)  # exige sessão autenticada válida
+    _exigir_perfil(user_id, db, ("gestor", "operador"))
     nova = Entrega(
         cupom_fiscal=dados.get("cupom_fiscal"),
         cliente_id=dados.get("cliente_id"),
@@ -2929,8 +2956,10 @@ async def frota_analise_alertas(user_id: str = Cookie(default=None), db: Session
 
 
 @app.get("/frota/alertas")
-async def frota_alertas_page(request: Request, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_alertas_page(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Página de alertas de manutenção para o gestor."""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
     usuario = _resolver_usuario(user_id, db)
 
     _KM_ALERTA = 9000
@@ -3021,12 +3050,14 @@ async def frota_alertas_page(request: Request, user_id: str = Cookie(default=Non
 
 
 @app.get("/frota/manutencao")
-async def frota_manutencao_page(request: Request, veiculo_id: int = None, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_manutencao_page(request: Request, veiculo_id: int = None, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Histórico de manutenções para o gestor.
     Sem veiculo_id: mostra todos os veículos.
     Com veiculo_id: filtra por veículo.
     """
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
     usuario = _resolver_usuario(user_id, db)
     veiculos = db.query(Veiculo).order_by(Veiculo.placa).all()
 
@@ -3149,8 +3180,10 @@ async def frota_manutencao_page(request: Request, veiculo_id: int = None, user_i
 
 
 @app.get("/frota/ranking")
-async def frota_ranking_page(request: Request, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_ranking_page(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Ranking de scores dos motoristas — visão HTML para o gestor."""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
     usuario = _resolver_usuario(user_id, db)
 
     scores_raw = db.query(MotoristaScore).order_by(
@@ -3193,6 +3226,8 @@ async def frota_ranking_page(request: Request, user_id: str = Cookie(default=Non
 @app.get("/frota/dashboard")
 async def frota_dashboard_page(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Painel principal do gestor de frota."""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
     usuario = _resolver_usuario(user_id, db)
     hoje = agora().date()
 
@@ -3362,8 +3397,10 @@ async def frota_checklist_page(request: Request, veiculo_id: str = None, tipo: s
 
 
 @app.get("/frota/historico-geral")
-async def frota_historico_geral_page(request: Request, veiculo_id: str = None, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_historico_geral_page(request: Request, veiculo_id: str = None, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """aprovada"""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
     usuario = _resolver_usuario(user_id, db)
     veiculos = db.query(Veiculo).order_by(Veiculo.placa).all()
     placa_map = {v.id: v.placa for v in veiculos}
@@ -3460,11 +3497,13 @@ async def frota_historico_geral_page(request: Request, veiculo_id: str = None, u
 
 
 @app.get("/frota/historico/{veiculo_id}")
-async def frota_historico_page(veiculo_id: str, request: Request, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_historico_page(veiculo_id: str, request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Timeline unificada de eventos de um veículo:
     abastecimentos, manutenções, checklists e trocas de pneus.
     """
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url="/login")
     usuario = _resolver_usuario(user_id, db)
 
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
