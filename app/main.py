@@ -1667,7 +1667,9 @@ async def pagina_gestao_funcionario(request: Request, db: Session = Depends(get_
 
 
 @app.post("/salvar-funcionario")
-async def salvar_funcionario(username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db)):
+async def salvar_funcionario(username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     novo = Usuario(username=username, perfil=perfil, senha=pwd_context.hash(senha), filial_id=filial_id if filial_id else None)
     db.add(novo)
     try:
@@ -1688,7 +1690,9 @@ async def pagina_editar_funcionario(request: Request, func_id: int, db: Session 
 
 
 @app.post("/processar-funcionario/{func_id}")
-async def processar_funcionario(func_id: int, acao: str = Form(...), username: str = Form(None), perfil: str = Form(None), nova_senha: str = Form(None), filial_id: str = Form(None), db: Session = Depends(get_db)):
+async def processar_funcionario(func_id: int, acao: str = Form(...), username: str = Form(None), perfil: str = Form(None), nova_senha: str = Form(None), filial_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     """excluir"""
     func = db.query(Usuario).filter(Usuario.id == func_id).first()
     if func:
@@ -1718,7 +1722,9 @@ async def pagina_gestao_veiculo(request: Request, db: Session = Depends(get_db),
 
 
 @app.post("/salvar-veiculo")
-async def salvar_veiculo(placa: str = Form(...), modelo: str = Form(...), tipo: str = Form(...), entregador_id: str = Form(None), db: Session = Depends(get_db)):
+async def salvar_veiculo(placa: str = Form(...), modelo: str = Form(...), tipo: str = Form(...), entregador_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     try:
         db.add(Veiculo(placa=placa, modelo=modelo, tipo=tipo, entregador_id=entregador_id))
         db.commit()
@@ -1728,15 +1734,18 @@ async def salvar_veiculo(placa: str = Form(...), modelo: str = Form(...), tipo: 
 
 
 @app.get("/vincular-veiculo-page/{veiculo_id}")
-async def pagina_vincular(request: Request, veiculo_id: int, db: Session = Depends(get_db)):
-    """entregador"""
+async def pagina_vincular(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="vincular_veiculo.html", context={"veiculo": veiculo, "entregadores": entregadores})
 
 
 @app.post("/processar-vinculo/{veiculo_id}")
-async def processar_vinculo(request: Request, veiculo_id: int, db: Session = Depends(get_db)):
+async def processar_vinculo(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     form_data = await request.form()
     entregador_id = form_data.get("entregador_id")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
@@ -1747,15 +1756,18 @@ async def processar_vinculo(request: Request, veiculo_id: int, db: Session = Dep
 
 
 @app.get("/editar-veiculo/{veiculo_id}")
-async def pagina_editar_veiculo(request: Request, veiculo_id: int, db: Session = Depends(get_db)):
-    """entregador"""
+async def pagina_editar_veiculo(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="editar_veiculo.html", context={"veiculo": veiculo, "entregadores": entregadores})
 
 
 @app.post("/processar-veiculo/{veiculo_id}")
-async def processar_veiculo(veiculo_id: int, acao: str = Form(...), placa: str = Form(None), modelo: str = Form(None), tipo: str = Form(None), entregador_id: str = Form(None), db: Session = Depends(get_db)):
+async def processar_veiculo(veiculo_id: int, acao: str = Form(...), placa: str = Form(None), modelo: str = Form(None), tipo: str = Form(None), entregador_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     """excluir"""
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     if veiculo:
@@ -1852,7 +1864,7 @@ async def api_lancar_entrega(dados: dict, db: Session = Depends(get_db), user_id
         return {"status": "ok", "id": nova.id}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Erro ao registrar entrega.")
 
 
 @app.get("/gestao-clientes")
@@ -3689,7 +3701,8 @@ def _checar_dono_backup(user_id: str, db: Session):
     dono = os.getenv("BACKUP_OWNER", "").strip().lower()
     if not dono:
         raise HTTPException(status_code=403, detail="BACKUP_OWNER não configurado no servidor.")
-    usuario = db.query(Usuario).filter(Usuario.id == int(user_id)).first() if user_id else None
+    uid = int(user_id) if user_id and user_id.isdigit() else None
+    usuario = db.query(Usuario).filter(Usuario.id == uid).first() if uid else None
     if not usuario or usuario.username.strip().lower() != dono:
         raise HTTPException(status_code=403, detail="Acesso restrito ao responsável do sistema.")
 
