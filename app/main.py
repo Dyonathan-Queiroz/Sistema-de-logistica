@@ -3348,6 +3348,7 @@ async def frota_dashboard_page(request: Request, user_id: str = Cookie(default=N
                 'veiculo_id': v.id,
                 'placa': v.placa,
                 'modelo': v.modelo,
+                'tipo': v.tipo,
                 'mensagem': 'Nenhuma troca de óleo registrada',
             })
             continue
@@ -3362,6 +3363,7 @@ async def frota_dashboard_page(request: Request, user_id: str = Cookie(default=N
                 'veiculo_id': v.id,
                 'placa': v.placa,
                 'modelo': v.modelo,
+                'tipo': v.tipo,
                 'km_desde_troca': km_desde,
                 'km_ultima_troca': ultima_troca_km,
                 'km_atual': km_atual,

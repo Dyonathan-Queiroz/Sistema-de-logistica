@@ -36,17 +36,17 @@ class Entrega(Base):
     cupom_fiscal = Column(String(50), index=True)
 
     # Relacionamentos
-    cliente_id = Column(Integer, ForeignKey("clientes.id"))
-    filial_id = Column(Integer, ForeignKey("filiais.id"))
-    operador_id = Column(Integer, ForeignKey("usuarios.id"))
-    entregador_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    cliente_id    = Column(Integer, ForeignKey("clientes.id"),  index=True)
+    filial_id     = Column(Integer, ForeignKey("filiais.id"),   index=True)
+    operador_id   = Column(Integer, ForeignKey("usuarios.id"))
+    entregador_id = Column(Integer, ForeignKey("usuarios.id"),  nullable=True, index=True)
 
-    status = Column(String(20), default="pendente")  # 'pendente', 'em_rota', 'finalizado'
+    status = Column(String(20), default="pendente", index=True)  # 'pendente', 'em_rota', 'finalizado'
 
     # Timestamps no horário de Boa Vista - RR (UTC-4)
-    data_criacao    = Column(DateTime, default=agora)   # Quando a entrega foi lançada
-    data_aceite     = Column(DateTime, nullable=True)   # Quando o entregador aceitou
-    data_finalizacao = Column(DateTime, nullable=True)  # Quando entregou ao cliente
+    data_criacao     = Column(DateTime, default=agora)          # Quando a entrega foi lançada
+    data_aceite      = Column(DateTime, nullable=True)          # Quando o entregador aceitou
+    data_finalizacao = Column(DateTime, nullable=True, index=True)  # Quando entregou ao cliente
 
     # Endereço (snapshot — não muda se o cadastro do cliente for editado)
     rua        = Column(String(200))
@@ -147,7 +147,7 @@ class TurnoEntrega(Base):
     checklist_inicio_id     = Column(Integer, ForeignKey("checklists.id"), nullable=False)
     checklist_fim_id        = Column(Integer, ForeignKey("checklists.id"), nullable=True)
     # Lacuna corrigida: status explícito em vez de inferir por checklist_fim_id IS NULL
-    status                  = Column(SAEnum("aberto", "encerrado"),        nullable=False, default="aberto")
+    status                  = Column(SAEnum("aberto", "encerrado"),        nullable=False, default="aberto", index=True)
     data                    = Column(Date,                                  nullable=False)
     # Mantido por Trigger T4 (trg_entrega_finalizada)
     total_cupons_dia        = Column(Integer,      nullable=False, default=0)
@@ -214,7 +214,7 @@ class Manutencao(Base):
     data           = Column(Date,                                       nullable=False)
     # Lacuna corrigida: nullable — manutenção por data pode não ter KM
     odometro       = Column(Integer,                                    nullable=True)
-    categoria      = Column(SAEnum("preventiva", "corretiva"),         nullable=False)
+    categoria      = Column(SAEnum("preventiva", "corretiva"),         nullable=False, index=True)
     itens_trocados = Column(JSON,                                       nullable=True)
     valor_pecas    = Column(Numeric(10, 2),                             nullable=True)
     valor_mao_obra = Column(Numeric(10, 2),                             nullable=True)
@@ -225,7 +225,7 @@ class Manutencao(Base):
     # 'aprovada'  — gestor aprovou, aparece no histórico de manutenção
     # 'rejeitada' — gestor rejeitou
     status             = Column(SAEnum("pendente", "aprovada", "rejeitada"),
-                                nullable=False, default="aprovada")
+                                nullable=False, default="aprovada", index=True)
     motorista_id       = Column(Integer, ForeignKey("usuarios.id"),   nullable=True)
     descricao_problema = Column(String(500),                           nullable=True)
     observacao_gestor  = Column(String(500),                           nullable=True)
