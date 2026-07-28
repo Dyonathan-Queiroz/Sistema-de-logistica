@@ -410,34 +410,20 @@
           </div>
         </div>
 
-        <!-- Botão de envio (dentro do conteúdo — garante visibilidade no mobile) -->
-        <button @click="tentarEnviar()"
-                :disabled="odometroInvalido || enviando"
-                :class="{
-                  'active:scale-95': !odometroInvalido && !enviando,
-                  'bg-red-600 hover:bg-red-700 text-white pulse-danger':
-                    temCriticoReprovado && !odometroInvalido && !enviando,
-                  'bg-slate-200 text-slate-400 cursor-not-allowed':
-                    odometroInvalido && !enviando,
-                  'opacity-60 cursor-wait': enviando,
-                }"
-                :style="!temCriticoReprovado && !odometroInvalido && !enviando ? 'background:var(--amber);color:#000;box-shadow:0 4px 20px rgba(245,158,11,0.35)' : ''"
-                class="w-full h-14 rounded-2xl font-black text-sm transition-all duration-200 flex items-center justify-center gap-2.5 mt-2">
-          <span x-show="!enviando" class="flex items-center gap-2">
-            <i :data-lucide="temCriticoReprovado ? 'shield-x' : '{{ 'play-circle' if tipo == 'inicio' else 'stop-circle' }}'"
-               class="w-5 h-5"></i>
-            <span x-text="isNaN(parseInt(odometro)) || parseInt(odometro) <= 0
-              ? 'Preencha o odômetro'
-              : odometroInvalido
-                ? 'KM abaixo do mínimo (' + odometroMin + ' km)'
-                : temCriticoReprovado
-                  ? 'Registrar Reprovação'
-                  : '{{ 'Registrar e Iniciar Turno' if tipo == 'inicio' else 'Registrar e Encerrar Turno' }}'">
-            </span>
-          </span>
-          <span x-show="enviando" style="display:none" class="flex items-center gap-2">
-            <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Enviando...
-          </span>
+        <!-- Botão de envio estático — visível sem depender do Alpine -->
+        <button id="btn-enviar-static"
+                onclick="
+                  try {
+                    Alpine.$data(document.querySelector('[x-data]')).tentarEnviar();
+                  } catch(e) {
+                    var o = parseInt(document.querySelector('input[type=number]').value);
+                    if (!o || o <= 0) { alert('Preencha o odômetro antes de enviar.'); }
+                    else { alert('Erro ao enviar. Recarregue a página e tente novamente.'); }
+                  }
+                "
+                style="background:#f59e0b;color:#000;width:100%;height:56px;border-radius:16px;font-weight:900;font-size:14px;margin-top:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(245,158,11,0.35);-webkit-tap-highlight-color:transparent;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          {% if tipo == 'inicio' %}Registrar e Iniciar Turno{% else %}Registrar e Encerrar Turno{% endif %}
         </button>
 
         <div class="h-4"></div>
