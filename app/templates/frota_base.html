@@ -81,14 +81,18 @@
     .fade-up-3 { animation-delay: .14s; }
     .fade-up-4 { animation-delay: .19s; }
 
+    /* sidebar: Alpine controla mobile; CSS força aberto no desktop */
+    @media (min-width: 1024px) {
+      .frota-sidebar { transform: translateX(0) !important; }
+    }
+
   </style>
 
   {% block extra_head %}{% endblock %}
 </head>
 
 <body class="h-full antialiased"
-      x-data="{ sidebarOpen: false, isDesktop: window.innerWidth >= 1024 }"
-      @resize.window="isDesktop = window.innerWidth >= 1024">
+      x-data="{ sidebarOpen: false }">
 
   <!-- OVERLAY MOBILE -->
   <div
@@ -106,8 +110,8 @@
 
   <!-- SIDEBAR -->
   <aside
-    :style="{ transform: (sidebarOpen || isDesktop) ? 'translateX(0)' : 'translateX(-100%)' }"
-    class="fixed inset-y-0 left-0 w-64 z-40 flex flex-col"
+    :style="{ transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }"
+    class="frota-sidebar fixed inset-y-0 left-0 w-64 z-40 flex flex-col"
     style="background:var(--sb-bg); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);"
   >
     <!-- Logo -->
