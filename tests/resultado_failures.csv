@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,/login,HTTPError('429 Client Error: Too Many Requests for url: /login'),5,2026-07-21T19:47:11Z,2026-07-21T19:47:11Z
