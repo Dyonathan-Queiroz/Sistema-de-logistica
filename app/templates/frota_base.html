@@ -80,6 +80,13 @@
     .fade-up-2 { animation-delay: .09s; }
     .fade-up-3 { animation-delay: .14s; }
     .fade-up-4 { animation-delay: .19s; }
+
+    /* Sidebar: escondido no mobile, sempre visível no desktop */
+    .frota-sidebar { transform: translateX(-100%); }
+    .frota-sidebar.sidebar--open { transform: translateX(0); }
+    @media (min-width: 1024px) {
+      .frota-sidebar { transform: translateX(0) !important; }
+    }
   </style>
 
   {% block extra_head %}{% endblock %}
@@ -103,8 +110,8 @@
 
   <!-- SIDEBAR -->
   <aside
-    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="fixed inset-y-0 left-0 w-64 z-40 flex flex-col transition-transform duration-300 ease-in-out"
+    :class="{ 'sidebar--open': sidebarOpen }"
+    class="frota-sidebar fixed inset-y-0 left-0 w-64 z-40 flex flex-col transition-transform duration-300 ease-in-out"
     style="background:var(--sb-bg);"
   >
     <!-- Logo -->
