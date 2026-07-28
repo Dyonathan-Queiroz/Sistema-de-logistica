@@ -1,180 +1,363 @@
 {% extends "frota_base.html" %}
 
 {# ─────────────────────────────────────────────────────────────────────────────
-   frota_dashboard.html — Painel do Gestor (Desktop + Mobile)
-   Contexto esperado do backend:
-     alertas          : list[dict]  — retorno de frota_analise_alertas()
-     scores           : list[dict]  — [{username, score_atual, total_entregas, updated_at}]
-     veiculos         : list[Veiculo]
-     total_turnos_ativos : int
-     total_cupons_hoje   : int
-     custo_total_hoje    : float
-     alertas_count       : int      — total de alertas (para badge da sidebar)
-     data_hoje           : str      — "07/06/2026"
-     usuario             : Usuario
+   frota_dashboard.html — Painel da Frota
+   Visual alinhado ao Dashboard Principal (gestor.html)
+   Contexto: alertas, scores, veiculos, total_turnos_ativos,
+             total_cupons_hoje, custo_total_hoje, alertas_count,
+             data_hoje, usuario
 ───────────────────────────────────────────────────────────────────────────── #}
 
 {% block title %}Painel Frota{% endblock %}
-{% block page_title %}🚗 Painel da Frota{% endblock %}
+{% block page_title %}Painel da Frota{% endblock %}
 {% block nav_dash %}active{% endblock %}
 
 {% block topbar_actions %}
-  <span class="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+  <span class="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
+        style="background:#F3F4F6;color:var(--text2);">
+    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" style="animation:blink 1.6s infinite;display:inline-block;"></span>
     {{ data_hoje }}
   </span>
 {% endblock %}
 
-{% block content %}
-{# ══ Alpine.js root — mantém estado dos filtros da página ══ #}
-<div x-data="{ filtroAlerta: 'todos', mostrarTodos: false }">
+{% block extra_head %}
+<style>
+  /* ══ Tokens extras (alinhados ao base.html do dashboard principal) ══ */
+  :root {
+    --radius-lg:  14px;
+    --amber-light: #fffbeb;
+    --green:      #16A34A;
+    --green-lt:   #F0FDF4;
+    --blue:       #2563EB;
+    --blue-lt:    #EFF6FF;
+    --danger-lt:  #FEF2F2;
+    --orange:     #D97706;
+    --orange-lt:  #FFF7ED;
+    --brd2:       #D0D3DA;
+  }
 
-  {# ── 1. Banner de alerta crítico (KEEP RED — critical alert) ── #}
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* ══ KPI Cards — mesmo padrão do Dashboard Principal ══════════ */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:900px) { .kpi-row { grid-template-columns: repeat(2,1fr); } }
+  @media(max-width:480px) { .kpi-row { grid-template-columns: repeat(2,1fr); gap:8px; } }
+
+  .kpi {
+    background: var(--card-bg);
+    border: 1px solid var(--brd);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    display: flex; align-items: center; gap: 14px;
+    position: relative; overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .kpi::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0; width: 4px;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  }
+  .kpi.blue::after   { background: linear-gradient(180deg, #2563EB, #60A5FA); }
+  .kpi.green::after  { background: linear-gradient(180deg, var(--green), #4ADE80); }
+  .kpi.amber::after  { background: linear-gradient(180deg, var(--amber), var(--amber-mid)); }
+  .kpi.red::after    { background: linear-gradient(180deg, var(--danger), #F87171); }
+
+  .kpi-icon {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .kpi-icon.blue   { background: var(--blue-lt);    color: var(--blue); }
+  .kpi-icon.green  { background: var(--green-lt);   color: var(--green); }
+  .kpi-icon.amber  { background: var(--amber-light); color: var(--amber-dk); }
+  .kpi-icon.red    { background: var(--danger-lt);  color: var(--danger); }
+
+  .kpi-body { flex: 1; min-width: 0; }
+  .kpi-val {
+    font-family: var(--font);
+    font-size: 28px; font-weight: 800;
+    color: var(--text); line-height: 1;
+    letter-spacing: -.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-val.danger { color: var(--danger); }
+  .kpi-lbl { font-size: 11.5px; color: var(--text2); margin-top: 3px; font-weight: 500; }
+
+  /* ══ Cards de conteúdo ════════════════════════════════════════ */
+  .f-card {
+    background: var(--card-bg);
+    border: 1px solid var(--brd);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .f-card-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--brd);
+    background: #FAFBFC;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .f-card-title {
+    font-size: 13.5px; font-weight: 700; color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .f-card-link {
+    font-size: 12px; font-weight: 600;
+    color: var(--blue); text-decoration: none;
+    transition: color .15s; white-space: nowrap;
+  }
+  .f-card-link:hover { color: #1d4ed8; text-decoration: none; }
+
+  /* ══ Layout 2 colunas ════════════════════════════════════════ */
+  .dash-layout {
+    display: grid;
+    grid-template-columns: 1fr 296px;
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 20px;
+  }
+  @media(max-width:1100px) { .dash-layout { grid-template-columns: 1fr; } }
+
+  /* ══ Tabela de veículos ═══════════════════════════════════════ */
+  .v-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .v-table th {
+    padding: 10px 16px; text-align: left;
+    font-size: 11px; font-weight: 600;
+    color: var(--text2); text-transform: uppercase; letter-spacing: .5px;
+    background: #FAFBFC; border-bottom: 1px solid var(--brd);
+  }
+  .v-table td { padding: 12px 16px; border-bottom: 1px solid #F3F4F6; color: var(--text); }
+  .v-table tr:last-child td { border-bottom: none; }
+  .v-table tr:hover td { background: #FAFBFC; }
+  .v-table a { color: var(--text); font-weight: 700; text-decoration: none; }
+  .v-table a:hover { color: var(--blue); }
+
+  /* ══ Badges ══════════════════════════════════════════════════ */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .badge-green  { background: var(--green-lt);    color: var(--green); }
+  .badge-amber  { background: var(--amber-light); color: var(--orange); }
+  .badge-red    { background: var(--danger-lt);   color: var(--danger); }
+  .badge-gray   { background: #F3F4F6;            color: var(--text2); }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+  /* ══ Ranking ═════════════════════════════════════════════════ */
+  .rank-row {
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #F3F4F6;
+    transition: background .12s;
+  }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-row:hover { background: #FAFBFC; }
+  .rank-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #60A5FA, #818CF8);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .rank-bar-bg { flex: 1; background: #F3F4F6; border-radius: 4px; height: 5px; }
+  .rank-bar-fill { height: 5px; border-radius: 4px; transition: width .5s; }
+
+  /* ══ Alertas section ═════════════════════════════════════════ */
+  .alert-row {
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid #F3F4F6;
+    transition: background .12s;
+  }
+  .alert-row:last-child { border-bottom: none; }
+  .alert-row:hover { background: #FAFBFC; }
+  .alert-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .alert-icon.red   { background: var(--danger-lt); color: var(--danger); }
+  .alert-icon.amber { background: var(--amber-light); color: var(--orange); }
+  .alert-icon.gray  { background: #F3F4F6; color: var(--text3); }
+  .btn-reg {
+    flex-shrink: 0;
+    font-size: 11.5px; font-weight: 600;
+    padding: 5px 12px; border-radius: 7px;
+    background: var(--amber); color: #000;
+    text-decoration: none; transition: background .15s; white-space: nowrap;
+  }
+  .btn-reg:hover { background: var(--amber-dk); color: #000; text-decoration: none; }
+
+  /* ══ Filtro tabs ══════════════════════════════════════════════ */
+  .filter-tabs {
+    display: flex; background: #F3F4F6;
+    border-radius: 8px; padding: 3px; gap: 2px;
+    flex-wrap: wrap;
+  }
+  .filter-tab {
+    padding: 5px 11px; border-radius: 6px;
+    border: none; background: none; cursor: pointer;
+    font-family: var(--font); font-size: 12px; font-weight: 600;
+    color: var(--text2); transition: all .15s; white-space: nowrap;
+  }
+  .filter-tab:hover { color: var(--text); }
+
+  /* ══ Banner crítico ══════════════════════════════════════════ */
+  .critico-banner {
+    background: #FFF5F5; border: 1px solid #FECACA;
+    border-radius: var(--radius-lg); margin-bottom: 18px;
+    padding: 13px 18px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: var(--shadow-sm);
+    animation: pulse-red 2.5s infinite;
+  }
+  @keyframes pulse-red {
+    0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.15); }
+    50%      { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ filtroAlerta: 'todos' }">
+
+  {# ── Banner de alerta crítico ── #}
   {% set criticos = alertas | selectattr('nivel_alerta', 'equalto', 'critico') | list %}
   {% if criticos %}
-  <div class="mb-5 flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4">
-    <div class="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-      <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600"></i>
+  <div class="critico-banner">
+    <div style="width:36px;height:36px;border-radius:9px;background:#FEE2E2;color:var(--danger);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
     </div>
-    <div>
-      <p class="font-bold text-sm">{{ criticos | length }} veículo{{ 's' if criticos | length > 1 else '' }} com troca de óleo URGENTE</p>
-      <p class="text-xs mt-0.5 text-red-600/80">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13.5px;font-weight:700;color:var(--danger);">
+        {{ criticos|length }} veículo{{ 's' if criticos|length > 1 else '' }} com troca de óleo URGENTE
+      </div>
+      <div style="font-size:12px;color:#b91c1c;margin-top:2px;">
         {% for v in criticos[:3] %}{{ v.placa }}{% if not loop.last %}, {% endif %}{% endfor %}
-        {% if criticos | length > 3 %} e mais {{ criticos | length - 3 }}...{% endif %}
+        {% if criticos|length > 3 %} e mais {{ criticos|length - 3 }}...{% endif %}
         &mdash; acima de 10.000 km desde a última troca.
-      </p>
+      </div>
     </div>
-    <a href="/frota/alertas" class="ml-auto flex-shrink-0 text-xs font-semibold text-red-600 hover:text-red-800 underline underline-offset-2 transition-colors">Ver todos →</a>
+    <a href="/frota/alertas" style="font-size:12px;font-weight:600;color:var(--danger);text-decoration:none;flex-shrink:0;">Ver todos →</a>
   </div>
   {% endif %}
 
-  {# ── 2. KPI Cards ── #}
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+  {# ── KPI Row ── #}
+  <div class="kpi-row">
 
-    {# Veículos ativos #}
-    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-4 sm:p-5 flex flex-col gap-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Veículos</span>
-        <div class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-          <i data-lucide="truck" class="w-4 h-4 text-blue-600"></i>
-        </div>
+    <div class="kpi blue fade-up fade-up-1">
+      <div class="kpi-icon blue">
+        <i data-lucide="truck" style="width:20px;height:20px;"></i>
       </div>
-      <div>
-        <div class="text-3xl font-extrabold text-slate-900 leading-none" style="font-variant-numeric: tabular-nums;">{{ veiculos | length }}</div>
-        <div class="text-xs text-slate-400 mt-1">
-          {{ veiculos | selectattr('tipo', 'equalto', 'Moto') | list | length }} motos ·
-          {{ veiculos | selectattr('tipo', 'in', ['Carro', 'Caminhão']) | list | length }} carros
+      <div class="kpi-body">
+        <div class="kpi-val">{{ veiculos|length }}</div>
+        <div class="kpi-lbl">
+          {{ veiculos|selectattr('tipo','equalto','Moto')|list|length }} motos ·
+          {{ veiculos|selectattr('tipo','in',['Carro','Caminhão'])|list|length }} carros
         </div>
       </div>
     </div>
 
-    {# Turnos ativos #}
-    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-4 sm:p-5 flex flex-col gap-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Turnos</span>
-        <div class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-          <i data-lucide="timer" class="w-4 h-4 text-emerald-600"></i>
-        </div>
+    <div class="kpi green fade-up fade-up-2">
+      <div class="kpi-icon green">
+        <i data-lucide="timer" style="width:20px;height:20px;"></i>
       </div>
-      <div>
-        <div class="text-3xl font-extrabold text-slate-900 leading-none" style="font-variant-numeric: tabular-nums;">{{ total_turnos_ativos }}</div>
-        <div class="text-xs text-slate-400 mt-1">turnos abertos agora</div>
+      <div class="kpi-body">
+        <div class="kpi-val">{{ total_turnos_ativos }}</div>
+        <div class="kpi-lbl">Turnos abertos agora</div>
       </div>
     </div>
 
-    {# Cupons hoje #}
-    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-4 sm:p-5 flex flex-col gap-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cupons</span>
-        <div class="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
-          <i data-lucide="receipt" class="w-4 h-4 text-violet-600"></i>
-        </div>
+    <div class="kpi amber fade-up fade-up-3">
+      <div class="kpi-icon amber">
+        <i data-lucide="receipt" style="width:20px;height:20px;"></i>
       </div>
-      <div>
-        <div class="text-3xl font-extrabold text-slate-900 leading-none" style="font-variant-numeric: tabular-nums;">{{ total_cupons_hoje }}</div>
-        <div class="text-xs text-slate-400 mt-1">entregas realizadas hoje</div>
+      <div class="kpi-body">
+        <div class="kpi-val">{{ total_cupons_hoje }}</div>
+        <div class="kpi-lbl">Entregas realizadas hoje</div>
       </div>
     </div>
 
-    {# Alertas — KEEP RED when critical (danger semantic) #}
-    <div class="bg-white rounded-2xl shadow-card border {% if criticos %}border-red-200 bg-red-50/40{% else %}border-slate-100{% endif %} p-4 sm:p-5 flex flex-col gap-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold {% if criticos %}text-red-500{% else %}text-slate-500{% endif %} uppercase tracking-wider">Alertas</span>
-        <div class="w-8 h-8 rounded-xl {% if criticos %}bg-red-100{% else %}bg-amber-50{% endif %} flex items-center justify-center">
-          <i data-lucide="bell-ring" class="w-4 h-4 {% if criticos %}text-red-600{% else %}text-amber-500{% endif %}"></i>
-        </div>
+    <div class="kpi {% if criticos %}red{% else %}amber{% endif %} fade-up fade-up-4">
+      <div class="kpi-icon {% if criticos %}red{% else %}amber{% endif %}">
+        <i data-lucide="bell-ring" style="width:20px;height:20px;"></i>
       </div>
-      <div>
-        <div class="text-3xl font-extrabold {% if criticos %}text-red-600{% else %}text-slate-900{% endif %} leading-none" style="font-variant-numeric: tabular-nums;">{{ alertas | length }}</div>
-        <div class="text-xs {% if criticos %}text-red-400{% else %}text-slate-400{% endif %} mt-1">
-          {{ criticos | length }} crítico{{ 's' if criticos | length != 1 else '' }} de óleo
-        </div>
+      <div class="kpi-body">
+        <div class="kpi-val {% if criticos %}danger{% endif %}">{{ alertas|length }}</div>
+        <div class="kpi-lbl">{{ criticos|length }} crítico{{ 's' if criticos|length != 1 else '' }} de óleo</div>
       </div>
     </div>
+
   </div>
 
-  {# ── 3. Corpo principal — 2 colunas no desktop ── #}
-  <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 sm:gap-5">
+  {# ── Layout 2 colunas: tabela de veículos + ranking ── #}
+  <div class="dash-layout">
 
-    {# ── 3a. Status da Frota (3 colunas) ── #}
-    <div class="xl:col-span-3 bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <i data-lucide="car" class="w-4 h-4 text-blue-600"></i> Status por Veículo
-        </h2>
-        <a href="/gestao-veiculo" class="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">Ver todos →</a>
+    {# Tabela de veículos #}
+    <div class="f-card fade-up">
+      <div class="f-card-head">
+        <span class="f-card-title">
+          <i data-lucide="car" style="width:16px;height:16px;color:var(--blue);"></i>
+          Status por Veículo
+        </span>
+        <a href="/gestao-veiculo" class="f-card-link">Ver todos →</a>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+      <div style="overflow-x:auto;">
+        <table class="v-table">
           <thead>
-            <tr class="border-b border-slate-100 bg-slate-50/60">
-              <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Placa</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Tipo</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">KM Atual</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+            <tr>
+              <th>Placa / Modelo</th>
+              <th>Tipo</th>
+              <th>KM Atual</th>
+              <th>Status</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody>
             {% for v in veiculos %}
-            <tr class="hover:bg-slate-50/70 transition-colors">
-              <td class="px-5 py-3.5">
-                <a href="/frota/historico/{{ v.id }}" class="font-bold text-slate-800 hover:text-blue-600 transition-colors text-sm">
-                  {{ v.placa }}
-                </a>
-                <div class="text-xs text-slate-400 mt-0.5 sm:hidden">{{ v.tipo }}</div>
+            <tr>
+              <td>
+                <a href="/frota/historico/{{ v.id }}">{{ v.placa }}</a>
+                <div style="font-size:11px;color:var(--text3);margin-top:2px;">{{ v.modelo }}</div>
               </td>
-              <td class="px-4 py-3.5 hidden sm:table-cell">
-                <span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+              <td style="color:var(--text2);font-size:12px;">
+                <span style="display:inline-flex;align-items:center;gap:5px;">
                   {% if v.tipo == 'Moto' %}
-                    <i data-lucide="bike" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <i data-lucide="bike" style="width:13px;height:13px;color:var(--text3);"></i>
                   {% else %}
-                    <i data-lucide="car" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <i data-lucide="car" style="width:13px;height:13px;color:var(--text3);"></i>
                   {% endif %}
                   {{ v.tipo }}
                 </span>
               </td>
-              <td class="px-4 py-3.5 hidden md:table-cell">
-                <span class="text-sm text-slate-700 font-medium tabular-nums" style="font-variant-numeric: tabular-nums;">
-                  {{ '{:,}'.format(v.odometro_atual).replace(',', '.') if v.odometro_atual else '—' }} km
-                </span>
+              <td style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;">
+                {{ '{:,}'.format(v.odometro_atual).replace(',','.') if v.odometro_atual else '—' }} km
               </td>
-              <td class="px-4 py-3.5">
-                {# Semantic status colors: amber for Em Rota, slate for Disponível #}
+              <td>
                 {% if v.entregador_id %}
-                  <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Em rota
+                  <span class="badge badge-amber">
+                    <span class="badge-dot" style="background:var(--amber);animation:blink 1.2s infinite;"></span>
+                    Em rota
                   </span>
                 {% else %}
-                  <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Disponível
+                  <span class="badge badge-green">
+                    <span class="badge-dot" style="background:var(--green);"></span>
+                    Disponível
                   </span>
                 {% endif %}
               </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="4" class="px-5 py-10 text-center text-sm text-slate-400">
-                <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+              <td colspan="4" style="text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;">
                 Nenhum veículo cadastrado
               </td>
             </tr>
@@ -184,170 +367,141 @@
       </div>
     </div>
 
-    {# ── 3b. Ranking de Motoristas (2 colunas) ── #}
-    <div class="xl:col-span-2 bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <i data-lucide="trophy" class="w-4 h-4 text-amber-500"></i> Ranking Motoristas
-        </h2>
-        <a href="/frota/score/ranking" class="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">Ranking completo →</a>
+    {# Ranking de Motoristas #}
+    <div class="f-card fade-up" style="animation-delay:.08s;">
+      <div class="f-card-head">
+        <span class="f-card-title">
+          <i data-lucide="trophy" style="width:16px;height:16px;color:var(--amber);"></i>
+          Ranking Motoristas
+        </span>
+        <a href="/frota/ranking" class="f-card-link">Ver completo →</a>
       </div>
-      <div class="divide-y divide-slate-100">
-        {% for s in scores[:8] %}
-        <div class="px-5 py-3.5 flex items-center gap-3">
-          {# Posição #}
-          <div class="w-6 text-center flex-shrink-0">
-            {% if loop.index == 1 %}
-              <span class="text-lg">🥇</span>
-            {% elif loop.index == 2 %}
-              <span class="text-lg">🥈</span>
-            {% elif loop.index == 3 %}
-              <span class="text-lg">🥉</span>
-            {% else %}
-              <span class="text-xs font-bold text-slate-400">{{ loop.index }}</span>
-            {% endif %}
+      {% for s in scores[:8] %}
+      <div class="rank-row">
+        <div style="width:22px;text-align:center;flex-shrink:0;">
+          {% if loop.index == 1 %}<span style="font-size:16px;">🥇</span>
+          {% elif loop.index == 2 %}<span style="font-size:16px;">🥈</span>
+          {% elif loop.index == 3 %}<span style="font-size:16px;">🥉</span>
+          {% else %}<span style="font-size:11px;font-weight:700;color:var(--text3);">{{ loop.index }}</span>
+          {% endif %}
+        </div>
+        <div class="rank-avatar">{{ s.motorista_nome[:2].upper() }}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ s.motorista_nome }}
           </div>
-
-          {# Avatar + Nome #}
-          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center flex-shrink-0">
-            <span class="text-white text-xs font-bold">{{ s.motorista_nome[:2].upper() }}</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-semibold text-slate-800 truncate">{{ s.motorista_nome }}</div>
-            {# Barra de progresso do score (0-100) — green >80, amber 60-80, red <60 #}
-            <div class="mt-1.5 flex items-center gap-2">
-              <div class="flex-1 bg-slate-100 rounded-full h-1.5">
-                <div class="h-1.5 rounded-full transition-all duration-500
-                  {% if s.score_atual >= 80 %}bg-emerald-500
-                  {% elif s.score_atual >= 60 %}bg-amber-400
-                  {% else %}bg-red-500{% endif %}"
-                  style="width: {{ s.score_atual }}%">
-                </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">
+            <div class="rank-bar-bg">
+              <div class="rank-bar-fill"
+                   style="width:{{ s.score_atual }}%;background:{% if s.score_atual >= 80 %}var(--green){% elif s.score_atual >= 60 %}var(--amber){% else %}var(--danger){% endif %};">
               </div>
-              <span class="text-xs font-bold tabular-nums w-8 text-right
-                {% if s.score_atual >= 80 %}text-emerald-600
-                {% elif s.score_atual >= 60 %}text-amber-600
-                {% else %}text-red-600{% endif %}"
-                style="font-variant-numeric: tabular-nums;">{{ s.score_atual }}</span>
             </div>
-          </div>
-
-          {# Entregas #}
-          <div class="text-right flex-shrink-0">
-            <div class="text-sm font-bold text-slate-800 tabular-nums" style="font-variant-numeric: tabular-nums;">{{ s.total_entregas }}</div>
-            <div class="text-[10px] text-slate-400">entregas</div>
-          </div>
-        </div>
-        {% else %}
-        <div class="px-5 py-10 text-center text-sm text-slate-400">
-          <i data-lucide="users" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
-          Nenhum score registrado ainda
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
-  {# ── 4. Seção de Alertas Preditivos de Óleo ── #}
-  <div class="mt-4 sm:mt-5 bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
-    <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
-      <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-        <i data-lucide="droplets" class="w-4 h-4 text-amber-500"></i>
-        Alertas Preditivos — Troca de Óleo
-        <span class="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full" style="font-variant-numeric: tabular-nums;">{{ alertas | length }}</span>
-      </h2>
-      {# Filtro com Alpine.js — amber active state #}
-      <div class="flex bg-slate-100 rounded-xl p-1 gap-1 text-xs font-semibold">
-        <button @click="filtroAlerta='todos'"
-          :class="filtroAlerta==='todos' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
-          class="px-3 py-1.5 rounded-lg transition-all duration-150">
-          Todos ({{ alertas | length }})
-        </button>
-        <button @click="filtroAlerta='critico'"
-          :class="filtroAlerta==='critico' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
-          class="px-3 py-1.5 rounded-lg transition-all duration-150">
-          Crítico ({{ alertas | selectattr('nivel_alerta', 'equalto', 'critico') | list | length }})
-        </button>
-        <button @click="filtroAlerta='atencao'"
-          :class="filtroAlerta==='atencao' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
-          class="px-3 py-1.5 rounded-lg transition-all duration-150">
-          Atenção ({{ alertas | selectattr('nivel_alerta', 'equalto', 'atencao') | list | length }})
-        </button>
-        <button @click="filtroAlerta='sem_registro'"
-          :class="filtroAlerta==='sem_registro' ? 'bg-white text-slate-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
-          class="px-3 py-1.5 rounded-lg transition-all duration-150">
-          Sem reg. ({{ alertas | selectattr('nivel_alerta', 'equalto', 'sem_registro') | list | length }})
-        </button>
-      </div>
-    </div>
-
-    <div class="divide-y divide-slate-100">
-      {% for a in alertas %}
-      {# O Alpine.js controla a visibilidade de cada linha via filtro #}
-      <div
-        x-show="filtroAlerta === 'todos' || filtroAlerta === '{{ a.nivel_alerta }}'"
-        x-transition:enter="transition-opacity ease-out duration-200"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        class="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50/60 transition-colors"
-      >
-        {# Ícone por nível — amber for atenção, red for crítico #}
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
-          {% if a.nivel_alerta == 'critico' %}bg-red-50
-          {% elif a.nivel_alerta == 'atencao' %}bg-amber-50
-          {% else %}bg-slate-100{% endif %}">
-          <i data-lucide="{% if a.nivel_alerta == 'critico' %}alert-triangle{% elif a.nivel_alerta == 'atencao' %}alert-circle{% else %}help-circle{% endif %}"
-            class="w-5 h-5 {% if a.nivel_alerta == 'critico' %}text-red-500{% elif a.nivel_alerta == 'atencao' %}text-amber-500{% else %}text-slate-400{% endif %}">
-          </i>
-        </div>
-
-        {# Placa + mensagem #}
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-sm font-bold text-slate-800">{{ a.placa }}</span>
-            <span class="text-xs text-slate-400">{{ a.tipo }}</span>
-            {# Badge — red for crítico, amber for atenção #}
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full
-              {% if a.nivel_alerta == 'critico' %}bg-red-50 text-red-600
-              {% elif a.nivel_alerta == 'atencao' %}bg-amber-50 text-amber-600
-              {% else %}bg-slate-100 text-slate-500{% endif %}">
-              {% if a.nivel_alerta == 'critico' %}CRÍTICO
-              {% elif a.nivel_alerta == 'atencao' %}ATENÇÃO
-              {% else %}SEM REGISTRO{% endif %}
+            <span style="font-size:11.5px;font-weight:700;width:26px;text-align:right;font-variant-numeric:tabular-nums;
+              color:{% if s.score_atual >= 80 %}var(--green){% elif s.score_atual >= 60 %}var(--orange){% else %}var(--danger){% endif %};">
+              {{ s.score_atual }}
             </span>
           </div>
-          <p class="text-xs text-slate-500 mt-0.5 truncate">{{ a.mensagem }}</p>
         </div>
-
-        {# KM desde troca — amber for atenção, red for crítico #}
-        {% if a.km_desde_troca %}
-        <div class="text-right flex-shrink-0">
-          <div class="text-base font-extrabold tabular-nums
-            {% if a.nivel_alerta == 'critico' %}text-red-600
-            {% else %}text-amber-600{% endif %}"
-            style="font-variant-numeric: tabular-nums;">
-            {{ '{:,}'.format(a.km_desde_troca).replace(',', '.') }}
-          </div>
-          <div class="text-[10px] text-slate-400">km s/ troca</div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;">{{ s.total_entregas }}</div>
+          <div style="font-size:10px;color:var(--text3);">entregas</div>
         </div>
-        {% endif %}
-
-        {# Link para registrar manutenção — amber primary button #}
-        <a href="/frota/manutencao?veiculo_id={{ a.veiculo_id }}"
-          class="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-150 hidden sm:block"
-          style="background: #f59e0b; color: #000;">
-          Registrar
-        </a>
       </div>
       {% else %}
-      <div class="px-5 py-12 text-center text-sm text-slate-400">
-        <i data-lucide="check-circle" class="w-10 h-10 mx-auto mb-3 text-emerald-400"></i>
-        <p class="font-medium text-slate-600">Nenhum alerta</p>
-        <p class="text-xs mt-1">Todos os veículos estão em dia com a manutenção.</p>
+      <div style="padding:40px 20px;text-align:center;color:var(--text3);font-size:13px;">
+        Nenhum score registrado ainda
       </div>
       {% endfor %}
     </div>
+
+  </div>{# /dash-layout #}
+
+  {# ── Alertas Preditivos — Troca de Óleo ── #}
+  <div class="f-card fade-up" style="animation-delay:.12s;">
+    <div class="f-card-head" style="flex-wrap:wrap;gap:10px;">
+      <span class="f-card-title">
+        <i data-lucide="droplets" style="width:16px;height:16px;color:var(--amber);"></i>
+        Alertas Preditivos — Troca de Óleo
+        <span style="background:#F3F4F6;color:var(--text2);font-size:10.5px;font-weight:700;
+                     padding:2px 7px;border-radius:10px;font-variant-numeric:tabular-nums;">
+          {{ alertas|length }}
+        </span>
+      </span>
+      <div class="filter-tabs">
+        <button class="filter-tab" @click="filtroAlerta='todos'"
+                :style="filtroAlerta==='todos' ? 'background:#fff;color:var(--text);box-shadow:var(--shadow-sm);' : ''">
+          Todos ({{ alertas|length }})
+        </button>
+        <button class="filter-tab" @click="filtroAlerta='critico'"
+                :style="filtroAlerta==='critico' ? 'background:#fff;color:var(--danger);box-shadow:var(--shadow-sm);' : ''">
+          Crítico ({{ alertas|selectattr('nivel_alerta','equalto','critico')|list|length }})
+        </button>
+        <button class="filter-tab" @click="filtroAlerta='atencao'"
+                :style="filtroAlerta==='atencao' ? 'background:#fff;color:var(--orange);box-shadow:var(--shadow-sm);' : ''">
+          Atenção ({{ alertas|selectattr('nivel_alerta','equalto','atencao')|list|length }})
+        </button>
+        <button class="filter-tab" @click="filtroAlerta='sem_registro'"
+                :style="filtroAlerta==='sem_registro' ? 'background:#fff;color:var(--text2);box-shadow:var(--shadow-sm);' : ''">
+          Sem reg. ({{ alertas|selectattr('nivel_alerta','equalto','sem_registro')|list|length }})
+        </button>
+      </div>
+    </div>
+
+    {% for a in alertas %}
+    <div class="alert-row"
+         x-show="filtroAlerta === 'todos' || filtroAlerta === '{{ a.nivel_alerta }}'"
+         x-transition:enter="transition-opacity ease-out duration-150"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100">
+      <div class="alert-icon {% if a.nivel_alerta == 'critico' %}red{% elif a.nivel_alerta == 'atencao' %}amber{% else %}gray{% endif %}">
+        <i data-lucide="{% if a.nivel_alerta == 'critico' %}alert-triangle{% elif a.nivel_alerta == 'atencao' %}alert-circle{% else %}help-circle{% endif %}"
+           style="width:16px;height:16px;"></i>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+          <span style="font-size:13.5px;font-weight:700;color:var(--text);">{{ a.placa }}</span>
+          <span style="font-size:11px;color:var(--text3);">{{ a.tipo }}</span>
+          <span class="badge {% if a.nivel_alerta == 'critico' %}badge-red{% elif a.nivel_alerta == 'atencao' %}badge-amber{% else %}badge-gray{% endif %}"
+                style="font-size:10px;">
+            {% if a.nivel_alerta == 'critico' %}CRÍTICO
+            {% elif a.nivel_alerta == 'atencao' %}ATENÇÃO
+            {% else %}SEM REGISTRO{% endif %}
+          </span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">{{ a.mensagem }}</div>
+      </div>
+      {% if a.km_desde_troca %}
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;
+          color:{% if a.nivel_alerta == 'critico' %}var(--danger){% else %}var(--orange){% endif %};">
+          {{ '{:,}'.format(a.km_desde_troca).replace(',','.') }}
+        </div>
+        <div style="font-size:10px;color:var(--text3);">km s/ troca</div>
+      </div>
+      {% endif %}
+      <a href="/frota/manutencao?veiculo_id={{ a.veiculo_id }}" class="btn-reg" style="display:none;" id="btn-reg-{{ loop.index }}">
+        Registrar
+      </a>
+    </div>
+    {% else %}
+    <div style="padding:50px 20px;text-align:center;">
+      <i data-lucide="check-circle" style="width:40px;height:40px;color:#86EFAC;display:block;margin:0 auto 12px;"></i>
+      <div style="font-size:14px;font-weight:600;color:var(--text2);">Nenhum alerta</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Todos os veículos estão em dia com a manutenção.</div>
+    </div>
+    {% endfor %}
   </div>
 
 </div>{# /Alpine root #}
+
+<script>
+  // Mostra botão "Registrar" apenas em telas >= sm (640px)
+  function _showRegBtns() {
+    document.querySelectorAll('[id^="btn-reg-"]').forEach(el => {
+      el.style.display = window.innerWidth >= 640 ? 'inline-flex' : 'none';
+    });
+  }
+  _showRegBtns();
+  window.addEventListener('resize', _showRegBtns);
+</script>
 {% endblock %}
