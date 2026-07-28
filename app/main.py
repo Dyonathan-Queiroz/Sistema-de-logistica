@@ -412,7 +412,7 @@ _PERF_GRADIENTS = [
 
 _DIAS_PT = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM']
 
-_ITENS_CRITICOS = ('freio', 'pneu', 'farol')
+_ITENS_CRITICOS = ('freio', 'pneu', 'farol', 'palheta', 'fixacao_carrocinha')
 
 
 # ---------------------------------------------------------------------------

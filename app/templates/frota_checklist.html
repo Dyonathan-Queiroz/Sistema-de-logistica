@@ -774,6 +774,9 @@ function checklistData() {
         const data = await res.json();
         if (res.ok) {
           window.location.href = '/frota/turno';
+        } else if (res.status === 400 && (data.detail || '').includes('críticos')) {
+          // Checklist reprovado foi salvo — redireciona para o turno
+          window.location.href = '/frota/turno';
         } else {
           alert('Erro ao registrar: ' + (data.detail || 'Tente novamente'));
           this.enviando = false;
