@@ -402,10 +402,10 @@
               Informe o valor atual do odômetro
               {% endif %}
             </p>
-            <span x-show="odometro > 0 && odometro < {{ (odometro_sugerido or 0) - 1 }}"
+            <span x-show="parseInt(odometro) > 0 && parseInt(odometro) < {{ odometro_sugerido or 0 }}"
                   class="text-[10px] font-bold text-red-600 flex items-center gap-1 flex-shrink-0 ml-2"
                   style="display:none">
-              <i data-lucide="alert-triangle" class="w-3 h-3"></i> Valor abaixo
+              <i data-lucide="alert-triangle" class="w-3 h-3"></i> Abaixo do mínimo
             </span>
           </div>
         </div>
@@ -483,26 +483,28 @@
     <!-- Botão Enviar (etapa de resumo) -->
     <button x-show="ehUltimaEtapa"
             @click="tentarEnviar()"
-            :disabled="parseInt(odometro) <= 0 || enviando"
+            :disabled="odometroInvalido || enviando"
             :class="{
-              'active:scale-95 shadow-lg': !temCriticoReprovado && parseInt(odometro) > 0 && !enviando,
+              'active:scale-95 shadow-lg': !temCriticoReprovado && !odometroInvalido && !enviando,
               'bg-red-600 hover:bg-red-700 active:scale-95 text-white shadow-lg pulse-danger':
-                temCriticoReprovado && parseInt(odometro) > 0 && !enviando,
+                temCriticoReprovado && !odometroInvalido && !enviando,
               'bg-slate-100 text-slate-400 cursor-not-allowed':
-                parseInt(odometro) <= 0 && !enviando,
+                odometroInvalido && !enviando,
               'opacity-60 cursor-wait': enviando,
             }"
-            :style="!temCriticoReprovado && parseInt(odometro) > 0 && !enviando ? 'background:var(--amber);color:#000' : ''"
+            :style="!temCriticoReprovado && !odometroInvalido && !enviando ? 'background:var(--amber);color:#000' : ''"
             style="display:none"
             class="flex-1 h-12 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2">
       <span x-show="!enviando" class="flex items-center gap-2">
         <i :data-lucide="temCriticoReprovado ? 'shield-x' : '{{ 'play-circle' if tipo == 'inicio' else 'stop-circle' }}'"
            class="w-5 h-5"></i>
-        <span x-text="parseInt(odometro) <= 0
+        <span x-text="isNaN(parseInt(odometro)) || parseInt(odometro) <= 0
           ? 'Preencha o odômetro'
-          : temCriticoReprovado
-            ? 'Registrar Reprovação'
-            : '{{ 'Registrar e Iniciar Turno' if tipo == 'inicio' else 'Registrar e Encerrar Turno' }}'">
+          : odometroInvalido
+            ? 'KM abaixo do mínimo (' + odometroMin + ' km)'
+            : temCriticoReprovado
+              ? 'Registrar Reprovação'
+              : '{{ 'Registrar e Iniciar Turno' if tipo == 'inicio' else 'Registrar e Encerrar Turno' }}'">
         </span>
       </span>
       <span x-show="enviando" style="display:none" class="flex items-center gap-2">
@@ -525,6 +527,7 @@ function checklistData() {
     tipoChecklist: '{{ tipo }}',
     veiculoId:     {{ veiculo.id }},
     odometro:      {{ odometro_sugerido or 0 }},
+    odometroMin:   {{ [odometro_sugerido or 0, 1] | max }},
 
     /* ── Navegação ── */
     etapaAtual: 0,
@@ -690,6 +693,10 @@ function checklistData() {
     get todosRespondidos() {
       return this.itensPendentes === 0;
     },
+    get odometroInvalido() {
+      const v = parseInt(this.odometro);
+      return isNaN(v) || v < this.odometroMin;
+    },
 
     /* ════════════════════════════════════════════════
        NAVEGAÇÃO
@@ -733,7 +740,7 @@ function checklistData() {
        ENVIO
     ════════════════════════════════════════════════ */
     tentarEnviar() {
-      if (parseInt(this.odometro) <= 0 || this.enviando) return;
+      if (this.odometroInvalido || this.enviando) return;
       if (this.temCriticoReprovado) {
         this.modalAberto = true;
         this.$nextTick(() => lucide.createIcons());
