@@ -410,7 +410,37 @@
           </div>
         </div>
 
-        <div class="h-2"></div>
+        <!-- Botão de envio (dentro do conteúdo — garante visibilidade no mobile) -->
+        <button @click="tentarEnviar()"
+                :disabled="odometroInvalido || enviando"
+                :class="{
+                  'active:scale-95': !odometroInvalido && !enviando,
+                  'bg-red-600 hover:bg-red-700 text-white pulse-danger':
+                    temCriticoReprovado && !odometroInvalido && !enviando,
+                  'bg-slate-200 text-slate-400 cursor-not-allowed':
+                    odometroInvalido && !enviando,
+                  'opacity-60 cursor-wait': enviando,
+                }"
+                :style="!temCriticoReprovado && !odometroInvalido && !enviando ? 'background:var(--amber);color:#000;box-shadow:0 4px 20px rgba(245,158,11,0.35)' : ''"
+                class="w-full h-14 rounded-2xl font-black text-sm transition-all duration-200 flex items-center justify-center gap-2.5 mt-2">
+          <span x-show="!enviando" class="flex items-center gap-2">
+            <i :data-lucide="temCriticoReprovado ? 'shield-x' : '{{ 'play-circle' if tipo == 'inicio' else 'stop-circle' }}'"
+               class="w-5 h-5"></i>
+            <span x-text="isNaN(parseInt(odometro)) || parseInt(odometro) <= 0
+              ? 'Preencha o odômetro'
+              : odometroInvalido
+                ? 'KM abaixo do mínimo (' + odometroMin + ' km)'
+                : temCriticoReprovado
+                  ? 'Registrar Reprovação'
+                  : '{{ 'Registrar e Iniciar Turno' if tipo == 'inicio' else 'Registrar e Encerrar Turno' }}'">
+            </span>
+          </span>
+          <span x-show="enviando" style="display:none" class="flex items-center gap-2">
+            <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Enviando...
+          </span>
+        </button>
+
+        <div class="h-4"></div>
       </div>
     </div>
 
