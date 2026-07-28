@@ -81,18 +81,14 @@
     .fade-up-3 { animation-delay: .14s; }
     .fade-up-4 { animation-delay: .19s; }
 
-    /* Sidebar: escondido no mobile, sempre visível no desktop */
-    .frota-sidebar { transform: translateX(-100%); }
-    .frota-sidebar.sidebar--open { transform: translateX(0); }
-    @media (min-width: 1024px) {
-      .frota-sidebar { transform: translateX(0) !important; }
-    }
   </style>
 
   {% block extra_head %}{% endblock %}
 </head>
 
-<body class="h-full antialiased" x-data="{ sidebarOpen: false }">
+<body class="h-full antialiased"
+      x-data="{ sidebarOpen: false, isDesktop: window.innerWidth >= 1024 }"
+      @resize.window="isDesktop = window.innerWidth >= 1024">
 
   <!-- OVERLAY MOBILE -->
   <div
@@ -110,9 +106,9 @@
 
   <!-- SIDEBAR -->
   <aside
-    :class="{ 'sidebar--open': sidebarOpen }"
-    class="frota-sidebar fixed inset-y-0 left-0 w-64 z-40 flex flex-col transition-transform duration-300 ease-in-out"
-    style="background:var(--sb-bg);"
+    :style="{ transform: (sidebarOpen || isDesktop) ? 'translateX(0)' : 'translateX(-100%)' }"
+    class="fixed inset-y-0 left-0 w-64 z-40 flex flex-col"
+    style="background:var(--sb-bg); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);"
   >
     <!-- Logo -->
     <div class="flex items-center gap-3 px-5 py-4" style="border-bottom:1px solid rgba(255,255,255,0.065);">
