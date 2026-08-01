@@ -479,6 +479,11 @@ class AprovarManutencaoPayload(BaseModel):
     observacao_gestor: Optional[str] = None
 
 
+class RejeitarManutencaoPayload(BaseModel):
+    """Payload enviado pelo GESTOR ao rejeitar uma solicitação."""
+    observacao: Optional[str] = None
+
+
 class CriarOficinaPayload(BaseModel):
     nome: str
     telefone: Optional[str] = None
@@ -2559,7 +2564,7 @@ async def frota_aprovar_manutencao(manutencao_id: int, payload: AprovarManutenca
 
 
 @app.post("/frota/manutencao/{manutencao_id}/rejeitar", status_code=200)
-async def frota_rejeitar_manutencao(manutencao_id: int, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), observacao: str = None, db: Session = Depends(get_db)):
+async def frota_rejeitar_manutencao(manutencao_id: int, payload: RejeitarManutencaoPayload, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Gestor rejeita a solicitação de manutenção."""
     if user_role not in ("gestor", "operador"):
         raise HTTPException(status_code=403, detail="Acesso restrito a gestores")
@@ -2572,7 +2577,7 @@ async def frota_rejeitar_manutencao(manutencao_id: int, user_id: str = Cookie(de
         raise HTTPException(status_code=400, detail=f"Manutenção já está '{mnt.status}'")
 
     mnt.status = "rejeitada"
-    mnt.observacao_gestor = observacao
+    mnt.observacao_gestor = payload.observacao
     try:
         db.commit()
     except SQLAlchemyError:
@@ -3878,7 +3883,7 @@ async def pagina_backup(request: Request, db: Session = Depends(get_db),
     })
 
 
-@app.get("/gestor/backup/gerar")
+@app.post("/gestor/backup/gerar")
 async def gerar_backup(db: Session = Depends(get_db),
                        user_role: str = Cookie(None), user_id: str = Cookie(None)):
     if user_role != "gestor":
