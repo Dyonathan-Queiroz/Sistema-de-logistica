@@ -88,9 +88,11 @@
     <div class="bk-title">
       <i class="fas fa-database"></i> Backup do Banco de Dados
     </div>
-    <a href="/gestor/backup/gerar" class="btn-download">
-      <i class="fas fa-download"></i> Gerar Backup Agora
-    </a>
+    <form method="POST" action="/gestor/backup/gerar" style="display:inline">
+      <button type="submit" class="btn-download">
+        <i class="fas fa-download"></i> Gerar Backup Agora
+      </button>
+    </form>
   </div>
 
   <!-- STATS -->
@@ -129,9 +131,11 @@
       <p>Gera um arquivo <strong>.sql</strong> completo com todas as tabelas e dados.<br>
          Compatível com MySQL/MariaDB. Utilize para restaurar em qualquer servidor.</p>
     </div>
-    <a href="/gestor/backup/gerar" class="btn-download">
-      <i class="fas fa-download"></i> Baixar .sql agora
-    </a>
+    <form method="POST" action="/gestor/backup/gerar" style="display:inline">
+      <button type="submit" class="btn-download">
+        <i class="fas fa-download"></i> Baixar .sql agora
+      </button>
+    </form>
   </div>
 
   <!-- INFO SMTP -->
