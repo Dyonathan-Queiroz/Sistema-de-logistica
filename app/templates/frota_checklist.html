@@ -537,6 +537,11 @@ function checklistData() {
     odometro:      {{ odometro_sugerido or 0 }},
     odometroMin:   {{ [odometro_sugerido or 0, 1] | max }},
 
+    init() {
+      // Expõe tentarEnviar globalmente para o botão estático (evita depender de _x_dataStack)
+      window._checklistTentarEnviar = () => this.tentarEnviar();
+    },
+
     /* ── Navegação ── */
     etapaAtual: 0,
 
@@ -812,7 +817,13 @@ function _enviarChecklist() {
   var savedHTML = btn ? btn.innerHTML : '';
   var minOdo = {{ odometro_sugerido or 0 }};
 
-  // Alpine v3: acesso via _x_dataStack
+  // Caminho 1: Alpine inicializado e expôs tentarEnviar via init()
+  if (typeof window._checklistTentarEnviar === 'function') {
+    window._checklistTentarEnviar();
+    return;
+  }
+
+  // Caminho 2: _x_dataStack acessível (fallback legado)
   try {
     var el = document.querySelector('[x-data]');
     var d = el && el._x_dataStack && el._x_dataStack[0];
@@ -822,9 +833,8 @@ function _enviarChecklist() {
       return;
     }
 
-    // _x_dataStack acessível mas tentarEnviar ausente — envia manualmente com dados do Alpine
     if (d) {
-      // Lê do DOM: parseInt(Proxy_Alpine) retorna NaN em algumas versões do Alpine v3
+      // Lê do DOM: parseInt(Proxy_Alpine) pode retornar NaN em algumas versões do Alpine v3
       var _inputOdoEl = document.querySelector('input[type="number"]');
       var odo = (_inputOdoEl ? parseInt(_inputOdoEl.value) : NaN) || parseInt(d.odometro) || 0;
       var dMin = minOdo;
