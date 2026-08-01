@@ -1744,6 +1744,9 @@ async def pagina_gestao_funcionario(request: Request, db: Session = Depends(get_
 async def salvar_funcionario(request: Request, username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role != 'gestor':
         return RedirectResponse(url="/login")
+    _PERFIS_VALIDOS = ("gestor", "operador", "entregador")
+    if perfil not in _PERFIS_VALIDOS:
+        raise HTTPException(status_code=400, detail="Perfil inválido")
     if len(senha) < 8:
         funcionarios = db.query(Usuario).all()
         filiais = db.query(Filial).order_by(Filial.nome).all()
@@ -1765,6 +1768,8 @@ async def pagina_editar_funcionario(request: Request, func_id: int, db: Session 
     if user_role != 'gestor':
         return RedirectResponse(url="/login")
     func = db.query(Usuario).filter(Usuario.id == func_id).first()
+    if not func:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado")
     filiais = db.query(Filial).order_by(Filial.nome).all()
     return templates.TemplateResponse(request=request, name="editar_funcionario.html", context={"func": func, "filiais": filiais})
 
@@ -1782,6 +1787,8 @@ async def processar_funcionario(func_id: int, acao: str = Form(...), username: s
             db.query(Veiculo).filter(Veiculo.entregador_id == func_id).update({"entregador_id": None})
             db.delete(func)
         else:
+            if perfil and perfil not in ("gestor", "operador", "entregador"):
+                raise HTTPException(status_code=400, detail="Perfil inválido")
             func.username = username
             func.perfil = perfil
             func.filial_id = filial_id if filial_id else None
@@ -1820,6 +1827,8 @@ async def pagina_vincular(request: Request, veiculo_id: int, db: Session = Depen
     if user_role != 'gestor':
         return RedirectResponse(url="/login")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
+    if not veiculo:
+        raise HTTPException(status_code=404, detail="Veículo não encontrado")
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="vincular_veiculo.html", context={"veiculo": veiculo, "entregadores": entregadores})
 
@@ -1842,6 +1851,8 @@ async def pagina_editar_veiculo(request: Request, veiculo_id: int, db: Session =
     if user_role != 'gestor':
         return RedirectResponse(url="/login")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
+    if not veiculo:
+        raise HTTPException(status_code=404, detail="Veículo não encontrado")
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="editar_veiculo.html", context={"veiculo": veiculo, "entregadores": entregadores})
 
@@ -2660,8 +2671,9 @@ async def frota_pneus_ativos(veiculo_id: int, user_id: str = Cookie(default=None
 
 
 @app.get("/frota/oficinas/lista")
-async def frota_lista_oficinas(db: Session = Depends(get_db)):
+async def frota_lista_oficinas(request: Request, db: Session = Depends(get_db)):
     """Retorna lista de oficinas ativas para o formulário do entregador."""
+    _resolver_usuario(request)
     oficinas = db.query(Oficina).filter(Oficina.ativo == True).order_by(Oficina.nome).all()
     return [
         {"id": o.id, "nome": o.nome, "telefone": o.telefone}
@@ -2693,8 +2705,9 @@ async def frota_desativar_oficina(oficina_id: int, user_role: str = Cookie(defau
 
 
 @app.get("/frota/pecas/lista")
-async def frota_lista_pecas(db: Session = Depends(get_db)):
+async def frota_lista_pecas(request: Request, db: Session = Depends(get_db)):
     """Retorna catálogo de peças ativas para o formulário do entregador."""
+    _resolver_usuario(request)
     pecas = db.query(PecaCatalogo).filter(PecaCatalogo.ativo == True).order_by(PecaCatalogo.categoria, PecaCatalogo.nome).all()
     return [
         {"id": p.id, "nome": p.nome, "categoria": p.categoria, "unidade": p.unidade}
