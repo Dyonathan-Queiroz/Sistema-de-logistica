@@ -809,30 +809,46 @@ document.addEventListener('alpine:initialized', () => lucide.createIcons());
 /* ── Envio independente do Alpine (fallback para mobile) ── */
 function _enviarChecklist() {
   var btn = document.getElementById('btn-enviar-static');
+  var savedHTML = btn ? btn.innerHTML : '';
+  var minOdo = {{ odometro_sugerido or 0 }};
 
-  // Tenta usar o Alpine v3 via _x_dataStack
+  // Alpine v3: acesso via _x_dataStack
   try {
     var el = document.querySelector('[x-data]');
-    var data = el && el._x_dataStack && el._x_dataStack[0];
-    if (data && typeof data.tentarEnviar === 'function') {
-      data.tentarEnviar();
+    var d = el && el._x_dataStack && el._x_dataStack[0];
+
+    if (d && typeof d.tentarEnviar === 'function') {
+      d.tentarEnviar();
       return;
     }
-  } catch(e) { /* Alpine indisponível — usa fallback abaixo */ }
 
-  // Fallback: fetch direto (sem Alpine)
-  var odometro = parseInt(document.querySelector('input[type="number"]').value) || 0;
-  if (odometro <= {{ odometro_sugerido or 0 }} && {{ odometro_sugerido or 0 }} > 0) {
-    alert('O odômetro deve ser maior que {{ odometro_sugerido or 0 }} km (último registrado).');
-    return;
-  }
-  if (odometro <= 0) {
-    alert('Preencha o odômetro antes de enviar.');
-    return;
-  }
+    // _x_dataStack acessível mas tentarEnviar ausente — envia manualmente com dados do Alpine
+    if (d) {
+      var odo = parseInt(d.odometro) || 0;
+      var dMin = parseInt(d.odometroMin) || minOdo;
+      if (odo < dMin) {
+        alert('O odômetro deve ser pelo menos ' + dMin + ' km (último registrado).');
+        return;
+      }
+      if (d.temCriticoReprovado) {
+        if (!confirm('Atenção: há itens críticos com defeito!\nDeseja registrar a reprovação e notificar o gestor?')) return;
+      }
+      var itens = (d.itensReprovados || []).map(function(i) {
+        return { item: i.id, descricao: 'Reprovado pelo motorista' };
+      });
+      _doFetch(btn, savedHTML, odo, itens);
+      return;
+    }
+  } catch(e) { /* continua para fallback sem Alpine */ }
 
-  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = 'Enviando…'; }
+  // Sem acesso ao Alpine — não envia para não perder dados de segurança
+  var inputOdo = document.querySelector('input[type="number"]');
+  if (!inputOdo) { alert('Erro interno. Recarregue a página.'); return; }
+  alert('Não foi possível carregar os dados do checklist. Recarregue a página e tente novamente.');
+}
 
+function _doFetch(btn, savedHTML, odometro, itens) {
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<span>Enviando…</span>'; }
   fetch('/frota/checklist', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -840,21 +856,27 @@ function _enviarChecklist() {
       veiculo_id:          {{ veiculo.id }},
       tipo:                '{{ tipo }}',
       odometro_registrado: odometro,
-      itens_reprovados:    []
+      itens_reprovados:    itens
     })
   })
-  .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; }); })
+  .then(function(r) {
+    return r.text().then(function(t) {
+      var data = {};
+      try { data = JSON.parse(t); } catch(e) {}
+      return { ok: r.ok, status: r.status, data: data };
+    });
+  })
   .then(function(r) {
     if (r.ok || (r.status === 400 && (r.data.detail || '').includes('críticos'))) {
       window.location.href = '/frota/turno';
     } else {
       alert('Erro ao registrar: ' + (r.data.detail || 'Tente novamente'));
-      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '{% if tipo == "inicio" %}Registrar e Iniciar Turno{% else %}Registrar e Encerrar Turno{% endif %}'; }
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = savedHTML; }
     }
   })
   .catch(function() {
     alert('Erro de conexão. Verifique o sinal e tente novamente.');
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = savedHTML; }
   });
 }
 </script>
