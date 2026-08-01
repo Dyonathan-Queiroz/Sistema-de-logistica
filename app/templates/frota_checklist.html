@@ -824,8 +824,10 @@ function _enviarChecklist() {
 
     // _x_dataStack acessível mas tentarEnviar ausente — envia manualmente com dados do Alpine
     if (d) {
-      var odo = parseInt(d.odometro) || 0;
-      var dMin = parseInt(d.odometroMin) || minOdo;
+      // Lê do DOM: parseInt(Proxy_Alpine) retorna NaN em algumas versões do Alpine v3
+      var _inputOdoEl = document.querySelector('input[type="number"]');
+      var odo = (_inputOdoEl ? parseInt(_inputOdoEl.value) : NaN) || parseInt(d.odometro) || 0;
+      var dMin = minOdo;
       if (odo < dMin) {
         alert('O odômetro deve ser pelo menos ' + dMin + ' km (último registrado).');
         return;
