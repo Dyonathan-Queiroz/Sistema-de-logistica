@@ -3,7 +3,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from sqlalchemy import func, case as sql_case, or_
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -1261,8 +1261,11 @@ async def historico_entregador(request: Request, entregador_id: int, db: Session
         return RedirectResponse(url="/gestor/desempenho")
 
     hoje = agora().date()
-    inicio_dt = datetime.strptime(inicio, "%Y-%m-%d") if inicio else datetime.combine(hoje.replace(day=1), datetime.min.time())
-    fim_dt = (datetime.strptime(fim, "%Y-%m-%d") + timedelta(days=1)) if fim else datetime.combine(hoje + timedelta(days=1), datetime.min.time())
+    try:
+        inicio_dt = datetime.strptime(inicio, "%Y-%m-%d") if inicio else datetime.combine(hoje.replace(day=1), datetime.min.time())
+        fim_dt = (datetime.strptime(fim, "%Y-%m-%d") + timedelta(days=1)) if fim else datetime.combine(hoje + timedelta(days=1), datetime.min.time())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de data inválido. Use YYYY-MM-DD")
     inicio_str = inicio or hoje.replace(day=1).strftime("%Y-%m-%d")
     fim_str = fim or hoje.strftime("%Y-%m-%d")
 
@@ -2392,8 +2395,12 @@ async def frota_registrar_abastecimento(payload: AbastecimentoPayload, user_id: 
         valor_total=payload.valor_total,
     )
     db.add(abastecimento)
-    db.commit()
-    db.refresh(abastecimento)
+    try:
+        db.commit()
+        db.refresh(abastecimento)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao registrar abastecimento. Tente novamente.")
     return {
         "mensagem": "Abastecimento registrado",
         "id": abastecimento.id,
@@ -2453,8 +2460,12 @@ async def frota_registrar_manutencao(payload: ManutencaoPayload, user_id: str = 
         oficina=payload.oficina,
     )
     db.add(manutencao)
-    db.commit()
-    db.refresh(manutencao)
+    try:
+        db.commit()
+        db.refresh(manutencao)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao registrar manutenção. Tente novamente.")
     return {
         "mensagem": "Manutenção registrada",
         "id": manutencao.id,
@@ -2504,8 +2515,12 @@ async def frota_solicitar_manutencao(payload: SolicitacaoManutencaoPayload, user
         status="pendente",
     )
     db.add(manutencao)
-    db.commit()
-    db.refresh(manutencao)
+    try:
+        db.commit()
+        db.refresh(manutencao)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao enviar solicitação. Tente novamente.")
     return {
         "mensagem": "Solicitação enviada ao gestor",
         "id": manutencao.id,
@@ -2535,7 +2550,11 @@ async def frota_aprovar_manutencao(manutencao_id: int, payload: AprovarManutenca
     mnt.valor_mao_obra = payload.valor_mao_obra
     mnt.itens_trocados = payload.itens_trocados or mnt.itens_trocados
     mnt.observacao_gestor = payload.observacao_gestor
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao aprovar manutenção. Tente novamente.")
     return {"mensagem": "Manutenção aprovada", "id": mnt.id}
 
 
@@ -2554,7 +2573,11 @@ async def frota_rejeitar_manutencao(manutencao_id: int, user_id: str = Cookie(de
 
     mnt.status = "rejeitada"
     mnt.observacao_gestor = observacao
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao rejeitar manutenção. Tente novamente.")
     return {"mensagem": "Manutenção rejeitada", "id": mnt.id}
 
 
@@ -2613,8 +2636,12 @@ async def frota_instalar_pneu(payload: PneuInstalarPayload, user_id: str = Cooki
         status="ativo",
     )
     db.add(novo)
-    db.commit()
-    db.refresh(novo)
+    try:
+        db.commit()
+        db.refresh(novo)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao registrar pneu. Tente novamente.")
 
     return {
         "mensagem": "Pneu instalado",
@@ -2636,7 +2663,11 @@ async def frota_descartar_pneu(pneu_id: int, payload: PneuDescartePayload, user_
     pneu.status = "descartado"
     pneu.km_descarte = payload.km_descarte
     pneu.data_descarte = payload.data_descarte
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao descartar pneu. Tente novamente.")
 
     km_rodados = payload.km_descarte - pneu.km_instalacao if pneu.km_instalacao else None
 
@@ -2687,8 +2718,12 @@ async def frota_criar_oficina(payload: CriarOficinaPayload, user_role: str = Coo
         raise HTTPException(status_code=403, detail="Acesso restrito a gestores")
     o = Oficina(nome=payload.nome.strip(), telefone=payload.telefone, endereco=payload.endereco)
     db.add(o)
-    db.commit()
-    db.refresh(o)
+    try:
+        db.commit()
+        db.refresh(o)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao salvar oficina. Tente novamente.")
     return {"id": o.id, "nome": o.nome}
 
 
@@ -2721,8 +2756,12 @@ async def frota_criar_peca(payload: CriarPecaPayload, user_role: str = Cookie(de
         raise HTTPException(status_code=403, detail="Acesso restrito a gestores")
     p = PecaCatalogo(nome=payload.nome.strip(), categoria=payload.categoria, unidade=payload.unidade or "un")
     db.add(p)
-    db.commit()
-    db.refresh(p)
+    try:
+        db.commit()
+        db.refresh(p)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao salvar peça. Tente novamente.")
     return {"id": p.id, "nome": p.nome}
 
 
@@ -2777,7 +2816,7 @@ async def frota_score_ranking(request: Request, user_id: str = Cookie(default=No
 
 
 @app.get("/frota/dashboard/consolidado-turno/{turno_id}")
-async def frota_consolidado_turno(turno_id, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_consolidado_turno(turno_id: int, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Consolidado do turno — todos os campos de custo e contagem
     são lidos diretamente do banco (mantidos por triggers, nunca calculados aqui).
@@ -2813,7 +2852,7 @@ async def frota_consolidado_turno(turno_id, user_id: str = Cookie(default=None),
 
 
 @app.get("/frota/analise/consumo/{veiculo_id}")
-async def frota_analise_consumo(veiculo_id, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_analise_consumo(veiculo_id: int, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Consumo médio de combustível em km/L para o veículo.
 
@@ -2879,7 +2918,7 @@ async def frota_analise_consumo(veiculo_id, user_id: str = Cookie(default=None),
 
 
 @app.get("/frota/analise/cpk/{veiculo_id}")
-async def frota_analise_cpk(veiculo_id, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_analise_cpk(veiculo_id: int, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Custo Por Quilômetro (CPK) de manutenção acumulado para o veículo.
 
@@ -3431,7 +3470,7 @@ async def frota_turno_page(request: Request, user_id: str = Cookie(default=None)
 
 
 @app.get("/frota/checklist")
-async def frota_checklist_page(request: Request, veiculo_id: str = None, tipo: str = 'inicio', user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_checklist_page(request: Request, veiculo_id: Optional[int] = None, tipo: str = 'inicio', user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Formulário de inspeção veicular — EXCLUSIVO PARA ENTREGADORES.
     Gestores e operadores são redirecionados para o painel de frota.
@@ -3467,7 +3506,7 @@ async def frota_checklist_page(request: Request, veiculo_id: str = None, tipo: s
 
 
 @app.get("/frota/historico-geral")
-async def frota_historico_geral_page(request: Request, veiculo_id: str = None, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_historico_geral_page(request: Request, veiculo_id: Optional[int] = None, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """aprovada"""
     if user_role not in ("gestor", "operador"):
         return RedirectResponse(url="/login")
@@ -3567,7 +3606,7 @@ async def frota_historico_geral_page(request: Request, veiculo_id: str = None, u
 
 
 @app.get("/frota/historico/{veiculo_id}")
-async def frota_historico_page(veiculo_id: str, request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_historico_page(veiculo_id: int, request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Timeline unificada de eventos de um veículo:
     abastecimentos, manutenções, checklists e trocas de pneus.
@@ -3763,7 +3802,7 @@ async def frota_historico_page(veiculo_id: str, request: Request, user_id: str =
 
 
 @app.get("/frota/analise/eficiencia-turno/{turno_id}")
-async def frota_analise_eficiencia_turno(turno_id: str, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_analise_eficiencia_turno(turno_id: int, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Eficiência financeira do turno: custo total por entrega realizada.
 
