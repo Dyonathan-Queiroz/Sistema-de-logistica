@@ -45,37 +45,15 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       margin-bottom: 28px;
       text-align: center;
     }
 
-    .brand-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--amber) 0%, var(--amber-dk) 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .brand-icon i {
-      font-size: 24px;
-      color: #000;
-    }
-
-    .brand-name {
-      font-size: 22px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 0.2px;
-    }
-
-    .brand-sub {
-      font-size: 13px;
-      color: #64748b;
-      margin-top: -6px;
+    .brand-logo {
+      width: 300px;
+      height: auto;
+      object-fit: contain;
     }
 
     .brand-hint {
@@ -190,11 +168,7 @@
 
     <!-- Brand -->
     <div class="brand-block">
-      <div class="brand-icon">
-        <i class="fas fa-shipping-fast"></i>
-      </div>
-      <span class="brand-name">System Logística</span>
-      <span class="brand-sub">Super GAVIÃO</span>
+      <img src="/static/logo.png" alt="Supermercado Gavião" class="brand-logo">
       <span class="brand-hint">Entre com suas credenciais</span>
     </div>
 
