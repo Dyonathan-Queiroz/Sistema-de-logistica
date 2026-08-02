@@ -9,13 +9,9 @@ Tabelas criadas:
   pecas_catalogo  — catálogo de peças e serviços frequentes
   backup_logs     — histórico de backups gerados do banco de dados
 
-Essas tabelas existiam em app/models.py mas nunca foram criadas por nenhuma
-migration. Em um banco limpo (ex: novo deploy no Railway), qualquer rota que
-acessasse essas tabelas retornava 500 "Table doesn't exist".
-
-Também garante, via IF NOT EXISTS, as colunas de fluxo de aprovação em
-manutencoes e o índice em motorista_id — belt-and-suspenders para bancos de
-produção que tenham chegado a este ponto pelo caminho alternativo.
+Também garante as colunas de fluxo de aprovação em manutencoes e o índice
+em motorista_id — idempotente via inspect() (compatível com MySQL, sem usar
+a sintaxe ADD COLUMN IF NOT EXISTS que é exclusiva do MariaDB).
 """
 import sqlalchemy as sa
 from alembic import op
@@ -24,6 +20,14 @@ revision = '9a8b7c6d5e4f'
 down_revision = '3c4d5e6f7a8b'
 branch_labels = None
 depends_on = None
+
+
+def _cols(table: str) -> set:
+    return {c['name'] for c in sa.inspect(op.get_bind()).get_columns(table)}
+
+
+def _idxs(table: str) -> set:
+    return {i['name'] for i in sa.inspect(op.get_bind()).get_indexes(table)}
 
 
 def upgrade() -> None:
@@ -68,25 +72,39 @@ def upgrade() -> None:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
 
-    # ── manutencoes: garante colunas e índice de motorista_id ─────────────────
-    # Idempotente: se 3c4d5e6f7a8b já foi aplicada corretamente, é no-op.
-    op.execute("""
-        ALTER TABLE manutencoes
-            ADD COLUMN IF NOT EXISTS `status`
-                ENUM('pendente','aprovada','rejeitada') NOT NULL DEFAULT 'aprovada',
-            ADD COLUMN IF NOT EXISTS `motorista_id`
-                INTEGER NULL,
-            ADD COLUMN IF NOT EXISTS `descricao_problema`
-                VARCHAR(500) NULL,
-            ADD COLUMN IF NOT EXISTS `observacao_gestor`
-                VARCHAR(500) NULL
-    """)
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_manutencoes_motorista_id ON manutencoes (motorista_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_abastecimentos_motorista_id ON abastecimentos (motorista_id)"
-    )
+    # ── manutencoes: colunas de aprovação ─────────────────────────────────────
+    # Verifica via inspect() — ADD COLUMN IF NOT EXISTS não existe no MySQL.
+    mnt_cols = _cols('manutencoes')
+
+    if 'status' not in mnt_cols:
+        op.add_column('manutencoes', sa.Column(
+            'status',
+            sa.Enum('pendente', 'aprovada', 'rejeitada'),
+            nullable=False,
+            server_default='aprovada',
+        ))
+
+    if 'motorista_id' not in mnt_cols:
+        op.add_column('manutencoes', sa.Column(
+            'motorista_id', sa.Integer(), nullable=True,
+        ))
+
+    if 'descricao_problema' not in mnt_cols:
+        op.add_column('manutencoes', sa.Column(
+            'descricao_problema', sa.String(500), nullable=True,
+        ))
+
+    if 'observacao_gestor' not in mnt_cols:
+        op.add_column('manutencoes', sa.Column(
+            'observacao_gestor', sa.String(500), nullable=True,
+        ))
+
+    # ── índices ───────────────────────────────────────────────────────────────
+    if 'ix_manutencoes_motorista_id' not in _idxs('manutencoes'):
+        op.create_index('ix_manutencoes_motorista_id', 'manutencoes', ['motorista_id'])
+
+    if 'ix_abastecimentos_motorista_id' not in _idxs('abastecimentos'):
+        op.create_index('ix_abastecimentos_motorista_id', 'abastecimentos', ['motorista_id'])
 
 
 def downgrade() -> None:
