@@ -754,6 +754,10 @@ function checklistData() {
     ════════════════════════════════════════════════ */
     tentarEnviar() {
       if (this.odometroInvalido || this.enviando) return;
+      if (!this.todosRespondidos) {
+        alert('Você precisa responder todos os ' + this.todosItens.length + ' itens do checklist antes de enviar.\n\n' + this.itensPendentes + ' item(s) ainda sem resposta.');
+        return;
+      }
       if (this.temCriticoReprovado) {
         this.modalAberto = true;
         this.$nextTick(() => lucide.createIcons());

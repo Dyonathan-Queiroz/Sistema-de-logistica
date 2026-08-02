@@ -273,9 +273,24 @@ async def _security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), payment=()"
+    # frota_checklist.html usa Alpine.js que requer Function() (unsafe-eval) para
+    # avaliar expressões x-for / x-text / :class. Sem unsafe-eval o CSP bloqueia
+    # o Alpine e as perguntas do checklist não renderizam — apenas o div estático
+    # do odômetro fica visível e o entregador envia sem preencher o checklist.
+    if request.url.path == "/frota/checklist":
+        _script_src = (
+            "'self' 'unsafe-inline' 'unsafe-eval' "
+            "https://unpkg.com https://cdn.tailwindcss.com"
+        )
+    else:
+        _script_src = (
+            "'self' 'unsafe-inline' "
+            "https://code.jquery.com https://cdn.jsdelivr.net "
+            "https://unpkg.com https://cdn.tailwindcss.com"
+        )
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com; "
+        f"script-src {_script_src}; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
         "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
         "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com; "
