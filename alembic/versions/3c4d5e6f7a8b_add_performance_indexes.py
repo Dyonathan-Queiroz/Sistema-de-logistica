@@ -13,13 +13,11 @@ Create Date: 2026-07-21
   manutencoes.status        — filtrado em frota_manutencao e historico_geral
   manutencoes.categoria     — filtrado em frota_alertas e frota_analise
 
-Correção aplicada (2026-08-01): as colunas status, motorista_id, descricao_problema e
-observacao_gestor de `manutencoes` não foram criadas por nenhuma migration anterior.
-Adicionadas aqui, antes dos índices, para que ix_manutencoes_status exista sobre uma
-coluna válida. Usa ADD COLUMN IF NOT EXISTS para ser idempotente em bancos que já
-possuam as colunas. Os CREATE/DROP INDEX também usam IF NOT EXISTS / IF EXISTS para
-o mesmo motivo.
+As colunas de aprovação (status, motorista_id, descricao_problema, observacao_gestor)
+são verificadas via inspect() antes de adicionar — ADD COLUMN IF NOT EXISTS não existe
+no MySQL (apenas MariaDB).
 """
+import sqlalchemy as sa
 from alembic import op
 
 revision = '3c4d5e6f7a8b'
@@ -28,29 +26,61 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade() -> None:
-    # Passo 1: adiciona colunas faltando em manutencoes ANTES de criar ix_manutencoes_status.
-    # IF NOT EXISTS garante idempotência em bancos que já as possuam (MySQL 8.0+).
-    op.execute("""
-        ALTER TABLE manutencoes
-            ADD COLUMN IF NOT EXISTS `status`
-                ENUM('pendente','aprovada','rejeitada') NOT NULL DEFAULT 'aprovada',
-            ADD COLUMN IF NOT EXISTS `motorista_id`
-                INTEGER NULL,
-            ADD COLUMN IF NOT EXISTS `descricao_problema`
-                VARCHAR(500) NULL,
-            ADD COLUMN IF NOT EXISTS `observacao_gestor`
-                VARCHAR(500) NULL
-    """)
+def _cols(table: str) -> set:
+    return {c['name'] for c in sa.inspect(op.get_bind()).get_columns(table)}
 
-    # Passo 2: índices de performance — CREATE INDEX IF NOT EXISTS para idempotência.
-    op.execute("CREATE INDEX IF NOT EXISTS ix_entregas_status           ON entregas       (`status`)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_entregas_entregador_id    ON entregas       (entregador_id)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_entregas_filial_id        ON entregas       (filial_id)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_entregas_data_finalizacao ON entregas       (data_finalizacao)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_turno_status              ON turnos_entrega (`status`)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_manutencoes_status        ON manutencoes    (`status`)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_manutencoes_categoria     ON manutencoes    (categoria)")
+
+def _idxs(table: str) -> set:
+    return {i['name'] for i in sa.inspect(op.get_bind()).get_indexes(table)}
+
+
+def upgrade() -> None:
+    # Passo 1: colunas de aprovação em manutencoes (necessárias antes do índice status).
+    mnt_cols = _cols('manutencoes')
+
+    if 'status' not in mnt_cols:
+        op.add_column('manutencoes', sa.Column(
+            'status',
+            sa.Enum('pendente', 'aprovada', 'rejeitada'),
+            nullable=False,
+            server_default='aprovada',
+        ))
+
+    if 'motorista_id' not in mnt_cols:
+        op.add_column('manutencoes', sa.Column(
+            'motorista_id', sa.Integer(), nullable=True,
+        ))
+
+    if 'descricao_problema' not in mnt_cols:
+        op.add_column('manutencoes', sa.Column(
+            'descricao_problema', sa.String(500), nullable=True,
+        ))
+
+    if 'observacao_gestor' not in mnt_cols:
+        op.add_column('manutencoes', sa.Column(
+            'observacao_gestor', sa.String(500), nullable=True,
+        ))
+
+    # Passo 2: índices de performance (CREATE INDEX IF NOT EXISTS é válido em MySQL 8.0+).
+    ent_idxs = _idxs('entregas')
+    if 'ix_entregas_status' not in ent_idxs:
+        op.create_index('ix_entregas_status', 'entregas', ['status'])
+    if 'ix_entregas_entregador_id' not in ent_idxs:
+        op.create_index('ix_entregas_entregador_id', 'entregas', ['entregador_id'])
+    if 'ix_entregas_filial_id' not in ent_idxs:
+        op.create_index('ix_entregas_filial_id', 'entregas', ['filial_id'])
+    if 'ix_entregas_data_finalizacao' not in ent_idxs:
+        op.create_index('ix_entregas_data_finalizacao', 'entregas', ['data_finalizacao'])
+
+    trn_idxs = _idxs('turnos_entrega')
+    if 'ix_turno_status' not in trn_idxs:
+        op.create_index('ix_turno_status', 'turnos_entrega', ['status'])
+
+    mnt_idxs = _idxs('manutencoes')
+    if 'ix_manutencoes_status' not in mnt_idxs:
+        op.create_index('ix_manutencoes_status', 'manutencoes', ['status'])
+    if 'ix_manutencoes_categoria' not in mnt_idxs:
+        op.create_index('ix_manutencoes_categoria', 'manutencoes', ['categoria'])
 
 
 def downgrade() -> None:
@@ -61,7 +91,8 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_entregas_filial_id        ON entregas")
     op.execute("DROP INDEX IF EXISTS ix_entregas_entregador_id    ON entregas")
     op.execute("DROP INDEX IF EXISTS ix_entregas_status           ON entregas")
-    op.execute("ALTER TABLE manutencoes DROP COLUMN IF EXISTS `observacao_gestor`")
-    op.execute("ALTER TABLE manutencoes DROP COLUMN IF EXISTS `descricao_problema`")
-    op.execute("ALTER TABLE manutencoes DROP COLUMN IF EXISTS `motorista_id`")
-    op.execute("ALTER TABLE manutencoes DROP COLUMN IF EXISTS `status`")
+
+    mnt_cols = _cols('manutencoes')
+    for col in ('observacao_gestor', 'descricao_problema', 'motorista_id', 'status'):
+        if col in mnt_cols:
+            op.drop_column('manutencoes', col)
