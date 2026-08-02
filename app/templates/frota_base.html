@@ -118,16 +118,9 @@
     style="background:var(--sb-bg);"
   >
     <!-- Logo -->
-    <div class="flex items-center gap-3 px-5 py-4" style="border-bottom:1px solid rgba(255,255,255,0.065);">
-      <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg"
-           style="background:var(--amber);">
-        <i data-lucide="truck" class="w-5 h-5 text-white"></i>
-      </div>
-      <div class="min-w-0">
-        <div class="text-sm font-bold text-white leading-tight truncate">System Logística</div>
-        <div class="text-xs truncate" style="color:rgba(255,255,255,0.35);">Super GAVIÃO · Frota</div>
-      </div>
-      <button type="button" onclick="closeSidebar()" class="ml-auto lg:hidden p-2 -mr-2 transition-colors flex-shrink-0"
+    <div class="flex items-center justify-center px-4 py-3 relative" style="border-bottom:1px solid rgba(255,255,255,0.065);">
+      <img src="/static/logo.png" alt="Supermercado Gavião" style="width:200px;height:auto;object-fit:contain;">
+      <button type="button" onclick="closeSidebar()" class="absolute right-3 top-1/2 -translate-y-1/2 lg:hidden p-2 transition-colors flex-shrink-0"
               style="color:rgba(255,255,255,0.4);">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
