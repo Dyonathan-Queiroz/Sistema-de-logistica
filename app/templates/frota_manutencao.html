@@ -172,7 +172,7 @@
         {% endif %}
 
         {# Formulário de aprovação expansível — pré-preenchido com dados do motorista #}
-        <div x-show="aprovando === {{ p.id }}" style="display:none"
+        <div x-show="aprovando === {{ p.id }}" x-cloak
              class="border-t px-4 py-3 space-y-2"
              style="border-color: var(--amber-mid); background: var(--amber-light);">
           <p class="text-xs font-semibold mb-2" style="color: var(--amber-dk);">Confirmar / ajustar dados:</p>

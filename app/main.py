@@ -277,9 +277,10 @@ async def _security_headers(request: Request, call_next):
     # avaliar expressões x-for / x-text / :class. Sem unsafe-eval o CSP bloqueia
     # o Alpine e as perguntas do checklist não renderizam — apenas o div estático
     # do odômetro fica visível e o entregador envia sem preencher o checklist.
-    if request.url.path == "/frota/checklist":
+    if request.url.path.startswith("/frota/"):
         _script_src = (
             "'self' 'unsafe-inline' 'unsafe-eval' "
+            "https://code.jquery.com https://cdn.jsdelivr.net "
             "https://unpkg.com https://cdn.tailwindcss.com"
         )
     else:
@@ -464,7 +465,7 @@ class AbastecimentoPayload(BaseModel):
 
 class ManutencaoPayload(BaseModel):
     veiculo_id: int
-    data: Optional[date]
+    data: date
     odometro: Optional[int] = None
     categoria: str
     itens_trocados: Optional[List[dict]] = None
@@ -742,7 +743,7 @@ async def dashboard_gestor(request: Request, data: str = None, db: Session = Dep
         _ultima_km = None
         for _m in _mnt_map[_v.id]:
             _itens = _m.itens_trocados or []
-            if any("oleo" in (i.get("item") or "").lower() for i in _itens if isinstance(i, dict)):
+            if any("oleo" in (i.get("nome") or i.get("item") or "").lower() for i in _itens if isinstance(i, dict)):
                 _ultima_km = _m.odometro
                 break
         if _ultima_km is None:
@@ -2724,7 +2725,6 @@ async def frota_pneus_ativos(veiculo_id: int, user_id: str = Cookie(default=None
 @app.get("/frota/oficinas/lista")
 async def frota_lista_oficinas(request: Request, db: Session = Depends(get_db)):
     """Retorna lista de oficinas ativas para o formulário do entregador."""
-    _resolver_usuario(request)
     oficinas = db.query(Oficina).filter(Oficina.ativo == True).order_by(Oficina.nome).all()
     return [
         {"id": o.id, "nome": o.nome, "telefone": o.telefone}
@@ -2762,7 +2762,6 @@ async def frota_desativar_oficina(oficina_id: int, user_role: str = Cookie(defau
 @app.get("/frota/pecas/lista")
 async def frota_lista_pecas(request: Request, db: Session = Depends(get_db)):
     """Retorna catálogo de peças ativas para o formulário do entregador."""
-    _resolver_usuario(request)
     pecas = db.query(PecaCatalogo).filter(PecaCatalogo.ativo == True).order_by(PecaCatalogo.categoria, PecaCatalogo.nome).all()
     return [
         {"id": p.id, "nome": p.nome, "categoria": p.categoria, "unidade": p.unidade}
@@ -3119,7 +3118,7 @@ async def frota_alertas_page(request: Request, user_id: str = Cookie(default=Non
         for m in mnt_por_veiculo[v.id]:
             itens = m.itens_trocados or []
             if any(
-                "oleo" in (i.get("item") or "").lower()
+                "oleo" in (i.get("nome") or i.get("item") or "").lower()
                 for i in itens
                 if isinstance(i, dict)
             ):
@@ -3685,7 +3684,7 @@ async def frota_historico_page(veiculo_id: int, request: Request, user_id: str =
         total = round(pecas + mao_ob, 2)
         itens = m.itens_trocados or []
         itens_str = ', '.join(
-            i.get('item', '').replace('_', ' ').title()
+            (i.get('nome') or i.get('item') or '').replace('_', ' ').title()
             for i in itens
             if isinstance(i, dict)
         ) or '—'
