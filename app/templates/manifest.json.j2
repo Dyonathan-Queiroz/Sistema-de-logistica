@@ -1,7 +1,7 @@
 {
-  "name": "Sistema Logístico Gavião",
-  "short_name": "Gavião",
-  "description": "Sistema de entregas — Supermercado Gavião",
+  "name": "Gavião Motorista",
+  "short_name": "Motorista",
+  "description": "App do motorista — Supermercado Gavião",
   "start_url": "{{ base_path }}/entregador",
   "scope": "{{ base_path }}/",
   "display": "standalone",
@@ -11,24 +11,53 @@
   "lang": "pt-BR",
   "icons": [
     {
-      "src": "{{ base_path }}/static/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "{{ base_path }}/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "{{ base_path }}/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "{{ base_path }}/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "{{ base_path }}/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "{{ base_path }}/static/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ],
   "categories": ["business", "logistics"],
   "shortcuts": [
     {
       "name": "Entregas Disponíveis",
+      "short_name": "Disponíveis",
       "url": "{{ base_path }}/entregador",
-      "description": "Ver entregas disponíveis"
+      "description": "Ver entregas disponíveis para aceitar",
+      "icons": [{"src": "{{ base_path }}/static/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Em Rota",
+      "short_name": "Em Rota",
+      "url": "{{ base_path }}/entregador?aba=emrota",
+      "description": "Ver entregas em andamento",
+      "icons": [{"src": "{{ base_path }}/static/icons/icon-192.png", "sizes": "192x192"}]
     }
-  ]
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

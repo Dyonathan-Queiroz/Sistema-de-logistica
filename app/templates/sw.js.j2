@@ -1,58 +1,105 @@
-var CACHE = 'gaviao-v1';
-var ASSETS = [
-  '{{ base_path }}/static/manifest.json',
-  '{{ base_path }}/static/icons/icon.svg',
+var CACHE_NAME = 'gaviao-motorista-v2';
+var BASE = '{{ base_path }}';
+
+// Assets estáticos que devem ficar sempre no cache
+var STATIC_ASSETS = [
+  BASE + '/static/icons/icon-192.png',
+  BASE + '/static/icons/icon-512.png',
+  BASE + '/static/icons/icon.svg',
+  BASE + '/static/manifest.json',
   'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
+// ── Instalação: pré-cacheia assets estáticos ────────────────────────────────
 self.addEventListener('install', function(e) {
   e.waitUntil(
-    caches.open(CACHE).then(function(c) { return c.addAll(ASSETS); })
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(STATIC_ASSETS);
+    }).then(function() {
+      return self.skipWaiting();
+    })
   );
-  self.skipWaiting();
 });
 
+// ── Ativação: remove caches antigas ────────────────────────────────────────
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(function(k) { return k !== CACHE; }).map(function(k) { return caches.delete(k); }));
+      return Promise.all(
+        keys
+          .filter(function(k) { return k !== CACHE_NAME; })
+          .map(function(k) { return caches.delete(k); })
+      );
+    }).then(function() {
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
+// ── Fetch: estratégia por tipo de recurso ───────────────────────────────────
 self.addEventListener('fetch', function(e) {
-  var url = new URL(e.request.url);
-  var base = '{{ base_path }}';
+  if (e.request.method !== 'GET') return;
 
-  // Sempre busca do servidor para rotas da app (dados dinâmicos)
-  if (url.pathname.startsWith(base + '/entregador') || url.pathname.startsWith(base + '/gestor') || url.pathname === base + '/login') {
+  var url = new URL(e.request.url);
+  var path = url.pathname;
+
+  // Rotas dinâmicas: network-first com fallback offline
+  var isDynamic = (
+    path.startsWith(BASE + '/entregador') ||
+    path.startsWith(BASE + '/frota') ||
+    path.startsWith(BASE + '/gestor') ||
+    path === BASE + '/login' ||
+    path === BASE + '/'
+  );
+
+  if (isDynamic) {
     e.respondWith(
       fetch(e.request).catch(function() {
-        return caches.match(base + '/offline.html') || new Response(
-          '<html><body style="background:#070A10;color:#f1f5f9;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;">' +
-          '<div><div style="font-size:48px;margin-bottom:16px;">📡</div>' +
-          '<h2>Sem conexão</h2><p style="color:#64748b">Verifique sua internet e tente novamente.</p>' +
-          '<button onclick="location.reload()" style="margin-top:16px;padding:12px 24px;background:#f59e0b;color:#000;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;">Tentar Novamente</button>' +
-          '</div></body></html>',
-          { headers: { 'Content-Type': 'text/html' } }
-        );
+        return offlineFallback();
       })
     );
     return;
   }
 
-  // Assets estáticos: cache first
+  // Assets estáticos: cache-first, atualiza em background
   e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      return cached || fetch(e.request).then(function(res) {
-        if (res.ok) {
-          var clone = res.clone();
-          caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
-        }
-        return res;
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.match(e.request).then(function(cached) {
+        var fetchPromise = fetch(e.request).then(function(response) {
+          if (response && response.ok && response.type !== 'opaque') {
+            cache.put(e.request, response.clone());
+          }
+          return response;
+        });
+        return cached || fetchPromise;
       });
     })
   );
 });
+
+function offlineFallback() {
+  return new Response(
+    '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Sem conexao</title>' +
+    '<style>' +
+    '*{margin:0;padding:0;box-sizing:border-box}' +
+    'body{background:#070A10;color:#EEF2FF;font-family:system-ui,sans-serif;' +
+    'display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:20px}' +
+    '.card{text-align:center;max-width:320px}' +
+    '.ico{font-size:56px;margin-bottom:20px}' +
+    'h2{font-size:22px;font-weight:800;margin-bottom:10px}' +
+    'p{color:#7A8BB0;font-size:14px;line-height:1.5;margin-bottom:24px}' +
+    'button{background:#f59e0b;color:#000;border:none;border-radius:12px;' +
+    'padding:14px 28px;font-size:15px;font-weight:700;cursor:pointer;width:100%}' +
+    '</style></head><body>' +
+    '<div class="card">' +
+    '<div class="ico">&#128225;</div>' +
+    '<h2>Sem conexao</h2>' +
+    '<p>Verifique sua internet e tente novamente.</p>' +
+    '<button onclick="location.reload()">Tentar Novamente</button>' +
+    '</div></body></html>',
+    { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
