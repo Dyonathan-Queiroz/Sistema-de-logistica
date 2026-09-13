@@ -1,7 +1,7 @@
 var CACHE = 'gaviao-v1';
 var ASSETS = [
-  '/static/manifest.json',
-  '/static/icons/icon.svg',
+  '{{ base_path }}/static/manifest.json',
+  '{{ base_path }}/static/icons/icon.svg',
   'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
@@ -24,12 +24,13 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   var url = new URL(e.request.url);
+  var base = '{{ base_path }}';
 
   // Sempre busca do servidor para rotas da app (dados dinâmicos)
-  if (url.pathname.startsWith('/entregador') || url.pathname.startsWith('/gestor') || url.pathname === '/login') {
+  if (url.pathname.startsWith(base + '/entregador') || url.pathname.startsWith(base + '/gestor') || url.pathname === base + '/login') {
     e.respondWith(
       fetch(e.request).catch(function() {
-        return caches.match('/offline.html') || new Response(
+        return caches.match(base + '/offline.html') || new Response(
           '<html><body style="background:#070A10;color:#f1f5f9;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;">' +
           '<div><div style="font-size:48px;margin-bottom:16px;">📡</div>' +
           '<h2>Sem conexão</h2><p style="color:#64748b">Verifique sua internet e tente novamente.</p>' +

@@ -221,9 +221,9 @@
 
   <!-- BREADCRUMB -->
   <nav class="ne-breadcrumb">
-    <a href="/gestor">Dashboard</a>
+    <a href="{{ base_path }}/gestor">Dashboard</a>
     <i class="fas fa-chevron-right"></i>
-    <a href="/gestor/log">Log de Entregas</a>
+    <a href="{{ base_path }}/gestor/log">Log de Entregas</a>
     <i class="fas fa-chevron-right"></i>
     <span>Nova Entrega</span>
   </nav>
@@ -240,7 +240,7 @@
     <span class="ne-badge"><i class="fas fa-pen" style="margin-right:4px"></i>Manual</span>
   </div>
 
-  <form method="POST" action="/gestor/entrega/nova" id="formNova">
+  <form method="POST" action="{{ base_path }}/gestor/entrega/nova" id="formNova">
     <input type="hidden" name="cliente_id" id="clienteId">
     <input type="hidden" name="cliente_nome_novo" id="clienteNomeNovo">
 
@@ -366,7 +366,7 @@
 
 <!-- STICKY FOOTER -->
 <div class="ne-footer">
-  <a href="/gestor/log" class="btn-cancel">Cancelar</a>
+  <a href="{{ base_path }}/gestor/log" class="btn-cancel">Cancelar</a>
   <button type="submit" form="formNova" class="btn-submit" id="btnSubmit">
     <i class="fas fa-plus"></i> Criar Entrega
   </button>
@@ -470,7 +470,7 @@ acInput.addEventListener('keydown', function(e) {
 });
 
 function buscar(q) {
-  fetch('/gestor/clientes/buscar?q=' + encodeURIComponent(q))
+  fetch('{{ base_path }}/gestor/clientes/buscar?q=' + encodeURIComponent(q))
     .then(function(r){ return r.json(); })
     .then(function(lista) {
       var html = '';

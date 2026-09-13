@@ -5,13 +5,13 @@
 {% block nav_dashboard %}active{% endblock %}
 
 {% block topbar_right %}
-<form method="GET" action="/gestor" style="display:flex;align-items:center;gap:6px;">
+<form method="GET" action="{{ base_path }}/gestor" style="display:flex;align-items:center;gap:6px;">
   <input type="date" name="data" value="{{ data_filtro }}"
     style="padding:6px 11px;font-size:13px;">
   <button type="submit" class="btn btn-sm btn-primary" style="padding:6px 14px;">
     <i class="fas fa-filter mr-1"></i> Filtrar
   </button>
-  <a href="/gestor" class="btn btn-sm btn-outline-secondary" title="Hoje" style="padding:6px 12px;">
+  <a href="{{ base_path }}/gestor" class="btn btn-sm btn-outline-secondary" title="Hoje" style="padding:6px 12px;">
     <i class="fas fa-calendar-day"></i>
   </a>
 </form>
@@ -612,7 +612,7 @@
         <div style="margin-top:3px;">{{ e.rua }}, {{ e.numero }} — {{ e.bairro }}</div>
         {% if e.motivo_erro %}<div class="erro-mot"><i class="fas fa-comment-alt mr-1"></i>{{ e.motivo_erro }}</div>{% endif %}
       </div>
-      <a href="/gestor/ajustar-entrega/{{ e.id }}" class="btn btn-sm btn-danger" style="font-size:11px;padding:5px 11px;white-space:nowrap;">
+      <a href="{{ base_path }}/gestor/ajustar-entrega/{{ e.id }}" class="btn btn-sm btn-danger" style="font-size:11px;padding:5px 11px;white-space:nowrap;">
         <i class="fas fa-tools"></i> Ajustar
       </a>
     </div>
@@ -697,7 +697,7 @@
           Resumo por Filial
           <span style="font-size:11px;color:var(--text3);font-weight:500;">{{ data_filtro }}</span>
         </span>
-        <a href="/gestao-filial" class="btn btn-sm btn-outline-secondary" style="font-size:11px;padding:4px 10px;">
+        <a href="{{ base_path }}/gestao-filial" class="btn btn-sm btn-outline-secondary" style="font-size:11px;padding:4px 10px;">
           <i class="fas fa-cog mr-1"></i> Gerenciar
         </a>
       </div>
@@ -753,9 +753,9 @@
           <span class="cal-total-pill">{{ cal_total }} entregas</span>
         </div>
         <div class="cal-nav">
-          <a href="/gestor?data={{ mes_ant }}" class="cal-nav-btn"><i class="fas fa-chevron-left"></i></a>
+          <a href="{{ base_path }}/gestor?data={{ mes_ant }}" class="cal-nav-btn"><i class="fas fa-chevron-left"></i></a>
           <span class="cal-nav-month">{{ cal_mes_nome }} {{ cal_ano }}</span>
-          <a href="/gestor?data={{ mes_prox }}" class="cal-nav-btn"><i class="fas fa-chevron-right"></i></a>
+          <a href="{{ base_path }}/gestor?data={{ mes_prox }}" class="cal-nav-btn"><i class="fas fa-chevron-right"></i></a>
         </div>
       </div>
 
@@ -793,7 +793,7 @@
               {% endif %}
 
               <div class="cal-cell{% if is_hoje and not is_sel %} cal-hoje{% endif %}">
-                <a href="/gestor?data={{ ds }}"
+                <a href="{{ base_path }}/gestor?data={{ ds }}"
                    title="{{ cnt }} entregas em {{ ds }}"
                    class="cal-day-link"
                    style="background:{{ ns.bg }};border-color:{{ ns.brd }};">
@@ -833,11 +833,11 @@
     </div>
     <div class="frota-badges">
       {% if frota_alertas_critico > 0 %}
-      <a href="/frota/dashboard" class="frota-badge frota-badge-danger">
+      <a href="{{ base_path }}/frota/dashboard" class="frota-badge frota-badge-danger">
         <i class="fas fa-exclamation-triangle"></i> {{ frota_alertas_critico }} crítico{{ 's' if frota_alertas_critico > 1 else '' }}
       </a>
       {% elif frota_alertas_total > 0 %}
-      <a href="/frota/dashboard" class="frota-badge frota-badge-warning">
+      <a href="{{ base_path }}/frota/dashboard" class="frota-badge frota-badge-warning">
         <i class="fas fa-bell"></i> {{ frota_alertas_total }} alerta{{ 's' if frota_alertas_total > 1 else '' }}
       </a>
       {% else %}
@@ -848,14 +848,14 @@
         <i class="fas fa-play-circle"></i> {{ frota_turnos_abertos }} turno{{ 's' if frota_turnos_abertos > 1 else '' }} ativo{{ 's' if frota_turnos_abertos > 1 else '' }}
       </span>
       {% endif %}
-      <a href="/frota/dashboard" class="frota-badge frota-badge-cta">
+      <a href="{{ base_path }}/frota/dashboard" class="frota-badge frota-badge-cta">
         Abrir painel <i class="fas fa-arrow-right" style="font-size:10px;"></i>
       </a>
     </div>
   </div>
 
   <div class="frota-modules">
-    <a href="/frota/dashboard" class="frota-module-card" style="--accent:var(--amber);--accent-bg:var(--amber-light);">
+    <a href="{{ base_path }}/frota/dashboard" class="frota-module-card" style="--accent:var(--amber);--accent-bg:var(--amber-light);">
       <div class="frota-module-icon"><i class="fas fa-gauge-high"></i></div>
       <div class="frota-module-body">
         <div class="frota-module-title">Painel Geral</div>
@@ -864,7 +864,7 @@
       <i class="fas fa-chevron-right frota-module-arrow"></i>
     </a>
 
-    <a href="/frota/alertas" class="frota-module-card {% if frota_alertas_critico > 0 %}frota-module-danger{% endif %}"
+    <a href="{{ base_path }}/frota/alertas" class="frota-module-card {% if frota_alertas_critico > 0 %}frota-module-danger{% endif %}"
        style="--accent:{% if frota_alertas_critico > 0 %}#DC2626{% elif frota_alertas_total > 0 %}#D97706{% else %}#16A34A{% endif %};--accent-bg:{% if frota_alertas_critico > 0 %}#FFF5F5{% elif frota_alertas_total > 0 %}var(--orange-lt){% else %}var(--green-lt){% endif %};">
       <div class="frota-module-icon">
         <i class="fas fa-{% if frota_alertas_critico > 0 %}exclamation-triangle{% elif frota_alertas_total > 0 %}bell{% else %}check-circle{% endif %}"></i>
@@ -880,7 +880,7 @@
       {% endif %}
     </a>
 
-    <a href="/frota/manutencao" class="frota-module-card" style="--accent:#D97706;--accent-bg:var(--orange-lt);">
+    <a href="{{ base_path }}/frota/manutencao" class="frota-module-card" style="--accent:#D97706;--accent-bg:var(--orange-lt);">
       <div class="frota-module-icon"><i class="fas fa-wrench"></i></div>
       <div class="frota-module-body">
         <div class="frota-module-title">Manutenções</div>
@@ -889,7 +889,7 @@
       <i class="fas fa-chevron-right frota-module-arrow"></i>
     </a>
 
-    <a href="/frota/ranking" class="frota-module-card" style="--accent:#6B7280;--accent-bg:#F3F4F6;">
+    <a href="{{ base_path }}/frota/ranking" class="frota-module-card" style="--accent:#6B7280;--accent-bg:#F3F4F6;">
       <div class="frota-module-icon"><i class="fas fa-trophy"></i></div>
       <div class="frota-module-body">
         <div class="frota-module-title">Ranking</div>
@@ -898,7 +898,7 @@
       <i class="fas fa-chevron-right frota-module-arrow"></i>
     </a>
 
-    <a href="/gestao-veiculo" class="frota-module-card" style="--accent:#374151;--accent-bg:#F9FAFB;">
+    <a href="{{ base_path }}/gestao-veiculo" class="frota-module-card" style="--accent:#374151;--accent-bg:#F9FAFB;">
       <div class="frota-module-icon"><i class="fas fa-truck"></i></div>
       <div class="frota-module-body">
         <div class="frota-module-title">Veículos</div>
@@ -907,7 +907,7 @@
       <i class="fas fa-chevron-right frota-module-arrow"></i>
     </a>
 
-    <a href="/frota/dashboard" class="frota-module-card" style="--accent:var(--green);--accent-bg:var(--green-lt);">
+    <a href="{{ base_path }}/frota/dashboard" class="frota-module-card" style="--accent:var(--green);--accent-bg:var(--green-lt);">
       <div class="frota-module-icon"><i class="fas fa-play-circle"></i></div>
       <div class="frota-module-body">
         <div class="frota-module-title">Turnos Hoje</div>
@@ -916,7 +916,7 @@
       <i class="fas fa-chevron-right frota-module-arrow"></i>
     </a>
 
-    <a href="/frota/historico-geral" class="frota-module-card" style="--accent:#6B7280;--accent-bg:#F3F4F6;">
+    <a href="{{ base_path }}/frota/historico-geral" class="frota-module-card" style="--accent:#6B7280;--accent-bg:#F3F4F6;">
       <div class="frota-module-icon"><i class="fas fa-route"></i></div>
       <div class="frota-module-body">
         <div class="frota-module-title">Histórico</div>
@@ -925,7 +925,7 @@
       <i class="fas fa-chevron-right frota-module-arrow"></i>
     </a>
 
-    <a href="/frota/historico-geral" class="frota-module-card" style="--accent:#374151;--accent-bg:#F9FAFB;">
+    <a href="{{ base_path }}/frota/historico-geral" class="frota-module-card" style="--accent:#374151;--accent-bg:#F9FAFB;">
       <div class="frota-module-icon"><i class="fas fa-gas-pump"></i></div>
       <div class="frota-module-body">
         <div class="frota-module-title">Abastecimentos</div>

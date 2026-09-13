@@ -7,7 +7,7 @@
 {% block nav_dashboard %}active{% endblock %}
 
 {% block topbar_right %}
-<a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
+<a href="{{ base_path }}/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
 {% block extra_styles %}
@@ -117,7 +117,7 @@
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-edit mr-2"></i>Corrigir e Reativar</h6>
             </div>
             <div class="card-body">
-                <form action="/gestor/ajustar-entrega/{{ entrega.id }}" method="POST">
+                <form action="{{ base_path }}/gestor/ajustar-entrega/{{ entrega.id }}" method="POST">
                     <p class="text-muted small text-uppercase font-weight-bold mb-2">Endereço de entrega</p>
 
                     <div class="form-group">
@@ -148,7 +148,7 @@
                     <hr>
 
                     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center" style="gap:8px;">
-                        <a href="/gestor" class="btn btn-outline-secondary">
+                        <a href="{{ base_path }}/gestor" class="btn btn-outline-secondary">
                             <i class="fas fa-times mr-1"></i> Cancelar
                         </a>
                         <button type="submit" class="btn-reativar">

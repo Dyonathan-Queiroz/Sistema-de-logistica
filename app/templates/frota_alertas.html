@@ -17,7 +17,7 @@
 {% block page_title %}Alertas de Manutenção{% endblock %}
 
 {% block topbar_actions %}
-<a href="/frota/manutencao"
+<a href="{{ base_path }}/frota/manutencao"
    class="hidden sm:inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg transition-colors"
    style="background: #f59e0b; color: #000;">
   <i data-lucide="wrench" class="w-4 h-4"></i> Registrar Manutenção
@@ -185,12 +185,12 @@
 
           {# Botão de ação #}
           <div class="flex-shrink-0 flex flex-col gap-2">
-            <a href="/frota/historico/{{ a.veiculo_id }}"
+            <a href="{{ base_path }}/frota/historico/{{ a.veiculo_id }}"
                class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap">
               <i data-lucide="history" class="w-3.5 h-3.5"></i> Histórico
             </a>
             {# Registrar button: red for crítico, amber for atenção, gray for sem registro #}
-            <a href="/frota/manutencao?veiculo_id={{ a.veiculo_id }}"
+            <a href="{{ base_path }}/frota/manutencao?veiculo_id={{ a.veiculo_id }}"
                class="text-xs font-bold px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap
                  {% if a.nivel_alerta == 'critico' %}bg-red-600 hover:bg-red-700 text-white
                  {% elif a.nivel_alerta == 'atencao' %}hover:opacity-90 text-black

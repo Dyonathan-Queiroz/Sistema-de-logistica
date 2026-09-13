@@ -385,7 +385,7 @@
 
   <!-- ── TOPBAR ──────────────────────────────────────────────── -->
   <div class="topbar">
-    <a href="/entregador?aba=emrota" class="btn-voltar">
+    <a href="{{ base_path }}/entregador?aba=emrota" class="btn-voltar">
       <i class="fas fa-arrow-left"></i> Voltar
     </a>
     <span class="pill-emrota">
@@ -453,7 +453,7 @@
     <div class="actions-card">
       <div class="card-lbl"><i class="fas fa-flag-checkered" style="color:#4ade80;"></i> Conclusão</div>
 
-      <form id="formFinalizar" action="/entregador/finalizar/{{ entrega.id }}" method="POST">
+      <form id="formFinalizar" action="{{ base_path }}/entregador/finalizar/{{ entrega.id }}" method="POST">
         <input type="hidden" name="lat" id="inputLat">
         <input type="hidden" name="lng" id="inputLng">
         <button type="submit" id="btnFinalizar" class="btn-action btn-finish">
@@ -469,7 +469,7 @@
 
       <div class="erro-panel" id="erroPanel" style="display:none;">
         <div class="erro-panel-title"><i class="fas fa-bug"></i> Descreva o Problema</div>
-        <form action="/entregas/{{ entrega.id }}/reportar-erro" method="POST">
+        <form action="{{ base_path }}/entregas/{{ entrega.id }}/reportar-erro" method="POST">
           <textarea name="motivo" rows="4"
             placeholder="Ex: Endereço não encontrado, cliente ausente, número incorreto..."
             required></textarea>
@@ -504,7 +504,7 @@ function toggleErro() {
   var trackTimer = null;
 
   function enviarPonto(lat, lng, tipo) {
-    fetch('/entregador/rastrear/' + ENTREGA_ID, {
+    fetch('{{ base_path }}/entregador/rastrear/' + ENTREGA_ID, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat: lat, lng: lng, tipo: tipo || 'rota' })
