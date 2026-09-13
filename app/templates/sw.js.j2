@@ -1,4 +1,4 @@
-var CACHE_NAME = 'gaviao-motorista-v2';
+var CACHE_NAME = 'gaviao-motorista-v3';
 var BASE = '{{ base_path }}';
 
 // Assets estáticos que devem ficar sempre no cache
@@ -42,18 +42,12 @@ self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
 
   var url = new URL(e.request.url);
-  var path = url.pathname;
 
-  // Rotas dinâmicas: network-first com fallback offline
-  var isDynamic = (
-    path.startsWith(BASE + '/entregador') ||
-    path.startsWith(BASE + '/frota') ||
-    path.startsWith(BASE + '/gestor') ||
-    path === BASE + '/login' ||
-    path === BASE + '/'
-  );
+  // HTML (páginas SSR): SEMPRE network-first — nunca cachear HTML dinâmico
+  var accept = e.request.headers.get('accept') || '';
+  var isHtml = accept.includes('text/html') || url.pathname.endsWith('.html');
 
-  if (isDynamic) {
+  if (isHtml) {
     e.respondWith(
       fetch(e.request).catch(function() {
         return offlineFallback();
@@ -62,20 +56,31 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
-  // Assets estáticos: cache-first, atualiza em background
-  e.respondWith(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.match(e.request).then(function(cached) {
-        var fetchPromise = fetch(e.request).then(function(response) {
-          if (response && response.ok && response.type !== 'opaque') {
-            cache.put(e.request, response.clone());
-          }
-          return response;
+  // Assets estáticos (imagens, fontes, CSS, JS): cache-first com update em background
+  var isStatic = url.pathname.includes('/static/') ||
+                 url.hostname.includes('fonts.') ||
+                 url.hostname.includes('cdnjs.') ||
+                 url.hostname.includes('jsdelivr.');
+
+  if (isStatic) {
+    e.respondWith(
+      caches.open(CACHE_NAME).then(function(cache) {
+        return cache.match(e.request).then(function(cached) {
+          var fetchPromise = fetch(e.request).then(function(response) {
+            if (response && response.ok && response.type !== 'opaque') {
+              cache.put(e.request, response.clone());
+            }
+            return response;
+          });
+          return cached || fetchPromise;
         });
-        return cached || fetchPromise;
-      });
-    })
-  );
+      })
+    );
+    return;
+  }
+
+  // Qualquer outra coisa: network direto
+  e.respondWith(fetch(e.request));
 });
 
 function offlineFallback() {
