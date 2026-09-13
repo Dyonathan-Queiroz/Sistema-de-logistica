@@ -168,7 +168,7 @@
 
     <!-- Brand -->
     <div class="brand-block">
-      <img src="/static/logo.png" alt="Supermercado Gavião" class="brand-logo">
+      <img src="{{ base_path }}/static/logo.png" alt="Supermercado Gavião" class="brand-logo">
       <span class="brand-hint">Entre com suas credenciais</span>
     </div>
 
@@ -181,7 +181,7 @@
     {% endif %}
 
     <!-- Form -->
-    <form method="POST" action="/login">
+    <form method="POST" action="{{ base_path }}/login">
       <div class="form-group">
         <label class="form-label" for="username">Usuário</label>
         <div class="input-wrap">

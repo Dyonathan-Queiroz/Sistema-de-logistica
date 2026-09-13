@@ -521,47 +521,47 @@
 <!-- ══ SIDEBAR ══════════════════════════════════════════════════ -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-        <img src="/static/logo.png" alt="Supermercado Gavião">
+        <img src="{{ base_path }}/static/logo.png" alt="Supermercado Gavião">
     </div>
 
     <nav>
         <div class="nav-section-label">Principal</div>
-        <a href="/gestor" class="nav-link {% block nav_dashboard %}{% endblock %}">
+        <a href="{{ base_path }}/gestor" class="nav-link {% block nav_dashboard %}{% endblock %}">
             <i class="fas fa-tachometer-alt"></i> Dashboard
         </a>
-        <a href="/gestor/log" class="nav-link {% block nav_log %}{% endblock %}">
+        <a href="{{ base_path }}/gestor/log" class="nav-link {% block nav_log %}{% endblock %}">
             <i class="fas fa-history"></i> Log de Entregas
         </a>
-        <a href="/gestor/ao-vivo" class="nav-link {% block nav_ao_vivo %}{% endblock %}">
+        <a href="{{ base_path }}/gestor/ao-vivo" class="nav-link {% block nav_ao_vivo %}{% endblock %}">
             <i class="fas fa-satellite-dish"></i> Ao Vivo
             <span class="nav-live-dot"></span>
         </a>
-        <a href="/gestor/entrega/nova" class="nav-link {% block nav_nova_entrega %}{% endblock %}">
+        <a href="{{ base_path }}/gestor/entrega/nova" class="nav-link {% block nav_nova_entrega %}{% endblock %}">
             <i class="fas fa-plus-circle"></i> Nova Entrega
         </a>
 
         <div class="nav-section-label">Gestão</div>
-        <a href="/gestor/desempenho" class="nav-link {% block nav_desempenho %}{% endblock %}">
+        <a href="{{ base_path }}/gestor/desempenho" class="nav-link {% block nav_desempenho %}{% endblock %}">
             <i class="fas fa-chart-line"></i> Desempenho
         </a>
-        <a href="/gestao-funcionario" class="nav-link {% block nav_funcionarios %}{% endblock %}">
+        <a href="{{ base_path }}/gestao-funcionario" class="nav-link {% block nav_funcionarios %}{% endblock %}">
             <i class="fas fa-users"></i> Funcionários
         </a>
-        <a href="/gestao-veiculo" class="nav-link {% block nav_veiculos %}{% endblock %}">
+        <a href="{{ base_path }}/gestao-veiculo" class="nav-link {% block nav_veiculos %}{% endblock %}">
             <i class="fas fa-truck"></i> Veículos
         </a>
-        <a href="/gestao-filial" class="nav-link {% block nav_filiais %}{% endblock %}">
+        <a href="{{ base_path }}/gestao-filial" class="nav-link {% block nav_filiais %}{% endblock %}">
             <i class="fas fa-store"></i> Filiais
         </a>
-        <a href="/gestao-clientes" class="nav-link {% block nav_clientes %}{% endblock %}">
+        <a href="{{ base_path }}/gestao-clientes" class="nav-link {% block nav_clientes %}{% endblock %}">
             <i class="fas fa-address-book"></i> Clientes
         </a>
-        <a href="/frota/dashboard" class="nav-link {% block nav_frota_dash %}{% endblock %}">
+        <a href="{{ base_path }}/frota/dashboard" class="nav-link {% block nav_frota_dash %}{% endblock %}">
             <i class="fas fa-truck-moving"></i> Painel de Frotas
         </a>
 
         <div class="nav-section-label">Sistema</div>
-        <a href="/logout" class="nav-link danger-link">
+        <a href="{{ base_path }}/logout" class="nav-link danger-link">
             <i class="fas fa-sign-out-alt"></i> Sair
         </a>
     </nav>

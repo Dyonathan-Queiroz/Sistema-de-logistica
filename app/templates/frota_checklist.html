@@ -115,7 +115,7 @@
 <header class="fixed top-0 left-0 right-0 z-30 bg-white border-b border-slate-200"
         style="height:56px;">
   <div class="flex items-center gap-3 px-4 h-full max-w-lg mx-auto">
-    <a href="/frota/turno"
+    <a href="{{ base_path }}/frota/turno"
        class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center flex-shrink-0 transition-colors">
       <i data-lucide="arrow-left" class="w-5 h-5 text-slate-600"></i>
     </a>
@@ -790,17 +790,17 @@ function checklistData() {
         })),
       };
       try {
-        const res  = await fetch('/frota/checklist', {
+        const res  = await fetch('{{ base_path }}/frota/checklist', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify(payload),
         });
         const data = await res.json();
         if (res.ok) {
-          window.location.href = '/frota/turno';
+          window.location.href='{{ base_path }}/frota/turno';
         } else if (res.status === 400 && (data.detail || '').includes('críticos')) {
           // Checklist reprovado foi salvo — redireciona para o turno
-          window.location.href = '/frota/turno';
+          window.location.href='{{ base_path }}/frota/turno';
         } else {
           alert('Erro ao registrar: ' + (data.detail || 'Tente novamente'));
           this.enviando = false;
@@ -865,7 +865,7 @@ function _enviarChecklist() {
 
 function _doFetch(btn, savedHTML, odometro, itens) {
   if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<span>Enviando…</span>'; }
-  fetch('/frota/checklist', {
+  fetch('{{ base_path }}/frota/checklist', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -884,7 +884,7 @@ function _doFetch(btn, savedHTML, odometro, itens) {
   })
   .then(function(r) {
     if (r.ok || (r.status === 400 && (r.data.detail || '').includes('críticos'))) {
-      window.location.href = '/frota/turno';
+      window.location.href='{{ base_path }}/frota/turno';
     } else {
       alert('Erro ao registrar: ' + (r.data.detail || 'Tente novamente'));
       if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = savedHTML; }

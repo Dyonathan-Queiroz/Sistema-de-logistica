@@ -10,7 +10,7 @@
 <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#modalNovoCliente">
     <i class="fas fa-user-plus mr-1"></i> Novo Cliente
 </button>
-<a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
+<a href="{{ base_path }}/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
 {% block extra_styles %}
@@ -94,7 +94,7 @@
             <i class="fas fa-list mr-1"></i> Lista de Clientes
             <span class="badge badge-secondary ml-1">{{ clientes | length }}</span>
         </h6>
-        <form method="GET" action="/gestao-clientes" style="width:100%;max-width:300px;">
+        <form method="GET" action="{{ base_path }}/gestao-clientes" style="width:100%;max-width:300px;">
             <div class="input-group input-group-sm">
                 <input type="text" name="q" value="{{ q }}" class="form-control"
                        placeholder="Buscar por nome, CPF ou telefone...">
@@ -103,7 +103,7 @@
                         <i class="fas fa-search"></i>
                     </button>
                     {% if q %}
-                    <a href="/gestao-clientes" class="btn btn-outline-secondary">
+                    <a href="{{ base_path }}/gestao-clientes" class="btn btn-outline-secondary">
                         <i class="fas fa-times"></i>
                     </a>
                     {% endif %}
@@ -139,7 +139,7 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            <a href="/gestao-clientes/{{ c.id }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ base_path }}/gestao-clientes/{{ c.id }}" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-edit mr-1"></i> Detalhes
                             </a>
                         </td>
@@ -149,7 +149,7 @@
                         <td colspan="6" class="text-center text-muted py-4">
                             {% if q %}
                             Nenhum cliente encontrado para "<strong>{{ q }}</strong>".
-                            <a href="/gestao-clientes">Limpar busca</a>
+                            <a href="{{ base_path }}/gestao-clientes">Limpar busca</a>
                             {% else %}
                             Nenhum cliente cadastrado ainda.
                             {% endif %}
@@ -166,7 +166,7 @@
 <div class="modal fade" id="modalNovoCliente" tabindex="-1" role="dialog" aria-labelledby="modalNovoClienteLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-            <form action="/gestao-clientes/novo" method="POST">
+            <form action="{{ base_path }}/gestao-clientes/novo" method="POST">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="modalNovoClienteLabel">
                         <i class="fas fa-user-plus mr-2"></i> Novo Cliente

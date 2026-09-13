@@ -1,0 +1,57 @@
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: sistema_logistico_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      TZ: America/Manaus
+    volumes:
+      - mysql_logistico_data:/var/lib/mysql
+    networks:
+      - logistico-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: sistema_logistico_app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: America/Manaus
+      # Prefixo de URL quando fica atrás do Caddy do Controle Gavião, no mesmo domínio
+      # (ver Caddyfile do Gavião, bloco "handle_path /logistica/*"). Sem isso os links,
+      # redirects e cookies do sistema voltam a ser absolutos a partir da raiz — é o que
+      # acontece se rodar sozinho (Railway, ou direto na porta 8090 sem o Caddy na frente).
+      BASE_PATH: /logistica
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8090:8000"
+    networks:
+      - logistico-net
+
+  # Descomente quando configurar o Cloudflare Tunnel
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: sistema_logistico_tunnel
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+  #   depends_on: [app]
+  #   networks:
+  #     - logistico-net
+
+volumes:
+  mysql_logistico_data:
+
+networks:
+  logistico-net:

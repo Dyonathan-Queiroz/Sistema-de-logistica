@@ -121,7 +121,7 @@
   >
     <!-- Logo -->
     <div class="flex items-center justify-center px-4 py-3 relative" style="border-bottom:1px solid rgba(255,255,255,0.065);">
-      <img src="/static/logo.png" alt="Supermercado Gavião" style="width:200px;height:auto;object-fit:contain;">
+      <img src="{{ base_path }}/static/logo.png" alt="Supermercado Gavião" style="width:200px;height:auto;object-fit:contain;">
       <button type="button" onclick="closeSidebar()" class="absolute right-3 top-1/2 -translate-y-1/2 lg:hidden p-2 transition-colors flex-shrink-0"
               style="color:rgba(255,255,255,0.4);">
         <i data-lucide="x" class="w-5 h-5"></i>
@@ -132,7 +132,7 @@
     <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
 
       <!-- Voltar ao Dashboard -->
-      <a href="/gestor"
+      <a href="{{ base_path }}/gestor"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 mt-1 mb-2"
          style="color:rgba(255,255,255,0.45);"
          onmouseover="this.style.background='rgba(255,255,255,0.055)';this.style.color='#fff';"
@@ -144,12 +144,12 @@
       {% if usuario is not defined or usuario.perfil in ('gestor', 'operador') %}
       <p class="text-[10px] font-semibold uppercase tracking-widest px-3 pt-2 pb-1.5" style="color:rgba(255,255,255,0.3);">Gestão de Frota</p>
 
-      <a href="/frota/dashboard"
+      <a href="{{ base_path }}/frota/dashboard"
          class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_dash %}inactive{% endblock %}">
         <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i> Painel Geral
       </a>
 
-      <a href="/frota/alertas"
+      <a href="{{ base_path }}/frota/alertas"
          class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_alertas %}inactive{% endblock %}">
         <i data-lucide="bell-ring" class="w-4 h-4 flex-shrink-0"></i> Alertas
         {% if alertas_count is defined and alertas_count > 0 %}
@@ -158,22 +158,22 @@
         {% endif %}
       </a>
 
-      <a href="/frota/manutencao"
+      <a href="{{ base_path }}/frota/manutencao"
          class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_manutencao %}inactive{% endblock %}">
         <i data-lucide="wrench" class="w-4 h-4 flex-shrink-0"></i> Manutenção
       </a>
 
-      <a href="/frota/ranking"
+      <a href="{{ base_path }}/frota/ranking"
          class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_score %}inactive{% endblock %}">
         <i data-lucide="trophy" class="w-4 h-4 flex-shrink-0"></i> Ranking
       </a>
 
-      <a href="/frota/historico-geral"
+      <a href="{{ base_path }}/frota/historico-geral"
          class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_hist_geral %}inactive{% endblock %}">
         <i data-lucide="scroll-text" class="w-4 h-4 flex-shrink-0"></i> Histórico Geral
       </a>
 
-      <a href="/frota/configuracoes"
+      <a href="{{ base_path }}/frota/configuracoes"
          class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_config %}inactive{% endblock %}">
         <i data-lucide="settings-2" class="w-4 h-4 flex-shrink-0"></i> Oficinas e Peças
       </a>
@@ -181,7 +181,7 @@
 
       {% if usuario is defined and usuario.perfil == 'entregador' %}
       <p class="text-[10px] font-semibold uppercase tracking-widest px-3 pt-3 pb-1.5" style="color:rgba(255,255,255,0.3);">Meu Turno</p>
-      <a href="/frota/turno"
+      <a href="{{ base_path }}/frota/turno"
          class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium {% block nav_turno %}inactive{% endblock %}">
         <i data-lucide="play-circle" class="w-4 h-4 flex-shrink-0"></i> Iniciar/Ver Turno
       </a>
@@ -189,7 +189,7 @@
 
       <!-- Logout -->
       <div class="pt-3 mt-2" style="border-top:1px solid rgba(255,255,255,0.065);">
-        <a href="/logout"
+        <a href="{{ base_path }}/logout"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
            style="color:rgba(245,158,11,.6);"
            onmouseover="this.style.background='rgba(245,158,11,0.12)';this.style.color='#f59e0b';"

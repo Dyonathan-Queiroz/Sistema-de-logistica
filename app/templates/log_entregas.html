@@ -234,7 +234,7 @@
 {# ── FILTROS ── #}
 <div class="filter-card">
   <div class="filter-title"><i class="fas fa-filter"></i> Filtros</div>
-  <form method="get" action="/gestor/log">
+  <form method="get" action="{{ base_path }}/gestor/log">
     <div class="filter-grid">
       <div class="filter-group">
         <label>Data início</label>
@@ -271,7 +271,7 @@
         <button type="submit" class="btn btn-primary btn-sm" style="height:36px;padding:0 16px;">
           <i class="fas fa-search"></i> Filtrar
         </button>
-        <a href="/gestor/log" class="btn btn-outline-secondary btn-sm" style="height:36px;padding:0 14px;display:flex;align-items:center;">
+        <a href="{{ base_path }}/gestor/log" class="btn btn-outline-secondary btn-sm" style="height:36px;padding:0 14px;display:flex;align-items:center;">
           <i class="fas fa-times"></i>
         </a>
       </div>
@@ -353,7 +353,7 @@
           </td>
           <td class="td-btn" data-label="">
             {% if item.entrega.id in ids_com_rota %}
-            <a href="/gestor/entrega/{{ item.entrega.id }}/rota"
+            <a href="{{ base_path }}/gestor/entrega/{{ item.entrega.id }}/rota"
                class="btn btn-sm btn-outline-info"
                style="font-size:12px;margin-right:4px;"
                title="Ver rota no mapa">
@@ -568,7 +568,7 @@ $('#modalEditar').on('show.bs.modal', function(e) {
 
     // Subtítulo e ação do form
     $('#modal-sub').text('Cupom #' + cupom + ' · ' + cliente);
-    $('#form-editar').attr('action', '/gestor/log/editar/' + id);
+    $('#form-editar').attr('action', '{{ base_path }}/gestor/log/editar/' + id);
 
     // Chips de info
     var statusLabel = {

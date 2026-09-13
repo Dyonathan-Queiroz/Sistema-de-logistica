@@ -88,7 +88,7 @@
     <div class="bk-title">
       <i class="fas fa-database"></i> Backup do Banco de Dados
     </div>
-    <form method="POST" action="/gestor/backup/gerar" style="display:inline">
+    <form method="POST" action="{{ base_path }}/gestor/backup/gerar" style="display:inline">
       <button type="submit" class="btn-download">
         <i class="fas fa-download"></i> Gerar Backup Agora
       </button>
@@ -131,7 +131,7 @@
       <p>Gera um arquivo <strong>.sql</strong> completo com todas as tabelas e dados.<br>
          Compatível com MySQL/MariaDB. Utilize para restaurar em qualquer servidor.</p>
     </div>
-    <form method="POST" action="/gestor/backup/gerar" style="display:inline">
+    <form method="POST" action="{{ base_path }}/gestor/backup/gerar" style="display:inline">
       <button type="submit" class="btn-download">
         <i class="fas fa-download"></i> Baixar .sql agora
       </button>
@@ -218,11 +218,11 @@ BACKUP_EMAIL_TO=destino@email.com</code>
           <td>
             <div style="display:flex;gap:6px;align-items:center">
               {% if log.dados_gz %}
-                <a href="/gestor/backup/{{ log.id }}/baixar" class="btn-sm-dl">
+                <a href="{{ base_path }}/gestor/backup/{{ log.id }}/baixar" class="btn-sm-dl">
                   <i class="fas fa-download"></i> Baixar
                 </a>
               {% endif %}
-              <form method="post" action="/gestor/backup/{{ log.id }}/excluir"
+              <form method="post" action="{{ base_path }}/gestor/backup/{{ log.id }}/excluir"
                     onsubmit="return confirm('Excluir este registro de backup?')">
                 <button type="submit" class="btn-sm-del">
                   <i class="fas fa-trash"></i>

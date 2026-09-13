@@ -247,7 +247,7 @@
         &mdash; acima de 10.000 km desde a última troca.
       </div>
     </div>
-    <a href="/frota/alertas" style="font-size:12px;font-weight:600;color:var(--danger);text-decoration:none;flex-shrink:0;">Ver todos →</a>
+    <a href="{{ base_path }}/frota/alertas" style="font-size:12px;font-weight:600;color:var(--danger);text-decoration:none;flex-shrink:0;">Ver todos →</a>
   </div>
   {% endif %}
 
@@ -315,7 +315,7 @@
           <i data-lucide="car" style="width:16px;height:16px;color:var(--blue);"></i>
           Status por Veículo
         </span>
-        <a href="/gestao-veiculo" class="f-card-link">Ver todos →</a>
+        <a href="{{ base_path }}/gestao-veiculo" class="f-card-link">Ver todos →</a>
       </div>
       <div style="overflow-x:auto;">
         <table class="v-table">
@@ -331,7 +331,7 @@
             {% for v in veiculos %}
             <tr>
               <td>
-                <a href="/frota/historico/{{ v.id }}">{{ v.placa }}</a>
+                <a href="{{ base_path }}/frota/historico/{{ v.id }}">{{ v.placa }}</a>
                 <div style="font-size:11px;color:var(--text3);margin-top:2px;">{{ v.modelo }}</div>
               </td>
               <td style="color:var(--text2);font-size:12px;">
@@ -380,7 +380,7 @@
           <i data-lucide="trophy" style="width:16px;height:16px;color:var(--amber);"></i>
           Ranking Motoristas
         </span>
-        <a href="/frota/ranking" class="f-card-link">Ver completo →</a>
+        <a href="{{ base_path }}/frota/ranking" class="f-card-link">Ver completo →</a>
       </div>
       {% for s in scores[:8] %}
       <div class="rank-row">
@@ -485,7 +485,7 @@
         <div style="font-size:10px;color:var(--text3);">km s/ troca</div>
       </div>
       {% endif %}
-      <a href="/frota/manutencao?veiculo_id={{ a.veiculo_id }}" class="btn-reg" style="display:none;" id="btn-reg-{{ loop.index }}">
+      <a href="{{ base_path }}/frota/manutencao?veiculo_id={{ a.veiculo_id }}" class="btn-reg" style="display:none;" id="btn-reg-{{ loop.index }}">
         Registrar
       </a>
     </div>

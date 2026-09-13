@@ -19,7 +19,7 @@
 {% block topbar_actions %}
 {# Seletor de veículo #}
 <select
-  onchange="window.location.href='/frota/manutencao' + (this.value ? '?veiculo_id=' + this.value : '')"
+  onchange="window.location.href='{{ base_path }}/frota/manutencao' + (this.value ? '?veiculo_id=' + this.value : '')"
   class="text-xs font-semibold bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 cursor-pointer">
   <option value="">Todos os veículos</option>
   {% for v in veiculos %}
@@ -427,7 +427,7 @@
 
           {# Link para histórico completo do veículo #}
           <div class="mt-3 pt-3 border-t border-slate-200 flex justify-end">
-            <a href="/frota/historico/{{ m.veiculo_id }}"
+            <a href="{{ base_path }}/frota/historico/{{ m.veiculo_id }}"
                class="text-xs font-semibold flex items-center gap-1.5 transition-colors"
                style="color: var(--amber-dk);"
                onmouseover="this.style.color='var(--amber)';"
@@ -483,7 +483,7 @@ async function aprovarMnt(id) {
   var mao     = parseFloat((document.getElementById('mao_'   + id) || {}).value) || null;
   var obs     = (document.getElementById('obs_'    + id) || {}).value || null;
 
-  var res = await fetch('/frota/manutencao/' + id + '/aprovar', {
+  var res = await fetch('{{ base_path }}/frota/manutencao/' + id + '/aprovar', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -509,7 +509,7 @@ async function aprovarMnt(id) {
 async function adicionarAoCatalogo(nome, btn, avisoKey) {
   btn.disabled = true;
   btn.textContent = '...';
-  var res = await fetch('/frota/pecas', {
+  var res = await fetch('{{ base_path }}/frota/pecas', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nome: nome, categoria: 'outros', unidade: 'un' }),
@@ -530,7 +530,7 @@ async function adicionarAoCatalogo(nome, btn, avisoKey) {
 
 async function rejeitarMnt(id) {
   var obs = prompt('Motivo da rejeição (opcional):') || null;
-  var res = await fetch('/frota/manutencao/' + id + '/rejeitar?observacao=' + encodeURIComponent(obs || ''), {
+  var res = await fetch('{{ base_path }}/frota/manutencao/' + id + '/rejeitar?observacao=' + encodeURIComponent(obs || ''), {
     method: 'POST',
   });
   if (res.ok) {

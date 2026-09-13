@@ -7,7 +7,7 @@
 {% block nav_filiais %}active{% endblock %}
 
 {% block topbar_right %}
-<a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
+<a href="{{ base_path }}/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
 {% block extra_styles %}
@@ -127,7 +127,7 @@
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-plus mr-2"></i>Nova Filial</h6>
             </div>
             <div class="card-body">
-                <form method="POST" action="/salvar-filial">
+                <form method="POST" action="{{ base_path }}/salvar-filial">
                     <div class="form-group">
                         <label for="nome">Nome da Filial</label>
                         <input type="text" class="form-control" id="nome" name="nome" required placeholder="Ex: Filial Centro">
@@ -165,7 +165,7 @@
                             <button class="btn-edit-filial" onclick="toggleEdit({{ f.id }})">
                                 <i class="fas fa-edit mr-1"></i> Editar
                             </button>
-                            <form action="/processar-filial/{{ f.id }}" method="POST" class="d-inline"
+                            <form action="{{ base_path }}/processar-filial/{{ f.id }}" method="POST" class="d-inline"
                                   onsubmit="return confirm('Excluir a filial {{ f.nome }}? Isso falhará se houver usuários ou entregas vinculados.')">
                                 <input type="hidden" name="acao" value="excluir">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -177,7 +177,7 @@
 
                     <!-- Form de edição (oculto por padrão) -->
                     <div id="edit-{{ f.id }}" style="display:none;" class="edit-panel">
-                        <form action="/processar-filial/{{ f.id }}" method="POST">
+                        <form action="{{ base_path }}/processar-filial/{{ f.id }}" method="POST">
                             <input type="hidden" name="acao" value="editar">
                             <div class="form-row align-items-end">
                                 <div class="form-group col-12 col-sm-5 mb-2">
@@ -214,7 +214,7 @@
                         {% else %}
                         <p class="text-muted small mt-1 mb-0">
                             Nenhum usuário operador vinculado.
-                            <a href="/gestao-funcionario">Criar agora</a>
+                            <a href="{{ base_path }}/gestao-funcionario">Criar agora</a>
                         </p>
                         {% endif %}
                     </div>

@@ -7,7 +7,7 @@
 {% block nav_veiculos %}active{% endblock %}
 
 {% block topbar_right %}
-<a href="/gestao-veiculo" class="btn btn-sm btn-outline-secondary">
+<a href="{{ base_path }}/gestao-veiculo" class="btn btn-sm btn-outline-secondary">
     <i class="fas fa-arrow-left mr-1"></i> Voltar
 </a>
 {% endblock %}
@@ -73,7 +73,7 @@
                     <i class="fas fa-link mr-2 text-primary"></i>Vincular Motorista
                 </h6>
             </div>
-            <form method="POST" action="/processar-vinculo/{{ veiculo.id }}">
+            <form method="POST" action="{{ base_path }}/processar-vinculo/{{ veiculo.id }}">
                 <div class="card-body">
 
                     <div class="form-group">
@@ -93,7 +93,7 @@
                     <button type="submit" class="btn-confirm">
                         <i class="fas fa-check mr-1"></i> Confirmar Alteração
                     </button>
-                    <a href="/gestao-veiculo" class="btn btn-outline-secondary">
+                    <a href="{{ base_path }}/gestao-veiculo" class="btn btn-outline-secondary">
                         <i class="fas fa-times mr-1"></i> Cancelar
                     </a>
                 </div>

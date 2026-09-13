@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Entregas — {{ entregador_nome if entregador_nome else 'Entregador' }}</title>
   <!-- PWA -->
-  <link rel="manifest" href="/static/manifest.json">
+  <link rel="manifest" href="{{ base_path }}/static/manifest.json">
   <meta name="theme-color" content="#f59e0b">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Gavião">
-  <link rel="apple-touch-icon" href="/static/icons/icon.svg">
+  <link rel="apple-touch-icon" href="{{ base_path }}/static/icons/icon.svg">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1517,7 +1517,7 @@
           <i class="fas fa-arrow-left"></i> Voltar
         </button>
         {% if veiculo_motorista %}
-        <a href="/frota/checklist?tipo=fim&veiculo_id={{ veiculo_motorista.id }}"
+        <a href="{{ base_path }}/frota/checklist?tipo=fim&veiculo_id={{ veiculo_motorista.id }}"
            class="enc-btn enc-confirm" onclick="confirmarEncerrar()">
           <i class="fas fa-flag-checkered"></i> Encerrar
         </a>
@@ -1559,7 +1559,7 @@
     <span class="gps-sat checking" id="gpsSatIcon" onclick="gpsOverlayOpen()" title="GPS">
       <i class="fas fa-satellite-dish"></i>
     </span>
-    <a href="/logout" class="btn-sair" title="Sair">
+    <a href="{{ base_path }}/logout" class="btn-sair" title="Sair">
       <i class="fas fa-sign-out-alt"></i>
     </a>
   </header>
@@ -1608,7 +1608,7 @@
         <div class="tbanner-title">Turno não iniciado</div>
         <div class="tbanner-sub">{{ veiculo_motorista.placa }} · {{ veiculo_motorista.tipo }} — faça o checklist para começar</div>
       </div>
-      <a href="/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}"
+      <a href="{{ base_path }}/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}"
          class="tbanner-btn azul">
         <i class="fas fa-play"></i> Iniciar
       </a>
@@ -1638,7 +1638,7 @@
           <div class="plb-sub">Faça o checklist de início para poder aceitar entregas.</div>
         </div>
         {% if veiculo_motorista %}
-        <a href="/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}" class="plb-btn">
+        <a href="{{ base_path }}/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}" class="plb-btn">
           <i class="fas fa-play"></i> Iniciar
         </a>
         {% endif %}
@@ -1693,7 +1693,7 @@
                 {% endif %}
                 <div class="dcard-action">
                   {% if turno_ativo %}
-                  <form class="form-aceitar" action="/entregador/aceitar/{{ e.id }}" method="POST">
+                  <form class="form-aceitar" action="{{ base_path }}/entregador/aceitar/{{ e.id }}" method="POST">
                     <input type="hidden" name="lat">
                     <input type="hidden" name="lng">
                     <button type="submit" class="btn-accept">
@@ -1766,14 +1766,14 @@
         </div>
         <div class="rcard-actions">
           <div class="rcard-row">
-            <a href="/entregador/entrega/{{ e.id }}" class="btn-ico">
+            <a href="{{ base_path }}/entregador/entrega/{{ e.id }}" class="btn-ico">
               <i class="fas fa-map-marked-alt" style="color:var(--green);"></i> Maps
             </a>
-            <a href="/entregador/entrega/{{ e.id }}" class="btn-ico">
+            <a href="{{ base_path }}/entregador/entrega/{{ e.id }}" class="btn-ico">
               <i class="fab fa-whatsapp" style="color:var(--whatsapp);"></i> WhatsApp
             </a>
           </div>
-          <form action="/entregador/finalizar/{{ e.id }}" method="POST">
+          <form action="{{ base_path }}/entregador/finalizar/{{ e.id }}" method="POST">
             <button type="submit" class="btn-finish">
               <i class="fas fa-check-double"></i> Finalizar Entrega
             </button>
@@ -2090,7 +2090,7 @@
         </div>
 
         <div class="turno-actions">
-          <a href="/frota/turno" class="turno-btn btn-verde">
+          <a href="{{ base_path }}/frota/turno" class="turno-btn btn-verde">
             <i class="fas fa-eye"></i> Ver Turno
           </a>
           <button class="turno-btn btn-red" onclick="abrirEncerrar()">
@@ -2107,7 +2107,7 @@
           Faça o checklist de início no veículo <strong style="color:var(--text);">{{ veiculo_motorista.placa }}</strong>
           para liberar as entregas e iniciar seu turno.
         </div>
-        <a href="/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}"
+        <a href="{{ base_path }}/frota/checklist?tipo=inicio&veiculo_id={{ veiculo_motorista.id }}"
            class="btn-iniciar-turno">
           <i class="fas fa-play"></i> Iniciar Checklist
         </a>
@@ -2281,7 +2281,7 @@
     _mntCarregado = true;
 
     // Oficinas
-    fetch('/frota/oficinas/lista').then(function(r){ return r.json(); }).then(function(data) {
+    fetch('{{ base_path }}/frota/oficinas/lista').then(function(r){ return r.json(); }).then(function(data) {
       _mntOficinas = data;
       var sel = document.getElementById('mntOficina');
       if (!sel) return;
@@ -2295,7 +2295,7 @@
     });
 
     // Peças — popula o select nativo
-    fetch('/frota/pecas/lista').then(function(r){ return r.json(); }).then(function(data) {
+    fetch('{{ base_path }}/frota/pecas/lista').then(function(r){ return r.json(); }).then(function(data) {
       _mntPecas = data;
       var sel = document.getElementById('mntPecaSelect');
       if (!sel) return;
@@ -2374,7 +2374,7 @@
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-      var res = await fetch('/frota/manutencao/solicitar', {
+      var res = await fetch('{{ base_path }}/frota/manutencao/solicitar', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2454,7 +2454,7 @@
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
 
     try {
-      var res = await fetch('/frota/abastecimento', {
+      var res = await fetch('{{ base_path }}/frota/abastecimento', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
@@ -2683,7 +2683,7 @@
     try { localStorage.setItem('gps_e_' + eid, JSON.stringify(s)); } catch(e) {}
   }
   function _enviarGps(eid, lat, lng, tipo) {
-    fetch('/entregador/rastrear/' + eid, {
+    fetch('{{ base_path }}/entregador/rastrear/' + eid, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat: lat, lng: lng, tipo: tipo })
@@ -2720,7 +2720,7 @@
       try {
         new Notification('Sistema Gavião ⚠️', {
           body: 'Parado há ' + mins + ' minutos. Você está bem?',
-          icon: '/static/icons/icon.svg',
+          icon: '{{ base_path }}/static/icons/icon.svg',
           requireInteraction: true
         });
       } catch(e) {}
@@ -2733,7 +2733,7 @@
   function bemPrecisoAjuda() {
     var eid = document.getElementById('bemEntregaId').value;
     if (eid) {
-      fetch('/entregador/alerta/' + eid, { method: 'POST' }).catch(function(){});
+      fetch('{{ base_path }}/entregador/alerta/' + eid, { method: 'POST' }).catch(function(){});
     }
     document.getElementById('bemOverlay').classList.add('hidden');
   }
@@ -2863,7 +2863,7 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/static/sw.js')
+      navigator.serviceWorker.register('{{ base_path }}/static/sw.js')
         .catch(function() {});
     });
   }

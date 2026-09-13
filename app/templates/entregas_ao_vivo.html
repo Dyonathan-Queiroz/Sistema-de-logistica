@@ -193,7 +193,7 @@
               <i class="fas fa-road"></i> ~{{ item.distancia_km }} km
             </span>
             {% endif %}
-            <a href="/gestor/entrega/{{ item.entrega.id }}/rota" class="btn-ver-mapa">
+            <a href="{{ base_path }}/gestor/entrega/{{ item.entrega.id }}/rota" class="btn-ver-mapa">
               <i class="fas fa-map"></i> Ver Mapa
             </a>
           </div>
@@ -254,7 +254,7 @@ function renderCards(data) {
     html += '<span class="time-chip"><i class="fas fa-clock"></i> '+(e.minutos_em_rota !== null ? e.minutos_em_rota+'min em rota · saiu '+e.aceito_em : '—')+'</span>';
     if (e.distancia_km !== null && e.distancia_km !== undefined)
       html += '<span class="time-chip" style="color:var(--amber)"><i class="fas fa-road"></i> ~'+e.distancia_km+' km</span>';
-    html += '<a href="/gestor/entrega/'+e.id+'/rota" class="btn-ver-mapa"><i class="fas fa-map"></i> Ver Mapa</a>';
+    html += '<a href="{{ base_path }}/gestor/entrega/'+e.id+'/rota" class="btn-ver-mapa"><i class="fas fa-map"></i> Ver Mapa</a>';
     html += '</div></div>';
   });
   grid.innerHTML = html;
@@ -272,7 +272,7 @@ function renderCards(data) {
 function recarregar() {
   var btn = document.getElementById('btnRefresh');
   btn.classList.add('spinning');
-  fetch('/gestor/ao-vivo/dados')
+  fetch('{{ base_path }}/gestor/ao-vivo/dados')
     .then(function(r){return r.json();})
     .then(function(data){
       renderCards(data);

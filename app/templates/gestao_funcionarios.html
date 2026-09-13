@@ -7,7 +7,7 @@
 {% block nav_funcionarios %}active{% endblock %}
 
 {% block topbar_right %}
-<a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
+<a href="{{ base_path }}/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
 {% block extra_styles %}
@@ -78,7 +78,7 @@
                     <button type="button" class="close py-2" data-dismiss="alert" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
                 </div>
                 {% endif %}
-                <form method="POST" action="/salvar-funcionario">
+                <form method="POST" action="{{ base_path }}/salvar-funcionario">
                     <div class="form-group">
                         <label for="username">Usuário</label>
                         <input type="text" class="form-control" id="username" name="username" required placeholder="Nome de usuário">
@@ -151,7 +151,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="/editar-funcionario/{{ f.id }}" class="btn btn-sm btn-outline-primary">
+                                    <a href="{{ base_path }}/editar-funcionario/{{ f.id }}" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-cog mr-1"></i> Gerenciar
                                     </a>
                                 </td>
