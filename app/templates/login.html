@@ -4,21 +4,33 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login — System Logística</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --amber:       #f59e0b;
-      --amber-dk:    #d97706;
-      --amber-light: #fffbeb;
+      --amber:      #f59e0b;
+      --amber-dk:   #d97706;
+      --amber-edge: #b45309;
+      --amber-glow: rgba(245,158,11,0.22);
+      --bg:         #070a14;
+      --card:       #0f1623;
+      --card-brd:   rgba(245,158,11,0.13);
+      --input-bg:   #141d2c;
+      --input-brd:  #1e2d42;
+      --text:       #e2e8f0;
+      --muted:      #4a5a74;
     }
 
     html, body {
-      min-height: 100%;
-      background: #0a0e1a;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      color: #f1f5f9;
+      height: 100%;
+      background: var(--bg);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
     }
 
     body {
@@ -28,67 +40,182 @@
       justify-content: center;
       min-height: 100vh;
       padding: 24px 16px;
+      overflow: hidden;
     }
 
-    /* ── Card ── */
-    .login-card {
+    /* ── Canvas de partículas (fundo) ─────────────────────── */
+    #bgCanvas {
+      position: fixed;
+      inset: 0;
       width: 100%;
-      max-width: 380px;
-      background: #111827;
-      border: 1px solid #1f2d45;
-      border-radius: 16px;
-      padding: 32px;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
     }
 
-    /* ── Brand block ── */
+    /* ── Cena + animação de entrada ───────────────────────── */
+    .scene {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 400px;
+      animation: sceneIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes sceneIn {
+      from { opacity: 0; transform: translateY(36px) scale(0.94); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Flutuação contínua (wrapper separado do tilt) ─────── */
+    .float-wrap {
+      animation: floatCard 5s ease-in-out 0.8s infinite;
+    }
+
+    @keyframes floatCard {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-9px); }
+    }
+
+    /* ── Halo de brilho atrás do card ─────────────────────── */
+    .card-halo {
+      position: absolute;
+      inset: -24px;
+      border-radius: 28px;
+      background: radial-gradient(ellipse at 50% 60%, rgba(245,158,11,0.10) 0%, transparent 68%);
+      z-index: 0;
+      animation: haloPulse 5s ease-in-out 0.8s infinite;
+      pointer-events: none;
+    }
+
+    @keyframes haloPulse {
+      0%, 100% { opacity: 0.6; }
+      50%       { opacity: 1; }
+    }
+
+    /* ── Card principal ───────────────────────────────────── */
+    .login-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--card-brd);
+      border-radius: 18px;
+      padding: 32px 28px 28px;
+      transform-style: preserve-3d;
+      will-change: transform;
+
+      /* Sombra em camadas — profundidade real */
+      box-shadow:
+        0 0 0 1px rgba(245,158,11,0.06),
+        0 4px 16px rgba(0,0,0,0.45),
+        0 24px 60px rgba(0,0,0,0.55),
+        0 1px 0 rgba(255,255,255,0.04) inset;
+    }
+
+    /* Linha decorativa amber no topo do card */
+    .login-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 16px; right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(245,158,11,0.5) 30%,
+        rgba(245,158,11,0.8) 50%,
+        rgba(245,158,11,0.5) 70%,
+        transparent 100%
+      );
+      border-radius: 1px;
+    }
+
+    /* Overlay de glow rastreando o cursor */
+    .card-glow {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(
+        circle at var(--mx, 50%) var(--my, 50%),
+        rgba(245,158,11,0.09) 0%,
+        transparent 58%
+      );
+      pointer-events: none;
+      z-index: 0;
+      transition: background 0.08s;
+    }
+
+    /* Conteúdo acima do overlay */
+    .card-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Arredondamento do glare do vanilla-tilt */
+    .vanilla-tilt-glare {
+      border-radius: inherit !important;
+    }
+
+    /* ── Brand block ──────────────────────────────────────── */
     .brand-block {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 10px;
-      margin-bottom: 28px;
+      margin-bottom: 26px;
       text-align: center;
+      animation: itemIn 0.5s ease-out 0.25s both;
     }
 
     .brand-logo {
-      width: 300px;
+      width: 260px;
       height: auto;
       object-fit: contain;
+      filter: drop-shadow(0 2px 12px rgba(245,158,11,0.18));
     }
 
     .brand-hint {
-      font-size: 13px;
-      color: #475569;
-      margin-top: 2px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.3px;
     }
 
-    /* ── Error alert ── */
+    /* ── Erro ─────────────────────────────────────────────── */
     .alert-error {
-      background: #2d1b1b;
-      border: 1px solid #f85149;
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #f85149;
-      font-size: 13.5px;
-      font-weight: 500;
-      margin-bottom: 20px;
       display: flex;
       align-items: center;
       gap: 8px;
+      background: rgba(220,38,38,0.1);
+      border: 1px solid rgba(220,38,38,0.35);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #f87171;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 18px;
+      animation: itemIn 0.35s ease-out both;
     }
 
-    /* ── Form ── */
+    /* ── Formulário ───────────────────────────────────────── */
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 15px;
+    }
+
+    .form-group:nth-child(1) { animation: itemIn 0.5s ease-out 0.35s both; }
+    .form-group:nth-child(2) { animation: itemIn 0.5s ease-out 0.45s both; }
+
+    @keyframes itemIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     .form-label {
       display: block;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
-      color: #64748b;
+      color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.7px;
+      letter-spacing: 0.8px;
       margin-bottom: 7px;
     }
 
@@ -98,126 +225,363 @@
 
     .input-wrap input {
       width: 100%;
-      background: #1f2937;
-      border: 1px solid #2d3748;
-      border-radius: 10px;
-      padding: 12px 42px 12px 14px;
-      font-size: 14px;
-      color: #f1f5f9;
+      background: var(--input-bg);
+      border: 1.5px solid var(--input-brd);
+      border-radius: 11px;
+      padding: 13px 44px 13px 15px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
       outline: none;
-      transition: border-color 0.18s, box-shadow 0.18s;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     }
 
     .input-wrap input::placeholder {
-      color: #4b5563;
+      color: #2e3d52;
     }
 
     .input-wrap input:focus {
+      background: #182130;
       border-color: var(--amber);
-      box-shadow: 0 0 0 3px rgba(245,158,11,0.2);
+      box-shadow:
+        0 0 0 3px rgba(245,158,11,0.18),
+        inset 0 1px 6px rgba(0,0,0,0.3);
     }
 
     .input-icon {
       position: absolute;
-      right: 14px;
+      right: 15px;
       top: 50%;
       transform: translateY(-50%);
-      color: #4b5563;
+      color: #2e3d52;
       font-size: 14px;
       pointer-events: none;
+      transition: color 0.2s;
     }
 
-    /* ── Submit button ── */
+    .input-wrap input:focus + .input-icon {
+      color: var(--amber);
+    }
+
+    /* ── Botão ENTRAR — efeito 3D físico ──────────────────── */
+    .btn-wrap {
+      margin-top: 10px;
+      animation: itemIn 0.5s ease-out 0.55s both;
+    }
+
     .btn-submit {
       width: 100%;
-      padding: 13px;
-      background: var(--amber);
+      padding: 14px;
+      background: linear-gradient(180deg, #f6a61a 0%, var(--amber) 45%, var(--amber-dk) 100%);
       color: #000;
       border: none;
-      border-radius: 10px;
-      font-size: 15px;
+      border-radius: 11px;
+      font-family: inherit;
+      font-size: 14px;
       font-weight: 800;
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
       cursor: pointer;
-      margin-top: 8px;
-      box-shadow: 0 4px 14px rgba(245,158,11,0.35);
-      transition: background 0.15s, opacity 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+
+      /* 3D — sombra sólida = "espessura" do botão */
+      box-shadow:
+        0 6px 0 var(--amber-edge),
+        0 9px 20px rgba(245,158,11,0.38);
+
+      transform: translateY(0);
+      transition: transform 0.1s, box-shadow 0.1s, filter 0.12s;
+      user-select: none;
     }
 
     .btn-submit:hover {
-      background: var(--amber-dk);
-      transform: translateY(-1px);
+      filter: brightness(1.06);
+      transform: translateY(-2px);
+      box-shadow:
+        0 8px 0 var(--amber-edge),
+        0 14px 28px rgba(245,158,11,0.48);
     }
 
     .btn-submit:active {
-      transform: translateY(0);
+      filter: brightness(0.97);
+      transform: translateY(5px);
+      box-shadow:
+        0 1px 0 var(--amber-edge),
+        0 4px 10px rgba(245,158,11,0.28);
     }
 
-    /* ── Footer ── */
+    .btn-submit .btn-icon {
+      font-size: 13px;
+      transition: transform 0.15s;
+    }
+
+    .btn-submit:hover .btn-icon {
+      transform: translateX(3px);
+    }
+
+    /* ── Footer ───────────────────────────────────────────── */
     .page-footer {
-      margin-top: 24px;
-      font-size: 12px;
-      color: #374151;
+      position: relative;
+      z-index: 1;
+      margin-top: 22px;
+      font-size: 11.5px;
+      color: #1e2a3a;
       text-align: center;
+      letter-spacing: 0.2px;
+      animation: sceneIn 0.6s ease-out 0.65s both;
+    }
+
+    /* ── Sem animações de flutuação em mobile ─────────────── */
+    @media (max-width: 480px) {
+      .float-wrap { animation: none; }
+      .card-halo  { display: none; }
+      .login-card { border-radius: 16px; padding: 28px 20px 24px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
   </style>
 </head>
 <body>
 
-  <div class="login-card">
+<!-- Fundo de partículas -->
+<canvas id="bgCanvas"></canvas>
 
-    <!-- Brand -->
-    <div class="brand-block">
-      <img src="{{ base_path }}/static/logo.png" alt="Supermercado Gavião" class="brand-logo">
-      <span class="brand-hint">Entre com suas credenciais</span>
-    </div>
+<div class="scene">
+  <div class="float-wrap">
 
-    <!-- Error alert -->
-    {% if error %}
-    <div class="alert-error">
-      <i class="fas fa-exclamation-circle"></i>
-      {{ error }}
-    </div>
-    {% endif %}
+    <!-- Halo atrás do card -->
+    <div class="card-halo"></div>
 
-    <!-- Form -->
-    <form method="POST" action="{{ base_path }}/login">
-      <div class="form-group">
-        <label class="form-label" for="username">Usuário</label>
-        <div class="input-wrap">
-          <input
-            type="text"
-            id="username"
-            name="username"
-            placeholder="Digite seu usuário"
-            required
-            autocomplete="username"
-          />
-          <i class="fas fa-user input-icon"></i>
+    <!-- Card com efeito 3D -->
+    <div class="login-card" id="tiltCard">
+      <div class="card-glow" id="cardGlow"></div>
+
+      <div class="card-content">
+
+        <!-- Brand -->
+        <div class="brand-block">
+          <img src="{{ base_path }}/static/logo.png" alt="Supermercado Gavião" class="brand-logo">
+          <span class="brand-hint">Entre com suas credenciais</span>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label class="form-label" for="password">Senha</label>
-        <div class="input-wrap">
-          <input
-            type="password"
-            id="password"
-            name="password"
-            placeholder="Digite sua senha"
-            required
-            autocomplete="current-password"
-          />
-          <i class="fas fa-lock input-icon"></i>
+        <!-- Erro -->
+        {% if error %}
+        <div class="alert-error">
+          <i class="fas fa-exclamation-circle"></i>
+          {{ error }}
         </div>
-      </div>
+        {% endif %}
 
-      <button type="submit" class="btn-submit">ENTRAR</button>
-    </form>
+        <!-- Form -->
+        <form method="POST" action="{{ base_path }}/login">
+          <div class="form-group">
+            <label class="form-label" for="username">Usuário</label>
+            <div class="input-wrap">
+              <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="Digite seu usuário"
+                required
+                autocomplete="username"
+              />
+              <i class="fas fa-user input-icon"></i>
+            </div>
+          </div>
 
-  </div>
+          <div class="form-group">
+            <label class="form-label" for="password">Senha</label>
+            <div class="input-wrap">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Digite sua senha"
+                required
+                autocomplete="current-password"
+              />
+              <i class="fas fa-lock input-icon"></i>
+            </div>
+          </div>
 
-  <p class="page-footer">Criado por Dyonathan Henrique — Auxiliar T.I Gavião</p>
+          <div class="btn-wrap">
+            <button type="submit" class="btn-submit">
+              ENTRAR
+              <i class="fas fa-arrow-right btn-icon"></i>
+            </button>
+          </div>
+        </form>
 
+      </div><!-- /.card-content -->
+    </div><!-- /.login-card -->
+  </div><!-- /.float-wrap -->
+</div><!-- /.scene -->
+
+<p class="page-footer">Criado por Dyonathan Henrique — Auxiliar T.I Gavião</p>
+
+<script>
+/* ── Fundo de partículas (rede de rotas logísticas) ──────── */
+(function () {
+  var canvas = document.getElementById('bgCanvas');
+  var ctx = canvas.getContext('2d');
+  var W, H, pts, raf;
+  var CONN = 135;
+
+  function resize() {
+    W = canvas.width  = innerWidth;
+    H = canvas.height = innerHeight;
+  }
+
+  function Pt() {
+    this.x  = Math.random() * W;
+    this.y  = Math.random() * H;
+    this.vx = (Math.random() - 0.5) * 0.22;
+    this.vy = (Math.random() - 0.5) * 0.22;
+    this.r  = Math.random() * 1.4 + 0.6;
+    this.a  = Math.random() * 0.28 + 0.08;
+    this.warm = Math.random() > 0.38;
+  }
+
+  Pt.prototype.tick = function () {
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0 || this.x > W) this.vx *= -1;
+    if (this.y < 0 || this.y > H) this.vy *= -1;
+  };
+
+  Pt.prototype.draw = function () {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = this.warm
+      ? 'rgba(245,158,11,' + this.a + ')'
+      : 'rgba(160,200,255,' + (this.a * 0.45) + ')';
+    ctx.fill();
+  };
+
+  function init() {
+    resize();
+    var n = innerWidth < 600 ? 28 : 52;
+    pts = [];
+    for (var i = 0; i < n; i++) pts.push(new Pt());
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+
+    /* conexões */
+    for (var i = 0; i < pts.length; i++) {
+      for (var j = i + 1; j < pts.length; j++) {
+        var dx = pts[i].x - pts[j].x;
+        var dy = pts[i].y - pts[j].y;
+        var d  = Math.sqrt(dx * dx + dy * dy);
+        if (d < CONN) {
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.strokeStyle = 'rgba(245,158,11,' + ((1 - d / CONN) * 0.065) + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    /* pontos */
+    for (var k = 0; k < pts.length; k++) {
+      pts[k].tick();
+      pts[k].draw();
+    }
+
+    raf = requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', function () {
+    cancelAnimationFrame(raf);
+    init();
+    frame();
+  });
+
+  init();
+  frame();
+})();
+
+/* ── Tilt 3D (puro JS, sem biblioteca externa) ───────────── */
+(function () {
+  var card = document.getElementById('tiltCard');
+  if (!card) return;
+
+  var MAX   = 9;
+  var SCALE = 1.018;
+  var FAST  = 'transform 0.08s linear';
+  var SLOW  = 'transform 450ms ease-out';
+
+  /* glare overlay */
+  var gWrap = document.createElement('div');
+  gWrap.style.cssText =
+    'position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:10;';
+  var gEl = document.createElement('div');
+  gEl.style.cssText =
+    'position:absolute;top:-50%;left:-50%;width:200%;height:200%;' +
+    'background:linear-gradient(0deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.11) 100%);' +
+    'transform-origin:0% 45%;opacity:0;transition:opacity 0.4s;pointer-events:none;';
+  gWrap.appendChild(gEl);
+  card.appendChild(gWrap);
+
+  var rect;
+
+  card.addEventListener('mouseenter', function () {
+    rect = card.getBoundingClientRect();
+    card.style.transition = SLOW;
+  });
+
+  card.addEventListener('mousemove', function (e) {
+    if (!rect) rect = card.getBoundingClientRect();
+    var xp = (e.clientX - rect.left) / rect.width  - 0.5;
+    var yp = (e.clientY - rect.top)  / rect.height - 0.5;
+    var tX = (-yp * MAX).toFixed(2);
+    var tY = ( xp * MAX).toFixed(2);
+    card.style.transition = FAST;
+    card.style.transform =
+      'perspective(1100px) rotateX(' + tX + 'deg) rotateY(' + tY + 'deg)' +
+      ' scale3d(' + SCALE + ',' + SCALE + ',' + SCALE + ')';
+    /* glare */
+    var angle = Math.atan2(yp, xp) * (180 / Math.PI) + 90;
+    var dist  = Math.min(Math.sqrt(xp * xp + yp * yp), 0.7);
+    gEl.style.transform = 'rotate(' + angle.toFixed(1) + 'deg)';
+    gEl.style.opacity   = (dist * 0.30).toFixed(3);
+  });
+
+  card.addEventListener('mouseleave', function () {
+    card.style.transition = SLOW;
+    card.style.transform  =
+      'perspective(1100px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)';
+    gEl.style.opacity = 0;
+  });
+})();
+
+/* ── Glow do cursor dentro do card ──────────────────────── */
+(function () {
+  var card = document.getElementById('tiltCard');
+  var glow = document.getElementById('cardGlow');
+  if (!card || !glow) return;
+
+  card.addEventListener('mousemove', function (e) {
+    var r  = card.getBoundingClientRect();
+    var mx = ((e.clientX - r.left) / r.width)  * 100;
+    var my = ((e.clientY - r.top)  / r.height) * 100;
+    glow.style.background =
+      'radial-gradient(circle at ' + mx + '% ' + my + '%, ' +
+      'rgba(245,158,11,0.10) 0%, transparent 58%)';
+  });
+
+  card.addEventListener('mouseleave', function () {
+    glow.style.background =
+      'radial-gradient(circle at 50% 50%, rgba(245,158,11,0.04) 0%, transparent 58%)';
+  });
+})();
+</script>
 </body>
 </html>
