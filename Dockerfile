@@ -13,4 +13,7 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Mesmo comando do Procfile (usado no Railway) — migra o banco e cria o admin (se ainda não
+# existir) antes de subir o servidor. Sem isso, um "docker compose up" num banco novo (como no
+# primeiro deploy no servidor do Gavião) subiria sem tabela nenhuma criada.
+CMD ["sh", "-c", "alembic upgrade head && python seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
