@@ -6,9 +6,10 @@ Script de inicialização — executado em cada deploy pelo Procfile.
 Cria (apenas se não existirem):
   - Filial padrão "Filial Principal"
   - Usuário admin (gestor) com senha definida via variável ADMIN_SENHA
+  - Usuário sync_consinco (operador) usado pelo agente de sincronização Consinco
 
-IMPORTANTE: Defina ADMIN_SENHA nas variáveis de ambiente do Railway.
-Se o admin já existir no banco, o seed é pulado sem erro.
+IMPORTANTE: Defina ADMIN_SENHA nas variáveis de ambiente.
+Se os usuários já existirem no banco, o seed é pulado sem erro.
 """
 
 import os
@@ -25,6 +26,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_SENHA    = os.getenv("ADMIN_SENHA", "")
+
+SYNC_USERNAME = "sync_consinco"
+SYNC_SENHA    = os.getenv("SYNC_SENHA", "sync@gaviao2024")
 
 
 def seed():
@@ -65,6 +69,20 @@ def seed():
                 print(f"[seed] Usuário '{ADMIN_USERNAME}' criado com sucesso.")
         else:
             print(f"[seed] Usuário '{ADMIN_USERNAME}' já existe — nada alterado.")
+
+        # --- Usuário sync_consinco (agente de sincronização Consinco) ---
+        sync_user = db.query(Usuario).filter(Usuario.username == SYNC_USERNAME).first()
+        if not sync_user:
+            sync_user = Usuario(
+                username=SYNC_USERNAME,
+                perfil="operador",
+                filial_id=filial.id,
+                senha=pwd_context.hash(SYNC_SENHA),
+            )
+            db.add(sync_user)
+            print(f"[seed] Usuário '{SYNC_USERNAME}' criado com sucesso.")
+        else:
+            print(f"[seed] Usuário '{SYNC_USERNAME}' já existe — nada alterado.")
 
         db.commit()
         print("[seed] Concluído com sucesso.")

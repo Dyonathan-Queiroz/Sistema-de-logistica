@@ -52,6 +52,7 @@ services:
 
 volumes:
   mysql_logistico_data:
+  sync_data:
 
 networks:
   logistico-net:
