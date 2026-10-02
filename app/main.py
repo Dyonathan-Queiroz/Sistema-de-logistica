@@ -886,6 +886,13 @@ async def dashboard_entregador(request: Request, db: Session = Depends(get_db), 
 
     total_combustivel_hoje = sum(a["valor_total"] for a in abastecimentos_hoje)
 
+    # km percorridos por entrega finalizada hoje
+    km_por_entrega: dict[int, float] = {}
+    for e in finalizadas_hoje:
+        pts = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp).all()
+        if len(pts) >= 2:
+            km_por_entrega[e.id] = _haversine_km(pts)
+
     return templates.TemplateResponse(request=request, name="dashboard_entregador.html", context={
         "disponiveis": disponiveis,
         "em_rota": em_rota,
@@ -893,6 +900,7 @@ async def dashboard_entregador(request: Request, db: Session = Depends(get_db), 
         "filiais_map": filiais_map,
         "entregador_nome": usuario_logado.username if usuario_logado else "Entregador",
         "finalizadas_hoje": finalizadas_hoje,
+        "km_por_entrega": km_por_entrega,
         "turno_ativo": turno_ativo,
         "veiculo_motorista": veiculo_motorista,
         "abastecimentos_hoje": abastecimentos_hoje,
@@ -1374,11 +1382,19 @@ async def historico_entregador(request: Request, entregador_id: int, db: Session
 
     filiais_map = {f.id: f.nome for f in db.query(Filial).all()}
 
+    # km percorridos por entrega (para entregas da página atual)
+    km_por_entrega: dict[int, float] = {}
+    for e in entregas:
+        pts = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp).all()
+        if len(pts) >= 2:
+            km_por_entrega[e.id] = _haversine_km(pts)
+
     return templates.TemplateResponse(request=request, name="historico_entregador.html", context={
         "entregador": entregador,
         "filial_nome": filiais_map.get(entregador.filial_id, "—"),
         "entregas": entregas,
         "filiais_map": filiais_map,
+        "km_por_entrega": km_por_entrega,
         "total": total,
         "finalizadas": finalizadas,
         "erros": erros,
