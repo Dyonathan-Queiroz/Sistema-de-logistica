@@ -17,6 +17,7 @@ import hmac
 import math
 import hashlib
 import secrets
+import time
 
 from app.database import get_db
 from app.models import (
@@ -63,19 +64,23 @@ if not SECRET_KEY:
 # TLS, como na Railway). Em desenvolvimento local (http://localhost) deixe a
 # variável ausente/false, senão o navegador não envia os cookies.
 _COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
-_AUTH_COOKIES = ("user_role", "user_id", "user_filial_id", "auth_sig")
+_AUTH_COOKIES = ("user_role", "user_id", "user_filial_id", "auth_ts", "auth_sig")
+_PERFIS_VALIDOS = ("gestor", "operador", "entregador")
+_SESSAO_MAX_SEG = 12 * 3600  # validade da sessão (um turno)
 
 
-def _assinar_sessao(role: str, uid: str, filial: str) -> str:
-    """Assinatura HMAC-SHA256 dos três valores de identidade da sessão."""
-    msg = f"{role}|{uid}|{filial}".encode("utf-8")
+def _assinar_sessao(role: str, uid: str, filial: str, ts: str = "") -> str:
+    """Assinatura HMAC-SHA256 dos valores de identidade da sessão + timestamp."""
+    msg = f"{role}|{uid}|{filial}|{ts}".encode("utf-8")
     return hmac.new(SECRET_KEY.encode("utf-8"), msg, hashlib.sha256).hexdigest()
 
 
 def _set_cookies_sessao(res: Response, role: str, uid: str, filial: str) -> None:
     """Grava os cookies de sessão já assinados e com flags de segurança."""
-    sig = _assinar_sessao(role, uid, filial)
-    opts = dict(httponly=True, samesite="lax", secure=_COOKIE_SECURE)
+    ts = str(int(time.time()))
+    sig = _assinar_sessao(role, uid, filial, ts)
+    opts = dict(httponly=True, samesite="lax", secure=_COOKIE_SECURE, max_age=_SESSAO_MAX_SEG)
+    res.set_cookie("auth_ts", ts, **opts)
     res.set_cookie("user_role", role, **opts)
     res.set_cookie("user_id", uid, **opts)
     res.set_cookie("user_filial_id", filial, **opts)
@@ -109,10 +114,12 @@ async def _validar_assinatura_sessao(request: Request, call_next):
     uid    = cookies.get("user_id")
     filial = cookies.get("user_filial_id") or ""
     sig    = cookies.get("auth_sig")
+    ts     = cookies.get("auth_ts") or ""
 
     if role is not None or uid is not None:
-        esperado = _assinar_sessao(role or "", uid or "", filial)
-        if not sig or not hmac.compare_digest(sig, esperado):
+        esperado = _assinar_sessao(role or "", uid or "", filial, ts)
+        expirada = not ts.isdigit() or (time.time() - int(ts)) > _SESSAO_MAX_SEG
+        if expirada or not sig or not hmac.compare_digest(sig, esperado):
             restantes = {k: v for k, v in cookies.items() if k not in _AUTH_COOKIES}
             novos_headers = [
                 (k, v) for (k, v) in request.scope["headers"] if k != b"cookie"
@@ -122,7 +129,14 @@ async def _validar_assinatura_sessao(request: Request, call_next):
                 novos_headers.append((b"cookie", cookie_str.encode("latin-1")))
             request.scope["headers"] = novos_headers
 
-    return await call_next(request)
+    resp = await call_next(request)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)")
+    if _COOKIE_SECURE:
+        resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return resp
 
 
 @app.on_event("startup")
@@ -393,6 +407,21 @@ async def login_page(request: Request):
     return templates.TemplateResponse(request=request, name="login.html", context={})
 
 
+_LOGIN_MAX_FALHAS = 5
+_LOGIN_JANELA_SEG = 300
+_login_falhas: dict = {}
+
+
+def _login_bloqueado(chave: str) -> bool:
+    agora_ts = time.time()
+    falhas = [t for t in _login_falhas.get(chave, []) if agora_ts - t < _LOGIN_JANELA_SEG]
+    if falhas:
+        _login_falhas[chave] = falhas
+    else:
+        _login_falhas.pop(chave, None)
+    return len(falhas) >= _LOGIN_MAX_FALHAS
+
+
 @app.post("/login")
 async def login(
     request: Request,
@@ -400,8 +429,19 @@ async def login(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+          or (request.client.host if request.client else ""))
+    chave = f"{ip}|{username.lower()}"
+    if _login_bloqueado(chave):
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "Muitas tentativas. Aguarde alguns minutos."},
+            status_code=429,
+        )
     user = db.query(Usuario).filter(Usuario.username == username).first()
     if not user or not user.senha or not pwd_context.verify(password, user.senha):
+        _login_falhas.setdefault(chave, []).append(time.time())
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -413,6 +453,7 @@ async def login(
         "entregador": "/entregador",
         "operador": "/gestor",  # operador usa painel do gestor por ora (Fase 2 terá tela própria)
     }
+    _login_falhas.pop(chave, None)
     dest = redirect_map.get(user.perfil, "/login")
     res = RedirectResponse(url=dest, status_code=303)
     _set_cookies_sessao(res, user.perfil, str(user.id), str(user.filial_id or ""))
@@ -1542,8 +1583,11 @@ async def pagina_gestao_funcionario(request: Request, db: Session = Depends(get_
 
 
 @app.post("/salvar-funcionario")
-async def salvar_funcionario(username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db)):
-    novo = Usuario(username=username, perfil=perfil, senha=pwd_context.hash(senha), filial_id=filial_id if filial_id else None)
+async def salvar_funcionario(username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db), user_id: str = Cookie(None)):
+    _exigir_perfil(user_id, db, ("gestor",))
+    if perfil not in _PERFIS_VALIDOS:
+        raise HTTPException(status_code=400, detail="Perfil inválido")
+    novo =Usuario(username=username, perfil=perfil, senha=pwd_context.hash(senha), filial_id=filial_id if filial_id else None)
     db.add(novo)
     try:
         db.commit()
@@ -1563,9 +1607,12 @@ async def pagina_editar_funcionario(request: Request, func_id: int, db: Session 
 
 
 @app.post("/processar-funcionario/{func_id}")
-async def processar_funcionario(func_id: int, acao: str = Form(...), username: str = Form(None), perfil: str = Form(None), nova_senha: str = Form(None), filial_id: str = Form(None), db: Session = Depends(get_db)):
+async def processar_funcionario(func_id: int, acao: str = Form(...), username: str = Form(None), perfil: str = Form(None), nova_senha: str = Form(None), filial_id: str = Form(None), db: Session = Depends(get_db), user_id: str = Cookie(None)):
     """excluir"""
-    func = db.query(Usuario).filter(Usuario.id == func_id).first()
+    _exigir_perfil(user_id, db, ("gestor",))
+    if acao != 'excluir' and perfil not in _PERFIS_VALIDOS:
+        raise HTTPException(status_code=400, detail="Perfil inválido")
+    func =db.query(Usuario).filter(Usuario.id == func_id).first()
     if func:
         if acao == 'excluir':
             db.query(Entrega).filter(Entrega.entregador_id == func_id).update({"entregador_id": None})
@@ -1593,7 +1640,8 @@ async def pagina_gestao_veiculo(request: Request, db: Session = Depends(get_db),
 
 
 @app.post("/salvar-veiculo")
-async def salvar_veiculo(placa: str = Form(...), modelo: str = Form(...), tipo: str = Form(...), entregador_id: str = Form(None), db: Session = Depends(get_db)):
+async def salvar_veiculo(placa: str = Form(...), modelo: str = Form(...), tipo: str = Form(...), entregador_id: str = Form(None), db: Session = Depends(get_db), user_id: str = Cookie(None)):
+    _exigir_perfil(user_id, db, ("gestor",))
     try:
         db.add(Veiculo(placa=placa, modelo=modelo, tipo=tipo, entregador_id=entregador_id))
         db.commit()
@@ -1603,15 +1651,18 @@ async def salvar_veiculo(placa: str = Form(...), modelo: str = Form(...), tipo: 
 
 
 @app.get("/vincular-veiculo-page/{veiculo_id}")
-async def pagina_vincular(request: Request, veiculo_id: int, db: Session = Depends(get_db)):
-    """entregador"""
+async def pagina_vincular(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor"""
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="vincular_veiculo.html", context={"veiculo": veiculo, "entregadores": entregadores})
 
 
 @app.post("/processar-vinculo/{veiculo_id}")
-async def processar_vinculo(request: Request, veiculo_id: int, db: Session = Depends(get_db)):
+async def processar_vinculo(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_id: str = Cookie(None)):
+    _exigir_perfil(user_id, db, ("gestor",))
     form_data = await request.form()
     entregador_id = form_data.get("entregador_id")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
@@ -1622,17 +1673,20 @@ async def processar_vinculo(request: Request, veiculo_id: int, db: Session = Dep
 
 
 @app.get("/editar-veiculo/{veiculo_id}")
-async def pagina_editar_veiculo(request: Request, veiculo_id: int, db: Session = Depends(get_db)):
-    """entregador"""
+async def pagina_editar_veiculo(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    """gestor"""
+    if user_role != 'gestor':
+        return RedirectResponse(url="/login")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="editar_veiculo.html", context={"veiculo": veiculo, "entregadores": entregadores})
 
 
 @app.post("/processar-veiculo/{veiculo_id}")
-async def processar_veiculo(veiculo_id: int, acao: str = Form(...), placa: str = Form(None), modelo: str = Form(None), tipo: str = Form(None), entregador_id: str = Form(None), db: Session = Depends(get_db)):
+async def processar_veiculo(veiculo_id: int, acao: str = Form(...), placa: str = Form(None), modelo: str = Form(None), tipo: str = Form(None), entregador_id: str = Form(None), db: Session = Depends(get_db), user_id: str = Cookie(None)):
     """excluir"""
-    veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
+    _exigir_perfil(user_id, db, ("gestor",))
+    veiculo =db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     if veiculo:
         if acao == 'excluir':
             db.delete(veiculo)
@@ -1648,7 +1702,7 @@ async def processar_veiculo(veiculo_id: int, acao: str = Form(...), placa: str =
     return RedirectResponse(url="/gestao-veiculo", status_code=303)
 @app.get("/clientes/{documento}")
 async def api_buscar_cliente(documento: str, db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _resolver_usuario(user_id, db)  # exige sessão autenticada válida
+    _exigir_perfil(user_id, db, ("gestor", "operador"))
     cliente = db.query(Cliente).filter(Cliente.documento == documento).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
@@ -1666,7 +1720,7 @@ async def api_buscar_cliente(documento: str, db: Session = Depends(get_db), user
 
 @app.put("/clientes/{documento}")
 async def api_atualizar_cliente(documento: str, dados: dict, db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _resolver_usuario(user_id, db)  # exige sessão autenticada válida
+    _exigir_perfil(user_id, db, ("gestor", "operador"))
     cliente = db.query(Cliente).filter(Cliente.documento == documento).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
@@ -1679,7 +1733,7 @@ async def api_atualizar_cliente(documento: str, dados: dict, db: Session = Depen
 
 @app.post("/clientes/")
 async def api_cadastrar_cliente(dados: dict, db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _resolver_usuario(user_id, db)  # exige sessão autenticada válida
+    _exigir_perfil(user_id, db, ("gestor", "operador"))
     novo = Cliente(
         nome=dados.get("nome"),
         documento=dados.get("documento"),
@@ -1702,7 +1756,7 @@ async def api_cadastrar_cliente(dados: dict, db: Session = Depends(get_db), user
 
 @app.post("/entregas/")
 async def api_lancar_entrega(dados: dict, db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _resolver_usuario(user_id, db)  # exige sessão autenticada válida
+    _exigir_perfil(user_id, db, ("gestor", "operador"))
     nova = Entrega(
         cupom_fiscal=dados.get("cupom_fiscal"),
         cliente_id=dados.get("cliente_id"),
@@ -1727,7 +1781,7 @@ async def api_lancar_entrega(dados: dict, db: Session = Depends(get_db), user_id
         return {"status": "ok", "id": nova.id}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Não foi possível registrar a entrega")
 
 
 @app.get("/gestao-clientes")
@@ -2441,8 +2495,9 @@ async def frota_pneus_ativos(veiculo_id: int, user_id: str = Cookie(default=None
 
 
 @app.get("/frota/oficinas/lista")
-async def frota_lista_oficinas(db: Session = Depends(get_db)):
+async def frota_lista_oficinas(user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Retorna lista de oficinas ativas para o formulário do entregador."""
+    _resolver_usuario(user_id, db)
     oficinas = db.query(Oficina).filter(Oficina.ativo == True).order_by(Oficina.nome).all()
     return [
         {"id": o.id, "nome": o.nome, "telefone": o.telefone}
@@ -2474,7 +2529,8 @@ async def frota_desativar_oficina(oficina_id: int, user_role: str = Cookie(defau
 
 
 @app.get("/frota/pecas/lista")
-async def frota_lista_pecas(db: Session = Depends(get_db)):
+async def frota_lista_pecas(user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+    _resolver_usuario(user_id, db)
     """Retorna catálogo de peças ativas para o formulário do entregador."""
     pecas = db.query(PecaCatalogo).filter(PecaCatalogo.ativo == True).order_by(PecaCatalogo.categoria, PecaCatalogo.nome).all()
     return [
