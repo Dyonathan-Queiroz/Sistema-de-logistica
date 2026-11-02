@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2267,12 +2267,18 @@
     custom.style.display = sel.value === '__outra' ? 'block' : 'none';
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  
   function _renderPecasSel() {
     var cont = document.getElementById('mntPecasSelecionadas');
     if (!cont) return;
     cont.innerHTML = _mntPecasSel.map(function(p, i) {
       return '<span style="display:inline-flex;align-items:center;gap:5px;background:#2a1f4e;border:1px solid #5b21b6;border-radius:20px;padding:4px 10px;font-size:12px;color:#c4b5fd;">'
-        + '<span>' + p.nome + '</span>'
+        + '<span>' + esc(p.nome) + '</span>'
         + '<button onclick="_removerPeca(' + i + ')" type="button" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px;">×</button>'
         + '</span>';
     }).join('');
@@ -2301,7 +2307,7 @@
       var sel = document.getElementById('mntOficina');
       if (!sel) return;
       sel.innerHTML = '<option value="">Selecionar oficina...</option>'
-        + data.map(function(o){ return '<option value="' + o.nome + '">' + o.nome + (o.telefone ? ' — ' + o.telefone : '') + '</option>'; }).join('')
+        + data.map(function(o){ return '<option value="' + esc(o.nome) + '">' + esc(o.nome) + (o.telefone ? ' — ' + esc(o.telefone) : '') + '</option>'; }).join('')
         + '<option value="__outra">Outra (digitar)</option>';
     }).catch(function() {
       var sel = document.getElementById('mntOficina');

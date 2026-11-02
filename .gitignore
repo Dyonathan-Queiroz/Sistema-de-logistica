@@ -79,3 +79,6 @@ _recovery/
 .DS_Store
 Thumbs.db
 desktop.ini
+# Resultados de testes de carga (Locust) — contêm URLs de produção
+tests/*.csv
+tests/relatorio.html

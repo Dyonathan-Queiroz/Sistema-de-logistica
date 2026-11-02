@@ -383,10 +383,16 @@ var novoNomeInput = document.getElementById('novoNomeInput');
 var modoNovo = false;
 var searchTimer;
 
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
 function initials(nome) {
   var parts = nome.trim().split(' ');
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return nome.slice(0, 2).toUpperCase();
+  if (parts.length >= 2) return esc((parts[0][0] + parts[1][0]).toUpperCase());
+  return esc(nome.slice(0, 2).toUpperCase());
 }
 
 function clearCliente() {
@@ -413,7 +419,7 @@ function selecionarCliente(id, nome, rua, numero, bairro, municipio) {
     '<div class="client-selected">' +
       '<div class="cs-avatar">'+initials(nome)+'</div>' +
       '<div class="cs-info">' +
-        '<div class="cs-nome">'+nome+'</div>' +
+        '<div class="cs-nome">'+esc(nome)+'</div>' +
         '<div class="cs-tipo">Cliente cadastrado</div>' +
       '</div>' +
       '<button type="button" class="cs-clear" onclick="clearCliente()">Trocar</button>' +
@@ -438,7 +444,7 @@ function ativarNovo(nome) {
     '<div class="client-selected" style="border-color:#fcd34d;background:#fffbeb">' +
       '<div class="cs-avatar" style="background:var(--amber-dk)">'+initials(nome)+'</div>' +
       '<div class="cs-info">' +
-        '<div class="cs-nome" id="tagNomeLabel">'+nome+'</div>' +
+        '<div class="cs-nome" id="tagNomeLabel">'+esc(nome)+'</div>' +
         '<div class="cs-tipo" style="color:var(--amber-dk)">Novo cliente (será cadastrado)</div>' +
       '</div>' +
       '<button type="button" class="cs-clear" onclick="clearCliente()">Cancelar</button>' +
@@ -474,33 +480,36 @@ function buscar(q) {
     .then(function(r){ return r.json(); })
     .then(function(lista) {
       var html = '';
-      lista.forEach(function(c) {
+      lista.forEach(function(c, i) {
         var sub = [c.rua, c.bairro, c.municipio].filter(Boolean).join(', ');
-        var safeNome = c.nome.replace(/'/g, "\\'");
-        var safeRua  = (c.rua||'').replace(/'/g, "\\'");
-        var safeNum  = (c.numero||'').replace(/'/g, "\\'");
-        var safeBai  = (c.bairro||'').replace(/'/g, "\\'");
-        var safeMun  = (c.municipio||'').replace(/'/g, "\\'");
         html +=
-          '<div class="ac-item" onclick="selecionarCliente('+c.id+',\''+safeNome+'\',\''+safeRua+'\',\''+safeNum+'\',\''+safeBai+'\',\''+safeMun+'\')">' +
+          '<div class="ac-item" data-i="'+i+'">' +
             '<div class="ac-avatar">'+initials(c.nome)+'</div>' +
             '<div class="ac-info">' +
-              '<div class="ac-nome">'+c.nome+'</div>' +
-              (sub ? '<div class="ac-sub">'+sub+'</div>' : '') +
+              '<div class="ac-nome">'+esc(c.nome)+'</div>' +
+              (sub ? '<div class="ac-sub">'+esc(sub)+'</div>' : '') +
             '</div>' +
             '<i class="fas fa-chevron-right" style="color:var(--text3);font-size:10px"></i>' +
           '</div>';
       });
-      var safeQ = acInput.value.trim().replace(/'/g, "\\'");
+      var qAtual = acInput.value.trim();
       html +=
-        '<div class="ac-criar" onclick="ativarNovo(\''+safeQ+'\')">' +
+        '<div class="ac-criar">' +
           '<div class="ac-criar-icon"><i class="fas fa-plus"></i></div>' +
           '<div>' +
             '<div style="font-weight:700">Novo cliente</div>' +
-            '<div style="font-size:11px;font-weight:400;color:var(--blue);margin-top:1px">Cadastrar "'+acInput.value.trim()+'"</div>' +
+            '<div style="font-size:11px;font-weight:400;color:var(--blue);margin-top:1px">Cadastrar "'+esc(qAtual)+'"</div>' +
           '</div>' +
         '</div>';
       acDropdown.innerHTML = html;
+      acDropdown.querySelectorAll('.ac-item').forEach(function(el) {
+        el.addEventListener('click', function() {
+          var c = lista[parseInt(el.getAttribute('data-i'), 10)];
+          selecionarCliente(c.id, c.nome, c.rua || '', c.numero || '', c.bairro || '', c.municipio || '');
+        });
+      });
+      var criar = acDropdown.querySelector('.ac-criar');
+      if (criar) criar.addEventListener('click', function() { ativarNovo(qAtual); });
       acDropdown.classList.add('open');
     })
     .catch(function(){});

@@ -27,6 +27,7 @@ import hmac
 import math
 import hashlib
 import secrets
+from urllib.parse import urlparse
 import time
 import time as _time
 
@@ -155,6 +156,8 @@ async def lifespan(app: FastAPI):
 # ─────────────────────────────────────────────────────────────────────────────
 app = FastAPI(lifespan=lifespan)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Hash válido usado quando o usuário não existe (mantém o tempo de resposta igual)
+_HASH_FALSO = pwd_context.hash(secrets.token_hex(16))
 
 def _haversine_km(pts) -> float:
     """Soma das distâncias GPS em km usando Haversine."""
@@ -271,6 +274,28 @@ def _exigir_perfil(user_id: Optional[str], db: Session, perfis: tuple) -> Usuari
     if usuario.perfil not in perfis:
         raise HTTPException(status_code=403, detail="Acesso restrito")
     return usuario
+
+
+@app.middleware("http")
+async def _protecao_csrf(request: Request, call_next):
+    """
+    Bloqueia requisições que alteram estado vindas de outra origem (CSRF).
+    Quando o navegador envia Origin (ou Referer) e o host difere do host do
+    próprio sistema, responde 403. Clientes sem esses cabeçalhos (sync_agent,
+    scripts) não são afetados — eles não usam cookies de navegador.
+    """
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        origem = request.headers.get("origin") or request.headers.get("referer")
+        if origem and origem != "null":
+            host_origem = urlparse(origem).netloc.lower()
+            hosts_ok = {
+                (request.headers.get("x-forwarded-host") or "").split(",")[0].strip().lower(),
+                (request.headers.get("host") or "").lower(),
+            }
+            hosts_ok.discard("")
+            if host_origem not in hosts_ok:
+                return JSONResponse({"detail": "Origem não permitida"}, status_code=403)
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -660,7 +685,7 @@ async def login(
 
     user = db.query(Usuario).filter(Usuario.username == username).first()
     # Verifica senha sempre (mesmo sem usuário) para evitar timing attack
-    senha_hash = user.senha if user and user.senha else "$2b$12$invalidhashpaddinginvalid"
+    senha_hash = user.senha if user and user.senha else _HASH_FALSO
     senha_ok = pwd_context.verify(password, senha_hash)
     if not user or not senha_ok:
         _registrar_falha_login(ip, username)
