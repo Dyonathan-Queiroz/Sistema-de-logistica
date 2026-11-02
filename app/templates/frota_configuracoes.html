@@ -34,7 +34,7 @@
   async criarOficina() {
     if (!this.novaOficina.nome.trim()) return;
     this.salvando = true;
-    const res = await fetch('/frota/oficinas', {
+    const res = await fetch('{{ base_path }}/frota/oficinas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(this.novaOficina),
@@ -45,14 +45,14 @@
 
   async removerOficina(id) {
     if (!confirm('Desativar esta oficina?')) return;
-    await fetch('/frota/oficinas/' + id, { method: 'DELETE' });
+    await fetch('{{ base_path }}/frota/oficinas/' + id, { method: 'DELETE' });
     document.getElementById('oficina-' + id).remove();
   },
 
   async criarPeca() {
     if (!this.novaPeca.nome.trim()) return;
     this.salvando = true;
-    const res = await fetch('/frota/pecas', {
+    const res = await fetch('{{ base_path }}/frota/pecas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(this.novaPeca),
@@ -63,7 +63,7 @@
 
   async removerPeca(id) {
     if (!confirm('Desativar esta peça?')) return;
-    await fetch('/frota/pecas/' + id, { method: 'DELETE' });
+    await fetch('{{ base_path }}/frota/pecas/' + id, { method: 'DELETE' });
     document.getElementById('peca-' + id).remove();
   },
 }">

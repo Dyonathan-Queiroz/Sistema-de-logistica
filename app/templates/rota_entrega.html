@@ -159,7 +159,7 @@
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <a href="/gestor/log" class="back-btn"><i class="fas fa-arrow-left"></i> Log de Entregas</a>
+  <a href="{{ base_path }}/gestor/log" class="back-btn"><i class="fas fa-arrow-left"></i> Log de Entregas</a>
   <span class="topbar-title">Rota da Entrega <span style="color:var(--amber)">#{{ entrega.id }}</span></span>
   <span class="topbar-sub">{{ entrega.cupom_fiscal or '' }}</span>
 
@@ -489,7 +489,7 @@ function updateLiveUI(data) {
 }
 
 function fetchLive() {
-  fetch('/gestor/entrega/' + ENTREGA_ID + '/pontos')
+  fetch('{{ base_path }}/gestor/entrega/' + ENTREGA_ID + '/pontos')
     .then(function(r){ return r.json(); })
     .then(function(data){ updateLiveUI(data); })
     .catch(function(){});

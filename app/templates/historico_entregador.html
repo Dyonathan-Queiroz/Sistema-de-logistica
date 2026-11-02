@@ -4,7 +4,7 @@
 {% block page_title %}Histórico do Entregador{% endblock %}
 
 {% block topbar_right %}
-<a href="/gestor/desempenho" class="btn btn-sm btn-outline-secondary">
+<a href="{{ base_path }}/gestor/desempenho" class="btn btn-sm btn-outline-secondary">
   <i class="fas fa-arrow-left mr-1"></i> Voltar
 </a>
 {% endblock %}
@@ -218,7 +218,7 @@
 </div>
 
 <!-- ── FILTROS ───────────────────────────────────────────────────────── -->
-<form method="GET" action="/gestor/entregador/{{ entregador.id }}">
+<form method="GET" action="{{ base_path }}/gestor/entregador/{{ entregador.id }}">
 <div class="filter-card">
   <div class="fg">
     <label>Início</label>
@@ -242,7 +242,7 @@
     <button type="submit" class="btn btn-primary btn-sm">
       <i class="fas fa-filter mr-1"></i> Filtrar
     </button>
-    <a href="/gestor/entregador/{{ entregador.id }}" class="btn btn-outline-secondary btn-sm">
+    <a href="{{ base_path }}/gestor/entregador/{{ entregador.id }}" class="btn btn-outline-secondary btn-sm">
       <i class="fas fa-times"></i>
     </a>
   </div>
@@ -304,6 +304,11 @@
           <td>
             <div style="font-size:12px;color:#374151;">{{ e.rua }}, {{ e.numero }}</div>
             <div style="font-size:11px;color:#9ca3af;">{{ e.bairro }}{% if e.municipio %} — {{ e.municipio }}{% endif %}</div>
+            {% if km_por_entrega.get(e.id) %}
+            <div style="font-size:11px;color:#3b82f6;margin-top:3px;">
+              <i class="fas fa-road" style="margin-right:3px;"></i>{{ km_por_entrega[e.id] }} km
+            </div>
+            {% endif %}
             {% if e.motivo_erro %}
             <div style="font-size:11px;color:#dc2626;margin-top:3px;">
               <i class="fas fa-comment-alt" style="margin-right:3px;"></i>{{ e.motivo_erro }}

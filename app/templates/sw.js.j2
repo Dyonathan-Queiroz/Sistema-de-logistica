@@ -1,0 +1,110 @@
+var CACHE_NAME = 'gaviao-motorista-v3';
+var BASE = '{{ base_path }}';
+
+// Assets estáticos que devem ficar sempre no cache
+var STATIC_ASSETS = [
+  BASE + '/static/icons/icon-192.png',
+  BASE + '/static/icons/icon-512.png',
+  BASE + '/static/icons/icon.svg',
+  BASE + '/static/manifest.json',
+  'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+];
+
+// ── Instalação: pré-cacheia assets estáticos ────────────────────────────────
+self.addEventListener('install', function(e) {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(STATIC_ASSETS);
+    }).then(function() {
+      return self.skipWaiting();
+    })
+  );
+});
+
+// ── Ativação: remove caches antigas ────────────────────────────────────────
+self.addEventListener('activate', function(e) {
+  e.waitUntil(
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys
+          .filter(function(k) { return k !== CACHE_NAME; })
+          .map(function(k) { return caches.delete(k); })
+      );
+    }).then(function() {
+      return self.clients.claim();
+    })
+  );
+});
+
+// ── Fetch: estratégia por tipo de recurso ───────────────────────────────────
+self.addEventListener('fetch', function(e) {
+  if (e.request.method !== 'GET') return;
+
+  var url = new URL(e.request.url);
+
+  // HTML (páginas SSR): SEMPRE network-first — nunca cachear HTML dinâmico
+  var accept = e.request.headers.get('accept') || '';
+  var isHtml = accept.includes('text/html') || url.pathname.endsWith('.html');
+
+  if (isHtml) {
+    e.respondWith(
+      fetch(e.request).catch(function() {
+        return offlineFallback();
+      })
+    );
+    return;
+  }
+
+  // Assets estáticos (imagens, fontes, CSS, JS): cache-first com update em background
+  var isStatic = url.pathname.includes('/static/') ||
+                 url.hostname.includes('fonts.') ||
+                 url.hostname.includes('cdnjs.') ||
+                 url.hostname.includes('jsdelivr.');
+
+  if (isStatic) {
+    e.respondWith(
+      caches.open(CACHE_NAME).then(function(cache) {
+        return cache.match(e.request).then(function(cached) {
+          var fetchPromise = fetch(e.request).then(function(response) {
+            if (response && response.ok && response.type !== 'opaque') {
+              cache.put(e.request, response.clone());
+            }
+            return response;
+          });
+          return cached || fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
+  // Qualquer outra coisa: network direto
+  e.respondWith(fetch(e.request));
+});
+
+function offlineFallback() {
+  return new Response(
+    '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Sem conexao</title>' +
+    '<style>' +
+    '*{margin:0;padding:0;box-sizing:border-box}' +
+    'body{background:#070A10;color:#EEF2FF;font-family:system-ui,sans-serif;' +
+    'display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:20px}' +
+    '.card{text-align:center;max-width:320px}' +
+    '.ico{font-size:56px;margin-bottom:20px}' +
+    'h2{font-size:22px;font-weight:800;margin-bottom:10px}' +
+    'p{color:#7A8BB0;font-size:14px;line-height:1.5;margin-bottom:24px}' +
+    'button{background:#f59e0b;color:#000;border:none;border-radius:12px;' +
+    'padding:14px 28px;font-size:15px;font-weight:700;cursor:pointer;width:100%}' +
+    '</style></head><body>' +
+    '<div class="card">' +
+    '<div class="ico">&#128225;</div>' +
+    '<h2>Sem conexao</h2>' +
+    '<p>Verifique sua internet e tente novamente.</p>' +
+    '<button onclick="location.reload()">Tentar Novamente</button>' +
+    '</div></body></html>',
+    { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}

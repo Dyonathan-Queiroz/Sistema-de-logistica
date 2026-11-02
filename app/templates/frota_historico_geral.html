@@ -6,7 +6,7 @@
 
 {% block topbar_actions %}
 <select
-  onchange="window.location.href='/frota/historico-geral' + (this.value ? '?veiculo_id=' + this.value : '')"
+  onchange="window.location.href='{{ base_path }}/frota/historico-geral' + (this.value ? '?veiculo_id=' + this.value : '')"
   class="text-xs font-semibold bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 cursor-pointer">
   <option value="">Todos os veículos</option>
   {% for v in veiculos %}

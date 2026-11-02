@@ -7,7 +7,7 @@
 {% block nav_veiculos %}active{% endblock %}
 
 {% block topbar_right %}
-<a href="/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
+<a href="{{ base_path }}/gestor" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i> Voltar</a>
 {% endblock %}
 
 {% block extra_styles %}
@@ -103,7 +103,7 @@
                 <h6 class="mb-0 font-weight-bold"><i class="fas fa-plus mr-2"></i>Novo Veículo</h6>
             </div>
             <div class="card-body">
-                <form method="POST" action="/salvar-veiculo">
+                <form method="POST" action="{{ base_path }}/salvar-veiculo">
                     <div class="form-group">
                         <label for="placa">Placa</label>
                         <input type="text" class="form-control" id="placa" name="placa" required placeholder="ABC-1234">
@@ -151,10 +151,10 @@
                                 <td class="col-mob-hide">{{ v.modelo }}</td>
                                 <td class="text-center">
                                     <div class="btn-group">
-                                        <a href="/vincular-veiculo-page/{{ v.id }}" class="btn-vincular" title="Vincular Motorista">
+                                        <a href="{{ base_path }}/vincular-veiculo-page/{{ v.id }}" class="btn-vincular" title="Vincular Motorista">
                                             <i class="fas fa-link"></i>
                                         </a>
-                                        <a href="/editar-veiculo/{{ v.id }}" class="btn-editar-veiculo ml-1" title="Editar Veículo">
+                                        <a href="{{ base_path }}/editar-veiculo/{{ v.id }}" class="btn-editar-veiculo ml-1" title="Editar Veículo">
                                             <i class="fas fa-cog"></i>
                                         </a>
                                     </div>

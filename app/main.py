@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Request, Form, Depends, Cookie, HTTPException, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from sqlalchemy import func, case as sql_case, or_
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -11,6 +11,16 @@ from typing import Optional, List
 from datetime import date, datetime, timedelta
 from app.utils import agora
 from collections import defaultdict
+from contextlib import asynccontextmanager
+from io import StringIO
+from decimal import Decimal
+import json as _json
+import gzip
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders as _email_encoders
 import re
 import os
 import hmac
@@ -18,16 +28,132 @@ import math
 import hashlib
 import secrets
 import time
+import time as _time
 
-from app.database import get_db
+from app.database import get_db, SessionLocal, engine
 from app.models import (
     Entrega, Usuario, Veiculo, Cliente, Filial,
     Checklist, TurnoEntrega, Abastecimento, Manutencao, PneuControle, MotoristaScore,
-    Oficina, PecaCatalogo, PontoRota,
+    Oficina, PecaCatalogo, PontoRota, BackupLog,
 )
+from apscheduler.schedulers.background import BackgroundScheduler
 from app.utils import gerar_link_rota
 
-app = FastAPI()
+# ─── BACKUP ──────────────────────────────────────────────────────────────────
+_scheduler = BackgroundScheduler(timezone="America/Manaus")
+
+
+def _gerar_sql_dump(sess: Session) -> tuple:
+    """Gera dump SQL completo do banco. Retorna (sql_str, size_kb)."""
+    from sqlalchemy import text, inspect as sa_inspect
+    buf = StringIO()
+    now_s = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    buf.write(f"-- Backup: Sistema Logístico — {now_s}\n")
+    buf.write("-- ================================================\n\n")
+    buf.write("SET FOREIGN_KEY_CHECKS=0;\n\n")
+    with engine.connect() as conn:
+        tables = [r[0] for r in conn.execute(text("SHOW TABLES")).fetchall()]
+        for tbl in tables:
+            buf.write(f"-- ── {tbl} ──\n")
+            create = conn.execute(text(f"SHOW CREATE TABLE `{tbl}`")).fetchone()
+            buf.write(f"DROP TABLE IF EXISTS `{tbl}`;\n{create[1]};\n\n")
+            rows = conn.execute(text(f"SELECT * FROM `{tbl}`")).fetchall()
+            for row in rows:
+                vals = []
+                for v in row:
+                    if v is None:
+                        vals.append("NULL")
+                    elif isinstance(v, bool):
+                        vals.append("1" if v else "0")
+                    elif isinstance(v, datetime):
+                        vals.append(f"'{v.strftime('%Y-%m-%d %H:%M:%S')}'")
+                    elif isinstance(v, date):
+                        vals.append(f"'{v.strftime('%Y-%m-%d')}'")
+                    elif isinstance(v, Decimal):
+                        vals.append(str(v))
+                    elif isinstance(v, (int, float)):
+                        vals.append(str(v))
+                    elif isinstance(v, bytes):
+                        vals.append(f"0x{v.hex()}")
+                    elif isinstance(v, (dict, list)):
+                        esc = _json.dumps(v, ensure_ascii=False).replace("\\", "\\\\").replace("'", "\\'")
+                        vals.append(f"'{esc}'")
+                    else:
+                        esc = str(v).replace("\\", "\\\\").replace("'", "\\'")
+                        vals.append(f"'{esc}'")
+                buf.write(f"INSERT INTO `{tbl}` VALUES ({','.join(vals)});\n")
+            buf.write("\n")
+    buf.write("SET FOREIGN_KEY_CHECKS=1;\n")
+    content = buf.getvalue()
+    return content, max(1, len(content.encode()) // 1024)
+
+
+def _tentar_email_backup(sql_content: str, size_kb: int):
+    """Envia backup por e-mail se SMTP estiver configurado nas variáveis de ambiente."""
+    smtp_host = os.getenv("BACKUP_SMTP_HOST")
+    smtp_user = os.getenv("BACKUP_SMTP_USER")
+    smtp_pass = os.getenv("BACKUP_SMTP_PASS")
+    dest      = os.getenv("BACKUP_EMAIL_TO")
+    if not all([smtp_host, smtp_user, smtp_pass, dest]):
+        return
+    smtp_port = int(os.getenv("BACKUP_SMTP_PORT", "587"))
+    nome_arq  = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+    msg = MIMEMultipart()
+    msg["From"], msg["To"] = smtp_user, dest
+    msg["Subject"] = f"Backup automático — Sistema Logístico ({size_kb} KB)"
+    msg.attach(MIMEText(
+        f"Backup trimestral gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}.\n\n"
+        f"Tamanho: {size_kb} KB\n\nArquivo SQL anexado.", "plain"
+    ))
+    part = MIMEBase("application", "octet-stream")
+    part.set_payload(sql_content.encode("utf-8"))
+    _email_encoders.encode_base64(part)
+    part.add_header("Content-Disposition", f'attachment; filename="{nome_arq}"')
+    msg.attach(part)
+    with smtplib.SMTP(smtp_host, smtp_port) as srv:
+        srv.starttls()
+        srv.login(smtp_user, smtp_pass)
+        srv.sendmail(smtp_user, dest, msg.as_string())
+
+
+def _backup_auto():
+    """Executa trimestralmente — gera dump, comprime e salva no banco."""
+    if SessionLocal is None:
+        return
+    db = SessionLocal()
+    try:
+        sql_content, size_kb = _gerar_sql_dump(db)
+        dados = gzip.compress(sql_content.encode("utf-8"), compresslevel=9)
+        log = BackupLog(tipo="auto", tamanho_kb=size_kb, status="ok",
+                        dados_gz=dados, obs="Backup trimestral automático")
+        db.add(log)
+        db.commit()
+        try:
+            _tentar_email_backup(sql_content, size_kb)
+        except Exception:
+            pass
+    except Exception as exc:
+        db.rollback()
+        log = BackupLog(tipo="auto", status="erro", obs=str(exc)[:250])
+        db.add(log)
+        db.commit()
+    finally:
+        db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if engine is not None:
+        BackupLog.__table__.create(engine, checkfirst=True)
+    _scheduler.add_job(_backup_auto, "cron", month="1,4,7,10", day=1,
+                       hour=2, minute=0, id="backup_trimestral", replace_existing=True)
+    _scheduler.start()
+    yield
+    _scheduler.shutdown(wait=False)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+app = FastAPI(lifespan=lifespan)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def _haversine_km(pts) -> float:
@@ -56,9 +182,55 @@ class PontoRotaIn(BaseModel):
 # assinatura em toda requisição e descarta cookies adulterados.
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    # Fallback efêmero: mantém o app funcional, mas as sessões expiram a cada
-    # reinício do processo. Defina SECRET_KEY no .env para produção.
+    import logging as _logging
+    _logging.warning(
+        "SECRET_KEY não definida! Usando chave efêmera — sessões expiram a cada restart. "
+        "Defina SECRET_KEY nas variáveis de ambiente (Railway) para produção."
+    )
     SECRET_KEY = secrets.token_hex(32)
+
+# ── Rate limit e bloqueio de login ───────────────────────────────────────────
+# Por IP: máx 5 tentativas em 60 s
+# Por conta: bloqueio de 5 min após 10 falhas acumuladas
+_falhas_login: dict = {}          # ip        → [monotonic timestamps]
+_falhas_conta: dict = {}          # username  → [monotonic timestamps]
+_bloqueio_conta: dict = {}        # username  → monotonic unlock time
+
+_LOGIN_JANELA_S   = 60
+_LOGIN_MAX_IP     = 5
+_CONTA_JANELA_S   = 300           # janela de 5 min para acumular falhas
+_CONTA_MAX_FALHAS = 10
+_CONTA_BLOQUEIO_S = 300           # bloqueio de 5 min
+
+
+def _checar_limite_login(ip: str, username: str) -> None:
+    agora_ts = _time.monotonic()
+    # Verifica bloqueio da conta primeiro
+    desbloqueio = _bloqueio_conta.get(username, 0)
+    if agora_ts < desbloqueio:
+        restante = int(desbloqueio - agora_ts)
+        raise HTTPException(status_code=429,
+                            detail=f"Conta bloqueada. Tente novamente em {restante}s.")
+    # Verifica limite por IP
+    tentativas_ip = [t for t in _falhas_login.get(ip, []) if agora_ts - t < _LOGIN_JANELA_S]
+    if len(tentativas_ip) >= _LOGIN_MAX_IP:
+        raise HTTPException(status_code=429,
+                            detail="Muitas tentativas deste dispositivo. Aguarde 1 minuto.")
+    _falhas_login[ip] = tentativas_ip
+
+
+def _registrar_falha_login(ip: str, username: str) -> None:
+    agora_ts = _time.monotonic()
+    # Registra falha por IP
+    tentativas_ip = [t for t in _falhas_login.get(ip, []) if agora_ts - t < _LOGIN_JANELA_S]
+    tentativas_ip.append(agora_ts)
+    _falhas_login[ip] = tentativas_ip
+    # Registra falha por conta e bloqueia se necessário
+    falhas_conta = [t for t in _falhas_conta.get(username, []) if agora_ts - t < _CONTA_JANELA_S]
+    falhas_conta.append(agora_ts)
+    _falhas_conta[username] = falhas_conta
+    if len(falhas_conta) >= _CONTA_MAX_FALHAS:
+        _bloqueio_conta[username] = agora_ts + _CONTA_BLOQUEIO_S
 
 # Cookies só trafegam por HTTPS quando COOKIE_SECURE=true (produção atrás de
 # TLS, como na Railway). Em desenvolvimento local (http://localhost) deixe a
@@ -79,7 +251,10 @@ def _set_cookies_sessao(res: Response, role: str, uid: str, filial: str) -> None
     """Grava os cookies de sessão já assinados e com flags de segurança."""
     ts = str(int(time.time()))
     sig = _assinar_sessao(role, uid, filial, ts)
-    opts = dict(httponly=True, samesite="lax", secure=_COOKIE_SECURE, max_age=_SESSAO_MAX_SEG)
+    # path=BASE_PATH — quando o sistema roda atrás de um prefixo compartilhado (ex.: "/logistica"
+    # no mesmo domínio do Controle Gavião), evita mandar esses cookies em requisições pro outro
+    # app que divide o domínio (path="/" mandaria em toda e qualquer rota do domínio inteiro).
+    opts = dict(httponly=True, samesite="lax", secure=_COOKIE_SECURE, max_age=_SESSAO_MAX_SEG, path=BASE_PATH or "/")
     res.set_cookie("auth_ts", ts, **opts)
     res.set_cookie("user_role", role, **opts)
     res.set_cookie("user_id", uid, **opts)
@@ -96,6 +271,42 @@ def _exigir_perfil(user_id: Optional[str], db: Session, perfis: tuple) -> Usuari
     if usuario.perfil not in perfis:
         raise HTTPException(status_code=403, detail="Acesso restrito")
     return usuario
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    """Adiciona cabeçalhos de segurança HTTP em todas as respostas."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), payment=()"
+    # frota_checklist.html usa Alpine.js que requer Function() (unsafe-eval) para
+    # avaliar expressões x-for / x-text / :class. Sem unsafe-eval o CSP bloqueia
+    # o Alpine e as perguntas do checklist não renderizam — apenas o div estático
+    # do odômetro fica visível e o entregador envia sem preencher o checklist.
+    if request.url.path.startswith("/frota/"):
+        _script_src = (
+            "'self' 'unsafe-inline' 'unsafe-eval' "
+            "https://code.jquery.com https://cdn.jsdelivr.net "
+            "https://unpkg.com https://cdn.tailwindcss.com"
+        )
+    else:
+        _script_src = (
+            "'self' 'unsafe-inline' "
+            "https://code.jquery.com https://cdn.jsdelivr.net "
+            "https://unpkg.com https://cdn.tailwindcss.com"
+        )
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        f"script-src {_script_src}; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+        "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+        "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com; "
+        "connect-src 'self' https://router.project-osrm.org; "
+        "frame-ancestors 'none'"
+    )
+    return response
 
 
 @app.middleware("http")
@@ -129,14 +340,7 @@ async def _validar_assinatura_sessao(request: Request, call_next):
                 novos_headers.append((b"cookie", cookie_str.encode("latin-1")))
             request.scope["headers"] = novos_headers
 
-    resp = await call_next(request)
-    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
-    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
-    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)")
-    if _COOKIE_SECURE:
-        resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
-    return resp
+    return await call_next(request)
 
 
 @app.on_event("startup")
@@ -212,9 +416,41 @@ async def _startup_migrations():
 # ---------------------------------------------------------------------------
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _static_dir = os.path.join(_BASE_DIR, "static")
+templates = Jinja2Templates(directory=os.path.join(_BASE_DIR, "templates"))
+
+# ---------------------------------------------------------------------------
+# BASE_PATH — prefixo de URL quando o sistema fica atrás de um caminho
+# compartilhado com outro app no mesmo domínio (ex.: "/logistica" no Caddy do
+# Controle Gavião). Vazio por padrão (Railway, ou acesso direto na porta local)
+# — nesse caso os links continuam absolutos a partir da raiz, como sempre
+# foram. Todo template usa "{{ base_path }}" na frente de link/ação/src interno
+# em vez de hardcoded "/..." — ver app/templates/base.html e os demais.
+# ---------------------------------------------------------------------------
+BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
+templates.env.globals["base_path"] = BASE_PATH
+
+# manifest.json e sw.js (PWA) também precisam do prefixo em runtime — por isso
+# viram rotas explícitas (renderizadas com o mesmo BASE_PATH) em vez de
+# arquivos estáticos fixos. Registradas ANTES do mount de "/static" abaixo,
+# senão o mount responderia primeiro com o arquivo antigo sem prefixo.
+@app.get("/static/manifest.json")
+def manifest_pwa(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="manifest.json.j2", context={},
+        media_type="application/manifest+json",
+    )
+
+
+@app.get("/static/sw.js")
+def service_worker(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="sw.js.j2", context={},
+        media_type="application/javascript",
+    )
+
+
 if os.path.isdir(_static_dir):
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
-templates = Jinja2Templates(directory=os.path.join(_BASE_DIR, "templates"))
 
 
 # ---------------------------------------------------------------------------
@@ -234,7 +470,7 @@ _PERF_GRADIENTS = [
 
 _DIAS_PT = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM']
 
-_ITENS_CRITICOS = ('freio', 'pneu', 'farol')
+_ITENS_CRITICOS = ('freio', 'pneu', 'farol', 'palheta', 'fixacao_carrocinha')
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +507,7 @@ class AbastecimentoPayload(BaseModel):
 
 class ManutencaoPayload(BaseModel):
     veiculo_id: int
-    data: Optional[date]
+    data: date
     odometro: Optional[int] = None
     categoria: str
     itens_trocados: Optional[List[dict]] = None
@@ -299,6 +535,11 @@ class AprovarManutencaoPayload(BaseModel):
     valor_mao_obra: Optional[float] = None
     itens_trocados: Optional[List[dict]] = None
     observacao_gestor: Optional[str] = None
+
+
+class RejeitarManutencaoPayload(BaseModel):
+    """Payload enviado pelo GESTOR ao rejeitar uma solicitação."""
+    observacao: Optional[str] = None
 
 
 class CriarOficinaPayload(BaseModel):
@@ -399,27 +640,12 @@ def _extrair_erro_trigger(e) -> Optional[str]:
 # ---------------------------------------------------------------------------
 @app.get("/")
 async def root():
-    return RedirectResponse(url="/login")
+    return RedirectResponse(url=BASE_PATH + "/login")
 
 
 @app.get("/login")
 async def login_page(request: Request):
     return templates.TemplateResponse(request=request, name="login.html", context={})
-
-
-_LOGIN_MAX_FALHAS = 5
-_LOGIN_JANELA_SEG = 300
-_login_falhas: dict = {}
-
-
-def _login_bloqueado(chave: str) -> bool:
-    agora_ts = time.time()
-    falhas = [t for t in _login_falhas.get(chave, []) if agora_ts - t < _LOGIN_JANELA_SEG]
-    if falhas:
-        _login_falhas[chave] = falhas
-    else:
-        _login_falhas.pop(chave, None)
-    return len(falhas) >= _LOGIN_MAX_FALHAS
 
 
 @app.post("/login")
@@ -429,19 +655,15 @@ async def login(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-          or (request.client.host if request.client else ""))
-    chave = f"{ip}|{username.lower()}"
-    if _login_bloqueado(chave):
-        return templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={"error": "Muitas tentativas. Aguarde alguns minutos."},
-            status_code=429,
-        )
+    ip = request.client.host if request.client else "unknown"
+    _checar_limite_login(ip, username)
+
     user = db.query(Usuario).filter(Usuario.username == username).first()
-    if not user or not user.senha or not pwd_context.verify(password, user.senha):
-        _login_falhas.setdefault(chave, []).append(time.time())
+    # Verifica senha sempre (mesmo sem usuário) para evitar timing attack
+    senha_hash = user.senha if user and user.senha else "$2b$12$invalidhashpaddinginvalid"
+    senha_ok = pwd_context.verify(password, senha_hash)
+    if not user or not senha_ok:
+        _registrar_falha_login(ip, username)
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -453,24 +675,25 @@ async def login(
         "entregador": "/entregador",
         "operador": "/gestor",  # operador usa painel do gestor por ora (Fase 2 terá tela própria)
     }
-    _login_falhas.pop(chave, None)
     dest = redirect_map.get(user.perfil, "/login")
-    res = RedirectResponse(url=dest, status_code=303)
+    res = RedirectResponse(url=BASE_PATH + dest, status_code=303)
     _set_cookies_sessao(res, user.perfil, str(user.id), str(user.filial_id or ""))
     return res
 
 
 @app.get("/logout")
 async def logout():
-    res = RedirectResponse(url="/login")
+    res = RedirectResponse(url=BASE_PATH + "/login")
     for c in _AUTH_COOKIES:
-        res.delete_cookie(c)
+        # path precisa bater com o do set_cookie original (_set_cookies_sessao), senão o
+        # navegador ignora o delete_cookie e a sessão nunca é limpa de verdade
+        res.delete_cookie(c, path=BASE_PATH or "/")
     return res
 @app.get("/gestor")
 async def dashboard_gestor(request: Request, data: str = None, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     try:
         filtro = date.fromisoformat(data) if data else date.today()
@@ -564,7 +787,7 @@ async def dashboard_gestor(request: Request, data: str = None, db: Session = Dep
         _ultima_km = None
         for _m in _mnt_map[_v.id]:
             _itens = _m.itens_trocados or []
-            if any("oleo" in (i.get("item") or "").lower() for i in _itens if isinstance(i, dict)):
+            if any("oleo" in (i.get("nome") or i.get("item") or "").lower() for i in _itens if isinstance(i, dict)):
                 _ultima_km = _m.odometro
                 break
         if _ultima_km is None:
@@ -610,7 +833,7 @@ async def dashboard_gestor(request: Request, data: str = None, db: Session = Dep
 async def dashboard_entregador(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None), user_filial_id: str = Cookie(None), erro: str = None):
     """entregador"""
     if user_role != "entregador":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     uid = int(user_id) if user_id and user_id.isdigit() else None
 
@@ -670,6 +893,13 @@ async def dashboard_entregador(request: Request, db: Session = Depends(get_db), 
 
     total_combustivel_hoje = sum(a["valor_total"] for a in abastecimentos_hoje)
 
+    # km percorridos por entrega finalizada hoje
+    km_por_entrega: dict[int, float] = {}
+    for e in finalizadas_hoje:
+        pts = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp).all()
+        if len(pts) >= 2:
+            km_por_entrega[e.id] = _haversine_km(pts)
+
     return templates.TemplateResponse(request=request, name="dashboard_entregador.html", context={
         "disponiveis": disponiveis,
         "em_rota": em_rota,
@@ -677,6 +907,7 @@ async def dashboard_entregador(request: Request, db: Session = Depends(get_db), 
         "filiais_map": filiais_map,
         "entregador_nome": usuario_logado.username if usuario_logado else "Entregador",
         "finalizadas_hoje": finalizadas_hoje,
+        "km_por_entrega": km_por_entrega,
         "turno_ativo": turno_ativo,
         "veiculo_motorista": veiculo_motorista,
         "abastecimentos_hoje": abastecimentos_hoje,
@@ -696,16 +927,16 @@ async def aceitar_entrega(
 ):
     """entregador"""
     if user_role != "entregador":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     uid = int(user_id) if user_id and user_id.isdigit() else None
 
     turno_check = _turno_aberto_hoje(db, uid) if uid else None
     if not turno_check:
-        return RedirectResponse(url="/entregador?erro=sem_turno", status_code=303)
+        return RedirectResponse(url=BASE_PATH + "/entregador?erro=sem_turno", status_code=303)
 
     if not lat or not lng:
-        return RedirectResponse(url=f"/entregador/entrega/{entrega_id}?erro=gps_obrigatorio", status_code=303)
+        return RedirectResponse(url=BASE_PATH + f"/entregador/entrega/{entrega_id}?erro=gps_obrigatorio", status_code=303)
 
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if entrega and entrega.status == "pendente" and uid:
@@ -718,14 +949,14 @@ async def aceitar_entrega(
             pass
         db.commit()
 
-    return RedirectResponse(url="/entregador?aba=emrota", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/entregador?aba=emrota", status_code=303)
 
 
 @app.get("/entregador/entrega/{entrega_id}")
 async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None), erro: str = None):
     """entregador"""
     if user_role != "entregador":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     uid = int(user_id) if user_id and user_id.isdigit() else None
 
@@ -736,7 +967,7 @@ async def detalhe_entrega(request: Request, entrega_id: int, db: Session = Depen
     ).first()
 
     if not entrega:
-        return RedirectResponse(url="/entregador")
+        return RedirectResponse(url=BASE_PATH + "/entregador")
 
     cliente = db.query(Cliente).filter(Cliente.id == entrega.cliente_id).first()
 
@@ -779,12 +1010,12 @@ async def finalizar_entrega(
 ):
     """entregador"""
     if user_role != "entregador":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     uid = int(user_id) if user_id and user_id.isdigit() else None
 
     if not lat or not lng:
-        return RedirectResponse(url=f"/entregador/entrega/{entrega_id}?erro=gps_obrigatorio", status_code=303)
+        return RedirectResponse(url=BASE_PATH + f"/entregador/entrega/{entrega_id}?erro=gps_obrigatorio", status_code=303)
 
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if entrega and entrega.status == "em_rota" and entrega.entregador_id == uid:
@@ -796,7 +1027,7 @@ async def finalizar_entrega(
             pass
         db.commit()
 
-    return RedirectResponse(url="/entregador", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/entregador", status_code=303)
 
 
 @app.post("/entregador/rastrear/{entrega_id}")
@@ -860,7 +1091,7 @@ async def alerta_entregador(
 async def reportar_erro(entrega_id: int, motivo: str = Form(...), db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
     """entregador"""
     if user_role != "entregador":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     uid = int(user_id) if user_id and user_id.isdigit() else None
 
@@ -875,14 +1106,14 @@ async def reportar_erro(entrega_id: int, motivo: str = Form(...), db: Session = 
         entrega.motivo_erro = motivo
         db.commit()
 
-    return RedirectResponse(url="/entregador", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/entregador", status_code=303)
 
 
 @app.post("/entregas/{entrega_id}/reiniciar")
 async def reiniciar_entrega(entrega_id: int, rua: str = Form(None), numero: str = Form(None), bairro: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if entrega and entrega.status == "erro_entrega":
@@ -898,14 +1129,14 @@ async def reiniciar_entrega(entrega_id: int, rua: str = Form(None), numero: str 
             entrega.bairro = bairro.strip()
         db.commit()
 
-    return RedirectResponse(url="/gestor", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestor", status_code=303)
 
 
 @app.get("/gestor/ajustar-entrega/{entrega_id}")
 async def pagina_ajustar_entrega(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     entrega = db.query(Entrega).filter(
         Entrega.id == entrega_id,
@@ -913,7 +1144,7 @@ async def pagina_ajustar_entrega(request: Request, entrega_id: int, db: Session 
     ).first()
 
     if not entrega:
-        return RedirectResponse(url="/gestor")
+        return RedirectResponse(url=BASE_PATH + "/gestor")
 
     cliente = db.query(Cliente).filter(Cliente.id == entrega.cliente_id).first()
 
@@ -927,7 +1158,7 @@ async def pagina_ajustar_entrega(request: Request, entrega_id: int, db: Session 
 async def salvar_ajuste_entrega(entrega_id: int, rua: str = Form(...), numero: str = Form(...), bairro: str = Form(...), observacao: str = Form(default=""), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     entrega = db.query(Entrega).filter(
         Entrega.id == entrega_id,
@@ -935,7 +1166,7 @@ async def salvar_ajuste_entrega(entrega_id: int, rua: str = Form(...), numero: s
     ).first()
 
     if not entrega:
-        return RedirectResponse(url="/gestor")
+        return RedirectResponse(url=BASE_PATH + "/gestor")
 
     entrega.rua = rua.strip()
     entrega.numero = numero.strip()
@@ -948,12 +1179,12 @@ async def salvar_ajuste_entrega(entrega_id: int, rua: str = Form(...), numero: s
     entrega.motivo_erro = None
     db.commit()
 
-    return RedirectResponse(url="/gestor", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestor", status_code=303)
 @app.get("/gestor/desempenho")
 async def desempenho_gestor(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None), inicio: str = None, fim: str = None, entregador_id: str = None, filial_id: str = None):
     """gestor"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     hoje = agora().date()
     inicio_str = inicio or hoje.replace(day=1).strftime("%Y-%m-%d")
@@ -1096,15 +1327,18 @@ async def desempenho_gestor(request: Request, db: Session = Depends(get_db), use
 async def historico_entregador(request: Request, entregador_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None), status: str = None, inicio: str = None, fim: str = None, page: int = 1):
     """gestor"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     entregador = db.query(Usuario).filter(Usuario.id == entregador_id, Usuario.perfil == "entregador").first()
     if not entregador:
-        return RedirectResponse(url="/gestor/desempenho")
+        return RedirectResponse(url=BASE_PATH + "/gestor/desempenho")
 
     hoje = agora().date()
-    inicio_dt = datetime.strptime(inicio, "%Y-%m-%d") if inicio else datetime.combine(hoje.replace(day=1), datetime.min.time())
-    fim_dt = (datetime.strptime(fim, "%Y-%m-%d") + timedelta(days=1)) if fim else datetime.combine(hoje + timedelta(days=1), datetime.min.time())
+    try:
+        inicio_dt = datetime.strptime(inicio, "%Y-%m-%d") if inicio else datetime.combine(hoje.replace(day=1), datetime.min.time())
+        fim_dt = (datetime.strptime(fim, "%Y-%m-%d") + timedelta(days=1)) if fim else datetime.combine(hoje + timedelta(days=1), datetime.min.time())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de data inválido. Use YYYY-MM-DD")
     inicio_str = inicio or hoje.replace(day=1).strftime("%Y-%m-%d")
     fim_str = fim or hoje.strftime("%Y-%m-%d")
 
@@ -1155,11 +1389,19 @@ async def historico_entregador(request: Request, entregador_id: int, db: Session
 
     filiais_map = {f.id: f.nome for f in db.query(Filial).all()}
 
+    # km percorridos por entrega (para entregas da página atual)
+    km_por_entrega: dict[int, float] = {}
+    for e in entregas:
+        pts = db.query(PontoRota).filter(PontoRota.entrega_id == e.id).order_by(PontoRota.timestamp).all()
+        if len(pts) >= 2:
+            km_por_entrega[e.id] = _haversine_km(pts)
+
     return templates.TemplateResponse(request=request, name="historico_entregador.html", context={
         "entregador": entregador,
         "filial_nome": filiais_map.get(entregador.filial_id, "—"),
         "entregas": entregas,
         "filiais_map": filiais_map,
+        "km_por_entrega": km_por_entrega,
         "total": total,
         "finalizadas": finalizadas,
         "erros": erros,
@@ -1184,7 +1426,7 @@ async def historico_entregador(request: Request, entregador_id: int, db: Session
 async def log_entregas_page(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None), inicio: str = None, fim: str = None, status: str = None, filial_id: str = None, q: str = None, page: int = 1):
     """gestor"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     hoje = agora().date()
     inicio_str = inicio or (hoje - timedelta(days=30)).strftime("%Y-%m-%d")
@@ -1296,11 +1538,11 @@ async def log_entregas_page(request: Request, db: Session = Depends(get_db), use
 async def salvar_edicao_log(entrega_id: int, rua: str = Form(...), numero: str = Form(...), bairro: str = Form(...), municipio: str = Form(default=""), uf: str = Form(default=""), cep: str = Form(default=""), observacao: str = Form(default=""), novo_status: str = Form(default=""), motivo_erro: str = Form(default=""), motivo_alteracao: str = Form(default=""), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if not entrega:
-        return RedirectResponse(url="/gestor/log", status_code=303)
+        return RedirectResponse(url=BASE_PATH + "/gestor/log", status_code=303)
 
     entrega.rua = rua.strip()
     entrega.numero = numero.strip()
@@ -1325,7 +1567,7 @@ async def salvar_edicao_log(entrega_id: int, rua: str = Form(...), numero: str =
         entrega.motivo_erro = motivo_erro.strip()
 
     db.commit()
-    return RedirectResponse(url="/gestor/log", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestor/log", status_code=303)
 
 
 # ── ENTREGA MANUAL ────────────────────────────────────────────────────────────
@@ -1349,7 +1591,7 @@ async def buscar_clientes(q: str = "", db: Session = Depends(get_db), user_role:
 @app.get("/gestor/entrega/nova")
 async def nova_entrega_form(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     filiais     = db.query(Filial).order_by(Filial.nome).all()
     entregadores = db.query(Usuario).filter(Usuario.perfil == "entregador").order_by(Usuario.username).all()
     veiculos    = db.query(Veiculo).order_by(Veiculo.placa).all()
@@ -1382,7 +1624,7 @@ async def nova_entrega_salvar(
     observacao: str = Form(""),
 ):
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     # resolve cliente
     cid = None
@@ -1416,7 +1658,7 @@ async def nova_entrega_salvar(
     )
     db.add(entrega)
     db.commit()
-    return RedirectResponse(url=f"/gestor/log?origem=manual", status_code=303)
+    return RedirectResponse(url=BASE_PATH + f"/gestor/log?origem=manual", status_code=303)
 
 
 # ── AO VIVO ───────────────────────────────────────────────────────────────────
@@ -1425,7 +1667,7 @@ async def nova_entrega_salvar(
 async def pagina_ao_vivo(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor — painel de entregas em tempo real"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     em_rota = db.query(Entrega).filter(Entrega.status == "em_rota").order_by(Entrega.data_aceite).all()
     clientes_map  = {c.id: c for c in db.query(Cliente).all()}
@@ -1540,11 +1782,11 @@ async def pontos_entrega_live(entrega_id: int, db: Session = Depends(get_db), us
 async def rota_entrega_gestor(request: Request, entrega_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor — mapa de rastreamento GPS de uma entrega"""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     entrega = db.query(Entrega).filter(Entrega.id == entrega_id).first()
     if not entrega:
-        return RedirectResponse(url="/gestor/log")
+        return RedirectResponse(url=BASE_PATH + "/gestor/log")
 
     pontos = db.query(PontoRota).filter(PontoRota.entrega_id == entrega_id).order_by(PontoRota.timestamp).all()
     cliente    = db.query(Cliente).filter(Cliente.id == entrega.cliente_id).first()
@@ -1576,43 +1818,55 @@ async def rota_entrega_gestor(request: Request, entrega_id: int, db: Session = D
 async def pagina_gestao_funcionario(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
     if user_role != 'gestor':
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     funcionarios = db.query(Usuario).all()
     filiais = db.query(Filial).order_by(Filial.nome).all()
     return templates.TemplateResponse(request=request, name="gestao_funcionarios.html", context={"funcionarios": funcionarios, "filiais": filiais})
 
 
 @app.post("/salvar-funcionario")
-async def salvar_funcionario(username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _exigir_perfil(user_id, db, ("gestor",))
+async def salvar_funcionario(request: Request, username: str = Form(...), perfil: str = Form(...), senha: str = Form(...), filial_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url=BASE_PATH + "/login")
+    _PERFIS_VALIDOS = ("gestor", "operador", "entregador")
     if perfil not in _PERFIS_VALIDOS:
         raise HTTPException(status_code=400, detail="Perfil inválido")
-    novo =Usuario(username=username, perfil=perfil, senha=pwd_context.hash(senha), filial_id=filial_id if filial_id else None)
+    if len(senha) < 8:
+        funcionarios = db.query(Usuario).all()
+        filiais = db.query(Filial).order_by(Filial.nome).all()
+        return templates.TemplateResponse(request=request, name="gestao_funcionarios.html",
+                                          context={"funcionarios": funcionarios, "filiais": filiais,
+                                                   "erro": "A senha deve ter no mínimo 8 caracteres."})
+    novo = Usuario(username=username, perfil=perfil, senha=pwd_context.hash(senha), filial_id=filial_id if filial_id else None)
     db.add(novo)
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
-    return RedirectResponse(url="/gestao-funcionario", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestao-funcionario", status_code=303)
 
 
 @app.get("/editar-funcionario/{func_id}")
 async def pagina_editar_funcionario(request: Request, func_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
     if user_role != 'gestor':
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     func = db.query(Usuario).filter(Usuario.id == func_id).first()
+    if not func:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado")
     filiais = db.query(Filial).order_by(Filial.nome).all()
     return templates.TemplateResponse(request=request, name="editar_funcionario.html", context={"func": func, "filiais": filiais})
 
 
 @app.post("/processar-funcionario/{func_id}")
-async def processar_funcionario(func_id: int, acao: str = Form(...), username: str = Form(None), perfil: str = Form(None), nova_senha: str = Form(None), filial_id: str = Form(None), db: Session = Depends(get_db), user_id: str = Cookie(None)):
+async def processar_funcionario(func_id: int, acao: str = Form(...), username: str = Form(None), perfil: str = Form(None), nova_senha: str = Form(None), filial_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url=BASE_PATH + "/login")
     """excluir"""
     _exigir_perfil(user_id, db, ("gestor",))
     if acao != 'excluir' and perfil not in _PERFIS_VALIDOS:
         raise HTTPException(status_code=400, detail="Perfil inválido")
-    func =db.query(Usuario).filter(Usuario.id == func_id).first()
+    func = db.query(Usuario).filter(Usuario.id == func_id).first()
     if func:
         if acao == 'excluir':
             db.query(Entrega).filter(Entrega.entregador_id == func_id).update({"entregador_id": None})
@@ -1620,73 +1874,83 @@ async def processar_funcionario(func_id: int, acao: str = Form(...), username: s
             db.query(Veiculo).filter(Veiculo.entregador_id == func_id).update({"entregador_id": None})
             db.delete(func)
         else:
+            if perfil and perfil not in ("gestor", "operador", "entregador"):
+                raise HTTPException(status_code=400, detail="Perfil inválido")
             func.username = username
             func.perfil = perfil
             func.filial_id = filial_id if filial_id else None
             if nova_senha and nova_senha.strip():
+                if len(nova_senha.strip()) < 8:
+                    return RedirectResponse(url=BASE_PATH + f"/editar-funcionario/{func_id}?erro=senha_curta", status_code=303)
                 func.senha = pwd_context.hash(nova_senha)
         db.commit()
-    return RedirectResponse(url="/gestao-funcionario", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestao-funcionario", status_code=303)
 
 
 @app.get("/gestao-veiculo")
 async def pagina_gestao_veiculo(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     """gestor"""
     if user_role != 'gestor':
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     veiculos = db.query(Veiculo).all()
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="gestao_veiculos.html", context={"veiculos": veiculos, "entregadores": entregadores})
 
 
 @app.post("/salvar-veiculo")
-async def salvar_veiculo(placa: str = Form(...), modelo: str = Form(...), tipo: str = Form(...), entregador_id: str = Form(None), db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _exigir_perfil(user_id, db, ("gestor",))
+async def salvar_veiculo(placa: str = Form(...), modelo: str = Form(...), tipo: str = Form(...), entregador_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url=BASE_PATH + "/login")
     try:
         db.add(Veiculo(placa=placa, modelo=modelo, tipo=tipo, entregador_id=entregador_id))
         db.commit()
     except IntegrityError:
         db.rollback()
-    return RedirectResponse(url="/gestao-veiculo", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestao-veiculo", status_code=303)
 
 
 @app.get("/vincular-veiculo-page/{veiculo_id}")
 async def pagina_vincular(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
-    """gestor"""
     if user_role != 'gestor':
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
+    if not veiculo:
+        raise HTTPException(status_code=404, detail="Veículo não encontrado")
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="vincular_veiculo.html", context={"veiculo": veiculo, "entregadores": entregadores})
 
 
 @app.post("/processar-vinculo/{veiculo_id}")
-async def processar_vinculo(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_id: str = Cookie(None)):
-    _exigir_perfil(user_id, db, ("gestor",))
+async def processar_vinculo(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url=BASE_PATH + "/login")
     form_data = await request.form()
     entregador_id = form_data.get("entregador_id")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     if veiculo:
         veiculo.entregador_id = int(entregador_id) if entregador_id and str(entregador_id).isdigit() else None
         db.commit()
-    return RedirectResponse(url="/gestao-veiculo", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestao-veiculo", status_code=303)
 
 
 @app.get("/editar-veiculo/{veiculo_id}")
 async def pagina_editar_veiculo(request: Request, veiculo_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
-    """gestor"""
     if user_role != 'gestor':
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
+    if not veiculo:
+        raise HTTPException(status_code=404, detail="Veículo não encontrado")
     entregadores = db.query(Usuario).filter(Usuario.perfil == 'entregador').all()
     return templates.TemplateResponse(request=request, name="editar_veiculo.html", context={"veiculo": veiculo, "entregadores": entregadores})
 
 
 @app.post("/processar-veiculo/{veiculo_id}")
-async def processar_veiculo(veiculo_id: int, acao: str = Form(...), placa: str = Form(None), modelo: str = Form(None), tipo: str = Form(None), entregador_id: str = Form(None), db: Session = Depends(get_db), user_id: str = Cookie(None)):
+async def processar_veiculo(veiculo_id: int, acao: str = Form(...), placa: str = Form(None), modelo: str = Form(None), tipo: str = Form(None), entregador_id: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role != 'gestor':
+        return RedirectResponse(url=BASE_PATH + "/login")
     """excluir"""
     _exigir_perfil(user_id, db, ("gestor",))
-    veiculo =db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
+    veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     if veiculo:
         if acao == 'excluir':
             db.delete(veiculo)
@@ -1699,7 +1963,7 @@ async def processar_veiculo(veiculo_id: int, acao: str = Form(...), placa: str =
             db.commit()
         except IntegrityError:
             db.rollback()
-    return RedirectResponse(url="/gestao-veiculo", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestao-veiculo", status_code=303)
 @app.get("/clientes/{documento}")
 async def api_buscar_cliente(documento: str, db: Session = Depends(get_db), user_id: str = Cookie(None)):
     _exigir_perfil(user_id, db, ("gestor", "operador"))
@@ -1781,13 +2045,13 @@ async def api_lancar_entrega(dados: dict, db: Session = Depends(get_db), user_id
         return {"status": "ok", "id": nova.id}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Não foi possível registrar a entrega")
+        raise HTTPException(status_code=400, detail="Erro ao registrar entrega.")
 
 
 @app.get("/gestao-clientes")
 async def listar_clientes(request: Request, q: str = None, msg: str = None, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     query = db.query(Cliente)
     if q and q.strip():
         termo = f"%{q.strip()}%"
@@ -1803,7 +2067,7 @@ async def listar_clientes(request: Request, q: str = None, msg: str = None, db: 
 @app.post("/gestao-clientes/novo")
 async def criar_cliente_web(nome: str = Form(...), documento: str = Form(...), telefone: str = Form(default=""), rua: str = Form(default=""), numero: str = Form(default=""), bairro: str = Form(default=""), municipio: str = Form(default=""), estado: str = Form(default=""), ponto_referencia: str = Form(default=""), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     novo = Cliente(
         nome=nome.strip(),
         documento=documento.strip(),
@@ -1819,29 +2083,29 @@ async def criar_cliente_web(nome: str = Form(...), documento: str = Form(...), t
     try:
         db.commit()
         db.refresh(novo)
-        return RedirectResponse(url=f"/gestao-clientes/{novo.id}?msg=criado", status_code=303)
+        return RedirectResponse(url=BASE_PATH + f"/gestao-clientes/{novo.id}?msg=criado", status_code=303)
     except IntegrityError:
         db.rollback()
-        return RedirectResponse(url="/gestao-clientes?msg=doc_duplicado", status_code=303)
+        return RedirectResponse(url=BASE_PATH + "/gestao-clientes?msg=doc_duplicado", status_code=303)
 
 
 @app.get("/gestao-clientes/{cliente_id}")
 async def detalhe_cliente_web(request: Request, cliente_id: int, msg: str = None, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not cliente:
-        return RedirectResponse(url="/gestao-clientes")
+        return RedirectResponse(url=BASE_PATH + "/gestao-clientes")
     return templates.TemplateResponse(request=request, name="detalhe_cliente.html", context={"cliente": cliente, "msg": msg})
 
 
 @app.post("/gestao-clientes/{cliente_id}/salvar")
 async def salvar_cliente_web(cliente_id: int, nome: str = Form(...), documento: str = Form(...), telefone: str = Form(default=""), rua: str = Form(default=""), numero: str = Form(default=""), bairro: str = Form(default=""), municipio: str = Form(default=""), estado: str = Form(default=""), ponto_referencia: str = Form(default=""), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not cliente:
-        return RedirectResponse(url="/gestao-clientes")
+        return RedirectResponse(url=BASE_PATH + "/gestao-clientes")
     cliente.nome = nome.strip()
     cliente.documento = documento.strip()
     cliente.telefone = telefone.strip() or None
@@ -1853,16 +2117,16 @@ async def salvar_cliente_web(cliente_id: int, nome: str = Form(...), documento: 
     cliente.ponto_referencia = ponto_referencia.strip() or None
     try:
         db.commit()
-        return RedirectResponse(url=f"/gestao-clientes/{cliente_id}?msg=atualizado", status_code=303)
+        return RedirectResponse(url=BASE_PATH + f"/gestao-clientes/{cliente_id}?msg=atualizado", status_code=303)
     except IntegrityError:
         db.rollback()
-        return RedirectResponse(url=f"/gestao-clientes/{cliente_id}?msg=doc_duplicado", status_code=303)
+        return RedirectResponse(url=BASE_PATH + f"/gestao-clientes/{cliente_id}?msg=doc_duplicado", status_code=303)
 
 
 @app.post("/gestao-clientes/{cliente_id}/excluir")
 async def excluir_cliente_web(cliente_id: int, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if cliente:
         try:
@@ -1870,13 +2134,13 @@ async def excluir_cliente_web(cliente_id: int, db: Session = Depends(get_db), us
             db.commit()
         except Exception:
             db.rollback()
-    return RedirectResponse(url="/gestao-clientes?msg=excluido", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestao-clientes?msg=excluido", status_code=303)
 
 
 @app.get("/gestao-filial")
 async def pagina_gestao_filial(request: Request, db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role != "gestor":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     filiais = db.query(Filial).order_by(Filial.nome).all()
     operadores_por_filial = {}
     for f in filiais:
@@ -1887,19 +2151,19 @@ async def pagina_gestao_filial(request: Request, db: Session = Depends(get_db), 
 @app.post("/salvar-filial")
 async def salvar_filial(nome: str = Form(...), cidade: str = Form(""), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role != "gestor":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     db.add(Filial(nome=nome, cidade=cidade))
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
-    return RedirectResponse(url="/gestao-filial", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestao-filial", status_code=303)
 
 
 @app.post("/processar-filial/{filial_id}")
 async def processar_filial(filial_id: int, acao: str = Form(...), nome: str = Form(None), cidade: str = Form(None), db: Session = Depends(get_db), user_role: str = Cookie(None)):
     if user_role != "gestor":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
     filial = db.query(Filial).filter(Filial.id == filial_id).first()
     if filial:
         if acao == "excluir":
@@ -1912,7 +2176,7 @@ async def processar_filial(filial_id: int, acao: str = Form(...), nome: str = Fo
             filial.nome = nome
             filial.cidade = cidade
             db.commit()
-    return RedirectResponse(url="/gestao-filial", status_code=303)
+    return RedirectResponse(url=BASE_PATH + "/gestao-filial", status_code=303)
 @app.get("/frota/veiculos")
 async def frota_listar_veiculos(user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """id"""
@@ -2216,8 +2480,12 @@ async def frota_registrar_abastecimento(payload: AbastecimentoPayload, user_id: 
         valor_total=payload.valor_total,
     )
     db.add(abastecimento)
-    db.commit()
-    db.refresh(abastecimento)
+    try:
+        db.commit()
+        db.refresh(abastecimento)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao registrar abastecimento. Tente novamente.")
     return {
         "mensagem": "Abastecimento registrado",
         "id": abastecimento.id,
@@ -2277,8 +2545,12 @@ async def frota_registrar_manutencao(payload: ManutencaoPayload, user_id: str = 
         oficina=payload.oficina,
     )
     db.add(manutencao)
-    db.commit()
-    db.refresh(manutencao)
+    try:
+        db.commit()
+        db.refresh(manutencao)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao registrar manutenção. Tente novamente.")
     return {
         "mensagem": "Manutenção registrada",
         "id": manutencao.id,
@@ -2328,8 +2600,12 @@ async def frota_solicitar_manutencao(payload: SolicitacaoManutencaoPayload, user
         status="pendente",
     )
     db.add(manutencao)
-    db.commit()
-    db.refresh(manutencao)
+    try:
+        db.commit()
+        db.refresh(manutencao)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao enviar solicitação. Tente novamente.")
     return {
         "mensagem": "Solicitação enviada ao gestor",
         "id": manutencao.id,
@@ -2359,12 +2635,16 @@ async def frota_aprovar_manutencao(manutencao_id: int, payload: AprovarManutenca
     mnt.valor_mao_obra = payload.valor_mao_obra
     mnt.itens_trocados = payload.itens_trocados or mnt.itens_trocados
     mnt.observacao_gestor = payload.observacao_gestor
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao aprovar manutenção. Tente novamente.")
     return {"mensagem": "Manutenção aprovada", "id": mnt.id}
 
 
 @app.post("/frota/manutencao/{manutencao_id}/rejeitar", status_code=200)
-async def frota_rejeitar_manutencao(manutencao_id: int, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), observacao: str = None, db: Session = Depends(get_db)):
+async def frota_rejeitar_manutencao(manutencao_id: int, payload: RejeitarManutencaoPayload, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Gestor rejeita a solicitação de manutenção."""
     if user_role not in ("gestor", "operador"):
         raise HTTPException(status_code=403, detail="Acesso restrito a gestores")
@@ -2377,8 +2657,12 @@ async def frota_rejeitar_manutencao(manutencao_id: int, user_id: str = Cookie(de
         raise HTTPException(status_code=400, detail=f"Manutenção já está '{mnt.status}'")
 
     mnt.status = "rejeitada"
-    mnt.observacao_gestor = observacao
-    db.commit()
+    mnt.observacao_gestor = payload.observacao
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao rejeitar manutenção. Tente novamente.")
     return {"mensagem": "Manutenção rejeitada", "id": mnt.id}
 
 
@@ -2437,8 +2721,12 @@ async def frota_instalar_pneu(payload: PneuInstalarPayload, user_id: str = Cooki
         status="ativo",
     )
     db.add(novo)
-    db.commit()
-    db.refresh(novo)
+    try:
+        db.commit()
+        db.refresh(novo)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao registrar pneu. Tente novamente.")
 
     return {
         "mensagem": "Pneu instalado",
@@ -2460,7 +2748,11 @@ async def frota_descartar_pneu(pneu_id: int, payload: PneuDescartePayload, user_
     pneu.status = "descartado"
     pneu.km_descarte = payload.km_descarte
     pneu.data_descarte = payload.data_descarte
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao descartar pneu. Tente novamente.")
 
     km_rodados = payload.km_descarte - pneu.km_instalacao if pneu.km_instalacao else None
 
@@ -2495,7 +2787,7 @@ async def frota_pneus_ativos(veiculo_id: int, user_id: str = Cookie(default=None
 
 
 @app.get("/frota/oficinas/lista")
-async def frota_lista_oficinas(user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_lista_oficinas(request: Request, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Retorna lista de oficinas ativas para o formulário do entregador."""
     _resolver_usuario(user_id, db)
     oficinas = db.query(Oficina).filter(Oficina.ativo == True).order_by(Oficina.nome).all()
@@ -2511,8 +2803,12 @@ async def frota_criar_oficina(payload: CriarOficinaPayload, user_role: str = Coo
         raise HTTPException(status_code=403, detail="Acesso restrito a gestores")
     o = Oficina(nome=payload.nome.strip(), telefone=payload.telefone, endereco=payload.endereco)
     db.add(o)
-    db.commit()
-    db.refresh(o)
+    try:
+        db.commit()
+        db.refresh(o)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao salvar oficina. Tente novamente.")
     return {"id": o.id, "nome": o.nome}
 
 
@@ -2529,9 +2825,9 @@ async def frota_desativar_oficina(oficina_id: int, user_role: str = Cookie(defau
 
 
 @app.get("/frota/pecas/lista")
-async def frota_lista_pecas(user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
-    _resolver_usuario(user_id, db)
+async def frota_lista_pecas(request: Request, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Retorna catálogo de peças ativas para o formulário do entregador."""
+    _resolver_usuario(user_id, db)
     pecas = db.query(PecaCatalogo).filter(PecaCatalogo.ativo == True).order_by(PecaCatalogo.categoria, PecaCatalogo.nome).all()
     return [
         {"id": p.id, "nome": p.nome, "categoria": p.categoria, "unidade": p.unidade}
@@ -2545,8 +2841,12 @@ async def frota_criar_peca(payload: CriarPecaPayload, user_role: str = Cookie(de
         raise HTTPException(status_code=403, detail="Acesso restrito a gestores")
     p = PecaCatalogo(nome=payload.nome.strip(), categoria=payload.categoria, unidade=payload.unidade or "un")
     db.add(p)
-    db.commit()
-    db.refresh(p)
+    try:
+        db.commit()
+        db.refresh(p)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao salvar peça. Tente novamente.")
     return {"id": p.id, "nome": p.nome}
 
 
@@ -2565,7 +2865,7 @@ async def frota_desativar_peca(peca_id: int, user_role: str = Cookie(default=Non
 @app.get("/frota/configuracoes")
 async def frota_configuracoes_page(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/frota/dashboard")
+        return RedirectResponse(url=BASE_PATH + "/frota/dashboard")
     usuario = _resolver_usuario(user_id, db)
     oficinas = db.query(Oficina).filter(Oficina.ativo == True).order_by(Oficina.nome).all()
     pecas = db.query(PecaCatalogo).filter(PecaCatalogo.ativo == True).order_by(PecaCatalogo.categoria, PecaCatalogo.nome).all()
@@ -2574,7 +2874,7 @@ async def frota_configuracoes_page(request: Request, user_id: str = Cookie(defau
 async def frota_score_ranking(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Ranking de motoristas ordenado por score_atual (desc)."""
     if user_role not in ("gestor", "operador"):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url=BASE_PATH + "/login")
 
     scores = db.query(MotoristaScore).order_by(
         MotoristaScore.score_atual.desc(),
@@ -2601,7 +2901,7 @@ async def frota_score_ranking(request: Request, user_id: str = Cookie(default=No
 
 
 @app.get("/frota/dashboard/consolidado-turno/{turno_id}")
-async def frota_consolidado_turno(turno_id, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_consolidado_turno(turno_id: int, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Consolidado do turno — todos os campos de custo e contagem
     são lidos diretamente do banco (mantidos por triggers, nunca calculados aqui).
@@ -2637,7 +2937,7 @@ async def frota_consolidado_turno(turno_id, user_id: str = Cookie(default=None),
 
 
 @app.get("/frota/analise/consumo/{veiculo_id}")
-async def frota_analise_consumo(veiculo_id, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_analise_consumo(veiculo_id: int, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Consumo médio de combustível em km/L para o veículo.
 
@@ -2703,7 +3003,7 @@ async def frota_analise_consumo(veiculo_id, user_id: str = Cookie(default=None),
 
 
 @app.get("/frota/analise/cpk/{veiculo_id}")
-async def frota_analise_cpk(veiculo_id, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_analise_cpk(veiculo_id: int, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Custo Por Quilômetro (CPK) de manutenção acumulado para o veículo.
 
@@ -2848,8 +3148,10 @@ async def frota_analise_alertas(user_id: str = Cookie(default=None), db: Session
 
 
 @app.get("/frota/alertas")
-async def frota_alertas_page(request: Request, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_alertas_page(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Página de alertas de manutenção para o gestor."""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url=BASE_PATH + "/login")
     usuario = _resolver_usuario(user_id, db)
 
     _KM_ALERTA = 9000
@@ -2882,7 +3184,7 @@ async def frota_alertas_page(request: Request, user_id: str = Cookie(default=Non
         for m in mnt_por_veiculo[v.id]:
             itens = m.itens_trocados or []
             if any(
-                "oleo" in (i.get("item") or "").lower()
+                "oleo" in (i.get("nome") or i.get("item") or "").lower()
                 for i in itens
                 if isinstance(i, dict)
             ):
@@ -2940,12 +3242,14 @@ async def frota_alertas_page(request: Request, user_id: str = Cookie(default=Non
 
 
 @app.get("/frota/manutencao")
-async def frota_manutencao_page(request: Request, veiculo_id: int = None, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_manutencao_page(request: Request, veiculo_id: int = None, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Histórico de manutenções para o gestor.
     Sem veiculo_id: mostra todos os veículos.
     Com veiculo_id: filtra por veículo.
     """
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url=BASE_PATH + "/login")
     usuario = _resolver_usuario(user_id, db)
     veiculos = db.query(Veiculo).order_by(Veiculo.placa).all()
 
@@ -3068,8 +3372,10 @@ async def frota_manutencao_page(request: Request, veiculo_id: int = None, user_i
 
 
 @app.get("/frota/ranking")
-async def frota_ranking_page(request: Request, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_ranking_page(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Ranking de scores dos motoristas — visão HTML para o gestor."""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url=BASE_PATH + "/login")
     usuario = _resolver_usuario(user_id, db)
 
     scores_raw = db.query(MotoristaScore).order_by(
@@ -3112,6 +3418,8 @@ async def frota_ranking_page(request: Request, user_id: str = Cookie(default=Non
 @app.get("/frota/dashboard")
 async def frota_dashboard_page(request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """Painel principal do gestor de frota."""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url=BASE_PATH + "/login")
     usuario = _resolver_usuario(user_id, db)
     hoje = agora().date()
 
@@ -3177,6 +3485,7 @@ async def frota_dashboard_page(request: Request, user_id: str = Cookie(default=N
                 'veiculo_id': v.id,
                 'placa': v.placa,
                 'modelo': v.modelo,
+                'tipo': v.tipo,
                 'mensagem': 'Nenhuma troca de óleo registrada',
             })
             continue
@@ -3191,6 +3500,7 @@ async def frota_dashboard_page(request: Request, user_id: str = Cookie(default=N
                 'veiculo_id': v.id,
                 'placa': v.placa,
                 'modelo': v.modelo,
+                'tipo': v.tipo,
                 'km_desde_troca': km_desde,
                 'km_ultima_troca': ultima_troca_km,
                 'km_atual': km_atual,
@@ -3217,7 +3527,7 @@ async def frota_turno_page(request: Request, user_id: str = Cookie(default=None)
     EXCLUSIVO PARA ENTREGADORES: gestores são redirecionados para o painel.
     """
     if user_role not in ('entregador',):
-        return RedirectResponse(url='/frota/dashboard')
+        return RedirectResponse(url=BASE_PATH + '/frota/dashboard')
 
     usuario = _resolver_usuario(user_id, db)
     turno = _turno_aberto_hoje(db, usuario.id)
@@ -3245,7 +3555,7 @@ async def frota_turno_page(request: Request, user_id: str = Cookie(default=None)
 
 
 @app.get("/frota/checklist")
-async def frota_checklist_page(request: Request, veiculo_id: str = None, tipo: str = 'inicio', user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_checklist_page(request: Request, veiculo_id: Optional[int] = None, tipo: str = 'inicio', user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Formulário de inspeção veicular — EXCLUSIVO PARA ENTREGADORES.
     Gestores e operadores são redirecionados para o painel de frota.
@@ -3255,12 +3565,12 @@ async def frota_checklist_page(request: Request, veiculo_id: str = None, tipo: s
       tipo       — 'inicio' (padrão) | 'fim'
     """
     if user_role not in ('entregador',):
-        return RedirectResponse(url='/frota/dashboard')
+        return RedirectResponse(url=BASE_PATH + '/frota/dashboard')
 
     usuario = _resolver_usuario(user_id, db)
 
     if not veiculo_id:
-        return RedirectResponse(url='/frota/turno')
+        return RedirectResponse(url=BASE_PATH + '/frota/turno')
 
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
     if not veiculo:
@@ -3281,8 +3591,10 @@ async def frota_checklist_page(request: Request, veiculo_id: str = None, tipo: s
 
 
 @app.get("/frota/historico-geral")
-async def frota_historico_geral_page(request: Request, veiculo_id: str = None, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_historico_geral_page(request: Request, veiculo_id: Optional[int] = None, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """aprovada"""
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url=BASE_PATH + "/login")
     usuario = _resolver_usuario(user_id, db)
     veiculos = db.query(Veiculo).order_by(Veiculo.placa).all()
     placa_map = {v.id: v.placa for v in veiculos}
@@ -3379,11 +3691,13 @@ async def frota_historico_geral_page(request: Request, veiculo_id: str = None, u
 
 
 @app.get("/frota/historico/{veiculo_id}")
-async def frota_historico_page(veiculo_id: str, request: Request, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_historico_page(veiculo_id: int, request: Request, user_id: str = Cookie(default=None), user_role: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Timeline unificada de eventos de um veículo:
     abastecimentos, manutenções, checklists e trocas de pneus.
     """
+    if user_role not in ("gestor", "operador"):
+        return RedirectResponse(url=BASE_PATH + "/login")
     usuario = _resolver_usuario(user_id, db)
 
     veiculo = db.query(Veiculo).filter(Veiculo.id == veiculo_id).first()
@@ -3436,7 +3750,7 @@ async def frota_historico_page(veiculo_id: str, request: Request, user_id: str =
         total = round(pecas + mao_ob, 2)
         itens = m.itens_trocados or []
         itens_str = ', '.join(
-            i.get('item', '').replace('_', ' ').title()
+            (i.get('nome') or i.get('item') or '').replace('_', ' ').title()
             for i in itens
             if isinstance(i, dict)
         ) or '—'
@@ -3573,7 +3887,7 @@ async def frota_historico_page(veiculo_id: str, request: Request, user_id: str =
 
 
 @app.get("/frota/analise/eficiencia-turno/{turno_id}")
-async def frota_analise_eficiencia_turno(turno_id: str, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+async def frota_analise_eficiencia_turno(turno_id: int, user_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     """
     Eficiência financeira do turno: custo total por entrega realizada.
 
@@ -3609,3 +3923,91 @@ async def frota_analise_eficiencia_turno(turno_id: str, user_id: str = Cookie(de
         'custo_por_entrega': custo_por_entrega,
         'aviso': 'Turno sem entregas — CPE indisponível' if total_cupons == 0 else None,
     }
+
+
+# ─── BACKUP DO BANCO DE DADOS ─────────────────────────────────────────────────
+# Acesso restrito: apenas o usuário cujo username bate com BACKUP_OWNER (Railway).
+# O link NÃO aparece no sidebar — acesso só via URL direta pelo responsável.
+
+def _checar_dono_backup(user_id: str, db: Session):
+    """Levanta 403 se o usuário logado não for o dono do sistema (BACKUP_OWNER)."""
+    dono = os.getenv("BACKUP_OWNER", "").strip().lower()
+    if not dono:
+        raise HTTPException(status_code=403, detail="BACKUP_OWNER não configurado no servidor.")
+    uid = int(user_id) if user_id and user_id.isdigit() else None
+    usuario = db.query(Usuario).filter(Usuario.id == uid).first() if uid else None
+    if not usuario or usuario.username.strip().lower() != dono:
+        raise HTTPException(status_code=403, detail="Acesso restrito ao responsável do sistema.")
+
+
+@app.get("/gestor/backup")
+async def pagina_backup(request: Request, db: Session = Depends(get_db),
+                        user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role != "gestor":
+        return RedirectResponse(url=BASE_PATH + "/login")
+    _checar_dono_backup(user_id, db)
+    logs = db.query(BackupLog).order_by(BackupLog.criado_em.desc()).limit(30).all()
+    proximo = None
+    try:
+        job = _scheduler.get_job("backup_trimestral")
+        if job and job.next_run_time:
+            proximo = job.next_run_time.strftime("%d/%m/%Y às %H:%M")
+    except Exception:
+        pass
+    smtp_ok = bool(os.getenv("BACKUP_SMTP_HOST") and os.getenv("BACKUP_SMTP_USER"))
+    return templates.TemplateResponse("backup.html", {
+        "request": request,
+        "logs": logs,
+        "proximo_backup": proximo,
+        "smtp_ok": smtp_ok,
+    })
+
+
+@app.post("/gestor/backup/gerar")
+async def gerar_backup(db: Session = Depends(get_db),
+                       user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role != "gestor":
+        return RedirectResponse(url=BASE_PATH + "/login")
+    _checar_dono_backup(user_id, db)
+    sql_content, size_kb = _gerar_sql_dump(db)
+    log = BackupLog(tipo="manual", tamanho_kb=size_kb, status="ok",
+                    obs="Download manual pelo responsável")
+    db.add(log)
+    db.commit()
+    nome = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+    return StreamingResponse(
+        iter([sql_content]),
+        media_type="application/sql",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
+
+@app.get("/gestor/backup/{backup_id}/baixar")
+async def baixar_backup_auto(backup_id: int, db: Session = Depends(get_db),
+                             user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role != "gestor":
+        return RedirectResponse(url=BASE_PATH + "/login")
+    _checar_dono_backup(user_id, db)
+    log = db.query(BackupLog).filter(BackupLog.id == backup_id).first()
+    if not log or not log.dados_gz:
+        raise HTTPException(status_code=404, detail="Backup não encontrado ou sem arquivo armazenado")
+    content = gzip.decompress(log.dados_gz).decode("utf-8")
+    nome = f"backup_auto_{log.criado_em.strftime('%Y%m%d_%H%M%S')}.sql"
+    return StreamingResponse(
+        iter([content]),
+        media_type="application/sql",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
+
+@app.post("/gestor/backup/{backup_id}/excluir")
+async def excluir_backup(backup_id: int, db: Session = Depends(get_db),
+                         user_role: str = Cookie(None), user_id: str = Cookie(None)):
+    if user_role != "gestor":
+        return RedirectResponse(url=BASE_PATH + "/login")
+    _checar_dono_backup(user_id, db)
+    log = db.query(BackupLog).filter(BackupLog.id == backup_id).first()
+    if log:
+        db.delete(log)
+        db.commit()
+    return RedirectResponse(url=BASE_PATH + "/gestor/backup", status_code=303)
