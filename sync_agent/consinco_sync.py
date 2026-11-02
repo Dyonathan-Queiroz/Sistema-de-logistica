@@ -31,7 +31,7 @@ ORACLE_SERVICE  = os.getenv("ORACLE_SERVICE",  "")
 ORACLE_USER     = os.getenv("ORACLE_USER",     "")
 ORACLE_PASSWORD = os.getenv("ORACLE_PASSWORD", "")
 
-API_URL         = os.getenv("API_URL",        "https://exemplo.up.railway.app")
+API_URL         = os.getenv("API_URL",        "http://localhost:8000")
 API_USERNAME    = os.getenv("API_USERNAME",   "")
 API_PASSWORD    = os.getenv("API_PASSWORD",   "")
 POLL_INTERVAL   = int(os.getenv("POLL_INTERVAL", "30"))
