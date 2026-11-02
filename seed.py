@@ -28,7 +28,7 @@ ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_SENHA    = os.getenv("ADMIN_SENHA", "")
 
 SYNC_USERNAME = "sync_consinco"
-SYNC_SENHA    = os.getenv("SYNC_SENHA", "sync@gaviao2024")
+SYNC_SENHA    = os.getenv("SYNC_SENHA", "")
 
 
 def seed():
@@ -72,7 +72,12 @@ def seed():
 
         # --- Usuário sync_consinco (agente de sincronização Consinco) ---
         sync_user = db.query(Usuario).filter(Usuario.username == SYNC_USERNAME).first()
-        if not sync_user:
+        if not sync_user and not SYNC_SENHA:
+            print(
+                f"[seed] AVISO: usuário '{SYNC_USERNAME}' não existe e SYNC_SENHA "
+                "não está definida — usuário NÃO foi criado."
+            )
+        elif not sync_user:
             sync_user = Usuario(
                 username=SYNC_USERNAME,
                 perfil="operador",
