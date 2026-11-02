@@ -9,10 +9,10 @@ Instalação:
     pip install locust
 
 Uso básico (interface web):
-    locust -f tests/locustfile.py --host https://SEU-DOMINIO.up.railway.app
+    locust -f tests/locustfile.py --host https://SEU-DOMINIO
 
 Uso headless:
-    locust -f tests/locustfile.py --host https://SEU-DOMINIO.up.railway.app \
+    locust -f tests/locustfile.py --host https://SEU-DOMINIO \
            --headless -u 5 -r 1 -t 2m --html tests/relatorio.html
 
 IMPORTANTE: O sistema tem rate limiter de 5 logins/min por IP.

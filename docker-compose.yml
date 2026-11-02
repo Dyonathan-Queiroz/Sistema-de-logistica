@@ -28,7 +28,7 @@ services:
       # Prefixo de URL quando fica atrás do Caddy do Controle Gavião, no mesmo domínio
       # (ver Caddyfile do Gavião, bloco "handle_path /logistica/*"). Sem isso os links,
       # redirects e cookies do sistema voltam a ser absolutos a partir da raiz — é o que
-      # acontece se rodar sozinho (Railway, ou direto na porta 8090 sem o Caddy na frente).
+      # acontece se rodar sozinho (hospedagem standalone, ou direto na porta 8090 sem o Caddy na frente).
       BASE_PATH: /logistica
     depends_on:
       db:

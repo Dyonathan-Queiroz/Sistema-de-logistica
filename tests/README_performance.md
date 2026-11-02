@@ -11,7 +11,7 @@ pip install locust
 ### 1. Interface web (recomendado para primeira vez)
 
 ```bash
-locust -f tests/locustfile.py --host https://SEU-DOMINIO.up.railway.app
+locust -f tests/locustfile.py --host https://SEU-DOMINIO
 ```
 
 Abra http://localhost:8089 no navegador, configure:
@@ -23,7 +23,7 @@ Abra http://localhost:8089 no navegador, configure:
 
 ```bash
 locust -f tests/locustfile.py \
-  --host https://SEU-DOMINIO.up.railway.app \
+  --host https://SEU-DOMINIO \
   --headless \
   -u 20 -r 2 -t 2m \
   --html tests/relatorio.html

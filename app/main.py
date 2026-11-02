@@ -188,7 +188,7 @@ if not SECRET_KEY:
     import logging as _logging
     _logging.warning(
         "SECRET_KEY não definida! Usando chave efêmera — sessões expiram a cada restart. "
-        "Defina SECRET_KEY nas variáveis de ambiente (Railway) para produção."
+        "Defina SECRET_KEY nas variáveis de ambiente para produção."
     )
     SECRET_KEY = secrets.token_hex(32)
 
@@ -236,7 +236,7 @@ def _registrar_falha_login(ip: str, username: str) -> None:
         _bloqueio_conta[username] = agora_ts + _CONTA_BLOQUEIO_S
 
 # Cookies só trafegam por HTTPS quando COOKIE_SECURE=true (produção atrás de
-# TLS, como na Railway). Em desenvolvimento local (http://localhost) deixe a
+# TLS). Em desenvolvimento local (http://localhost) deixe a
 # variável ausente/false, senão o navegador não envia os cookies.
 _COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 _AUTH_COOKIES = ("user_role", "user_id", "user_filial_id", "auth_ts", "auth_sig")
@@ -437,7 +437,7 @@ async def _startup_migrations():
 
 
 # ---------------------------------------------------------------------------
-# Paths absolutos de static/templates (robusto no Railway)
+# Paths absolutos de static/templates (robusto em qualquer ambiente)
 # ---------------------------------------------------------------------------
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _static_dir = os.path.join(_BASE_DIR, "static")
@@ -446,7 +446,7 @@ templates = Jinja2Templates(directory=os.path.join(_BASE_DIR, "templates"))
 # ---------------------------------------------------------------------------
 # BASE_PATH — prefixo de URL quando o sistema fica atrás de um caminho
 # compartilhado com outro app no mesmo domínio (ex.: "/logistica" no Caddy do
-# Controle Gavião). Vazio por padrão (Railway, ou acesso direto na porta local)
+# Controle Gavião). Vazio por padrão (hospedagem standalone, ou acesso direto na porta local)
 # — nesse caso os links continuam absolutos a partir da raiz, como sempre
 # foram. Todo template usa "{{ base_path }}" na frente de link/ação/src interno
 # em vez de hardcoded "/..." — ver app/templates/base.html e os demais.
@@ -3951,7 +3951,7 @@ async def frota_analise_eficiencia_turno(turno_id: int, user_id: str = Cookie(de
 
 
 # ─── BACKUP DO BANCO DE DADOS ─────────────────────────────────────────────────
-# Acesso restrito: apenas o usuário cujo username bate com BACKUP_OWNER (Railway).
+# Acesso restrito: apenas o usuário cujo username bate com BACKUP_OWNER.
 # O link NÃO aparece no sidebar — acesso só via URL direta pelo responsável.
 
 def _checar_dono_backup(user_id: str, db: Session):

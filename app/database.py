@@ -9,7 +9,7 @@ load_dotenv()
 
 
 def _build_database_url() -> str | None:
-    # Tenta DATABASE_URL, MYSQL_URL e MYSQL_PRIVATE_URL (todos que Railway pode injetar)
+    # Tenta DATABASE_URL, MYSQL_URL e MYSQL_PRIVATE_URL (formatos comuns em plataformas PaaS)
     for key in ("DATABASE_URL", "MYSQL_URL", "MYSQL_PRIVATE_URL"):
         raw = os.getenv(key)
         if raw:
@@ -17,7 +17,7 @@ def _build_database_url() -> str | None:
                 raw = raw.replace("mysql://", "mysql+pymysql://", 1)
             return raw
 
-    # Fallback: variáveis individuais — Railway usa dois formatos (com e sem underscore)
+    # Fallback: variáveis individuais — plataformas PaaS usam dois formatos (com e sem underscore)
     host     = os.getenv("MYSQLHOST")     or os.getenv("MYSQL_HOST")
     user     = os.getenv("MYSQLUSER")     or os.getenv("MYSQL_USER")
     password = os.getenv("MYSQLPASSWORD") or os.getenv("MYSQL_PASSWORD") or ""

@@ -56,7 +56,7 @@ def seed():
                 print(
                     f"[seed] AVISO: usuário '{ADMIN_USERNAME}' não existe e ADMIN_SENHA "
                     "não está definida — admin NÃO foi criado.\n"
-                    "  Defina ADMIN_SENHA nas variáveis do Railway e faça um novo deploy."
+                    "  Defina ADMIN_SENHA nas variáveis de ambiente e faça um novo deploy."
                 )
             else:
                 admin = Usuario(
